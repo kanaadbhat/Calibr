@@ -1,6 +1,8 @@
 "use client"
 import React, { useState } from 'react';
 import { ArrowRight, CheckCircle, Mail, Building, User } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 
 const CallToAction: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -54,14 +56,14 @@ const CallToAction: React.FC = () => {
             </div>
 
             <div className="flex flex-col sm:flex-row gap-4">
-              <button className="bg-gradient-to-r from-indigo-500 to-rose-500 text-white px-8 py-4 rounded-xl font-semibold hover:shadow-lg hover:shadow-indigo-500/30 transition-all duration-300 flex items-center justify-center">
+              <Button className="bg-gradient-to-r from-indigo-500 to-rose-500 text-white px-8 py-4 rounded-xl font-semibold hover:shadow-lg hover:shadow-indigo-500/30 transition-all duration-300 flex items-center justify-center h-full">
                 Try Calibr Free
                 <ArrowRight className="h-5 w-5 ml-2" />
-              </button>
+              </Button>
               
-              <button className="border-2 border-white/30 text-white px-8 py-4 rounded-xl font-semibold hover:bg-white/10 transition-all duration-300">
+              <Button className="border-2 border-white/30 text-white px-8 py-4 rounded-xl font-semibold hover:bg-white/10 transition-all duration-300 h-full">
                 Watch Demo Video
-              </button>
+              </Button>
             </div>
           </div>
 
@@ -80,11 +82,11 @@ const CallToAction: React.FC = () => {
               <div>
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-white/40" />
-                  <input
+                  <Input
                     type="text"
                     value={formData.name}
                     onChange={(e) => handleInputChange('name', e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/40 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    className="w-full pl-10 pr-4 py-6 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/40 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                     placeholder="Full Name"
                     required
                   />
@@ -94,11 +96,11 @@ const CallToAction: React.FC = () => {
               <div>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-white/40" />
-                  <input
+                  <Input
                     type="email"
                     value={formData.email}
                     onChange={(e) => handleInputChange('email', e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/40 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    className="w-full pl-10 pr-4 py-6 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/40 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                     placeholder="Work Email"
                     required
                   />
@@ -108,11 +110,11 @@ const CallToAction: React.FC = () => {
               <div>
                 <div className="relative">
                   <Building className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-white/40" />
-                  <input
+                  <Input
                     type="text"
                     value={formData.company}
                     onChange={(e) => handleInputChange('company', e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/40 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    className="w-full pl-10 pr-4 py-6 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/40 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                     placeholder="Company Name"
                     required
                   />
@@ -135,13 +137,13 @@ const CallToAction: React.FC = () => {
                 </select>
               </div>
 
-              <button
+              <Button
                 type="submit"
-                className="w-full bg-gradient-to-r from-indigo-500 to-rose-500 text-white py-4 rounded-lg font-semibold hover:shadow-lg hover:shadow-indigo-500/30 transition-all duration-300 flex items-center justify-center"
+                className="w-full h-full bg-gradient-to-r from-indigo-500 to-rose-500 text-white py-4 rounded-lg font-semibold hover:shadow-lg hover:shadow-indigo-500/30 transition-all duration-300 flex items-center justify-center"
               >
                 Book Demo Now
                 <ArrowRight className="h-5 w-5 ml-2" />
-              </button>
+              </Button>
             </form>
 
             <p className="text-xs text-white/40 text-center mt-4">

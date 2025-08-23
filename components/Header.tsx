@@ -30,9 +30,6 @@ const Header: React.FC = () => {
             <Button variant="ghost" className="text-white/70 hover:text-white hover:bg-white/5">
               Sign In
             </Button>
-            <Button className="bg-gradient-to-r from-indigo-500 to-rose-500 text-white px-6 hover:shadow-lg hover:shadow-indigo-500/30 transition-all duration-300">
-              Get Started <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
           </div>
 
           {/* Mobile Menu Button */}

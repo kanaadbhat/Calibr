@@ -1,5 +1,6 @@
 import React from 'react';
 import { Upload, Brain, UserCheck, ArrowRight } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 const HowItWorks: React.FC = () => {
   const steps = [
@@ -73,9 +74,9 @@ const HowItWorks: React.FC = () => {
 
         {/* CTA */}
         <div className="text-center mt-16">
-          <button className="bg-gradient-to-r from-indigo-500 to-rose-500 text-white px-8 py-4 rounded-xl font-semibold hover:shadow-lg hover:shadow-indigo-500/30 transition-all duration-300">
+          <Button className="bg-gradient-to-r from-indigo-500 to-rose-500 text-white px-8 py-4 h-full rounded-xl font-semibold hover:shadow-lg hover:shadow-indigo-500/30 transition-all duration-300">
             See It In Action
-          </button>
+          </Button>
         </div>
       </div>
     </section>

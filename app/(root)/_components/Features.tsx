@@ -1,5 +1,6 @@
 import React from 'react';
 import { Video, Brain, BarChart3, Calendar, Shield, Zap } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 const Features: React.FC = () => {
   const features = [
@@ -82,9 +83,9 @@ const Features: React.FC = () => {
                 Get real-time insights into your hiring pipeline with comprehensive analytics, 
                 candidate scoring, and performance metrics that help you make data-driven decisions.
               </p>
-              <button className="bg-gradient-to-r from-indigo-500 to-rose-500 text-white px-6 py-3 rounded-lg font-semibold hover:shadow-lg hover:shadow-indigo-500/30 transition-all duration-300">
+              <Button className="bg-gradient-to-r from-indigo-500 to-rose-500 text-white px-6 py-3 h-full rounded-lg font-semibold hover:shadow-lg hover:shadow-indigo-500/30 transition-all duration-300">
                 Explore Dashboard
-              </button>
+              </Button>
             </div>
             
             <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10">

@@ -5,6 +5,7 @@ import { ArrowRight, Zap } from "lucide-react";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
+import { Button } from "@/components/ui/button";
 
 function ElegantShape({
     className,
@@ -72,7 +73,7 @@ function ElegantShape({
     );
 }
 
-function HeroGeometric({
+function Hero({
     badge = "AI-Powered Excellence",
     title1 = "Calibr",
     title2 = "Next Generation Intelligent AI Recruitment Platform",
@@ -223,14 +224,14 @@ function HeroGeometric({
                             animate="visible"
                             className="flex flex-col sm:flex-row gap-4 mb-16"
                         >
-                            <button className="group relative px-8 py-4 bg-gradient-to-r from-indigo-500 to-rose-500 rounded-lg font-medium text-white transition-all duration-300 hover:shadow-lg hover:shadow-indigo-500/30">
+                            <Button className="group h-full relative px-8 py-4 bg-gradient-to-r from-indigo-500 to-rose-500 rounded-lg font-medium text-white transition-all duration-300 hover:shadow-lg hover:shadow-indigo-500/30">
                                 <span className="flex items-center justify-center gap-2">
                                     Get Started <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
                                 </span>
-                            </button>
-                            <button className="px-8 py-4 bg-white/5 border border-white/10 rounded-lg font-medium text-white/80 transition-all duration-300 hover:bg-white/10 hover:text-white">
+                            </Button>
+                            <Button className="px-8 h-full py-4 bg-white/5 border border-white/10 rounded-lg font-medium text-white/80 transition-all duration-300 hover:bg-white/10 hover:text-white">
                                 View Demo
-                            </button>
+                            </Button>
                         </motion.div>
 
                         {/* Stats Section */}
@@ -279,4 +280,4 @@ function HeroGeometric({
     );
 }
 
-export { HeroGeometric };
+export { Hero };

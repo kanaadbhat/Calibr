@@ -1,13 +1,11 @@
-import Hero from "@/app/_components/Hero";
 import HowItWorks from "./_components/HowItWorks";
 import Features from "./_components/Features";
 import Benefits from "./_components/Benifits";
 import Testimonials from "./_components/Testimonials";
 import CallToAction from "./_components/CallToAction";
-import Footer from "@/components/Footer";
+import { Hero } from "./_components/Hero";
 
 export default function Home() {
-  
   return (
    <div>
     <Hero/>
@@ -16,7 +14,6 @@ export default function Home() {
     <Benefits/>
     <Testimonials/>
     <CallToAction/>
-    <Footer/>
    </div>
   );
 }
