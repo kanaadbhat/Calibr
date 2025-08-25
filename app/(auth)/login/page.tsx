@@ -3,7 +3,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import Image from 'next/image';
 import Link from 'next/link';
-import React, { useState } from 'react'
+import React, { FormEvent, useState } from 'react'
+import { toast } from "sonner"
 
 export default function Page() {
  const [formData, setFormData] = useState({
@@ -11,12 +12,23 @@ export default function Page() {
     password: "",
   });
   const [isLoading, setIsLoading] = useState(false);
-  const handleInputChange = () => {
-    setIsLoading(true)
-    setFormData({email : "" , password : ""})
-  }
-  const handleLogin = () => {
-
+  const handleInputChange = (e: FormEvent<HTMLInputElement>) => {
+    const { name, value } = e.currentTarget;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+  const handleLogin = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setIsLoading(true);
+    try {
+      //implement
+    } catch (err) {
+        toast.error(err as string);
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   return (
