@@ -11,7 +11,7 @@ export default {
         "style",     // formatting, missing semi colons, etc
         "refactor",  // refactoring production code
         "test",      // adding tests
-        "chore"      // maintenance, build tasks
+        "chore",      // maintenance, build tasks
       ]
     ],
     "type-case": [2, "always", "lower-case"],
