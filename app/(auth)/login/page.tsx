@@ -41,12 +41,13 @@ export default function Page() {
   const signUpWith = async (strategy: OAuthStrategy) => {
     try {
       if (!signUp) return null;
-      const res = await signUp.authenticateWithRedirect({
+      await signUp.authenticateWithRedirect({
         strategy,
-        redirectUrl: "/",
-        redirectUrlComplete: "/",
+        redirectUrl: "/signup",
+        redirectUrlComplete: "/signup",
       });
-      console.log(res);
+  
+      
     } catch (err: any) {
       console.log(err.errors);
       console.error(err, null, 2);
@@ -151,7 +152,7 @@ export default function Page() {
                 </svg>
                 Google
               </Button>
-
+              <div>
               <div id="clerk-captcha"></div>
               <Button
                 type="button"
@@ -165,6 +166,7 @@ export default function Page() {
                 </svg>
                 LinkedIn
               </Button>
+              </div>
             </div>
           </div>
         </div>
