@@ -31,8 +31,31 @@ export interface Skill {
 }
 
 export interface PerformanceData {
-  overallScore: number;
-  completedAssessments: { current: number; total: number; percentage: number };
-  upcomingInterviews: { count: number; nextTime: string };
-  skillLevel: string;
+  overallScore: { 
+    current: number; 
+    previous: number; 
+    trend: 'up' | 'down' | 'stable';
+    tip: string;
+  };
+  completedAssessments: { 
+    current: number; 
+    total: number; 
+    percentage: number;
+    lastMonthCompleted: number;
+    tip: string;
+  };
+  upcomingInterviews: { 
+    count: number; 
+    nextTime: string;
+    successRate: number;
+    lastMonthCount: number;
+    tip: string;
+  };
+  skillLevel: {
+    current: string;
+    progress: number;
+    nextLevel: string;
+    improvement: number;
+    tip: string;
+  };
 }

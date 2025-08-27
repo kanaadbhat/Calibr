@@ -9,10 +9,33 @@ import { Job, Interview, Activity, Skill, PerformanceData } from './interfaces';
 export async function fetchPerformanceData(): Promise<PerformanceData> {
   // Future: Replace with actual API call
   return {
-    overallScore: 78,
-    completedAssessments: { current: 12, total: 15, percentage: 80 },
-    upcomingInterviews: { count: 3, nextTime: 'Aug 27 2:00 PM' },
-    skillLevel: 'Advanced'
+    overallScore: {
+      current: 78,
+      previous: 72,
+      trend: 'up',
+      tip: "Great improvement! Keep taking assessments to boost your score further."
+    },
+    completedAssessments: { 
+      current: 12, 
+      total: 15, 
+      percentage: 80,
+      lastMonthCompleted: 8,
+      tip: "You've completed 4 more assessments than last month. Excellent progress!"
+    },
+    upcomingInterviews: { 
+      count: 3, 
+      nextTime: 'Aug 27 2:00 PM',
+      successRate: 85,
+      lastMonthCount: 2,
+      tip: "Your interview success rate has improved by 10% this month."
+    },
+    skillLevel: {
+      current: 'Advanced',
+      progress: 78,
+      nextLevel: 'Expert',
+      improvement: 12,
+      tip: "22% more to reach Expert level. Focus on advanced JavaScript concepts."
+    }
   };
 }
 
