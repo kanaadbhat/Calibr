@@ -2,11 +2,54 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Briefcase, MapPin, DollarSign, Clock } from 'lucide-react';
 import { useJobRecommendations } from '../hooks';
 
 const JobRecommendations = () => {
-  const { jobs, quickApply, saveJob, viewJobDetails, viewAllRecommendations } = useJobRecommendations();
+  const { jobs, isLoading, quickApply, saveJob, viewJobDetails, viewAllRecommendations } = useJobRecommendations();
+
+  if (isLoading) {
+    return (
+      <Card className="bg-white/5 backdrop-blur-sm border-white/10">
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            <Skeleton className="w-6 h-6 rounded" />
+            <Skeleton className="w-48 h-6" />
+          </CardTitle>
+        </CardHeader>
+
+        <CardContent className="space-y-4">
+          {Array(3).fill(0).map((_, index) => (
+            <Card key={index} className="bg-gradient-to-br from-emerald-500/10 to-cyan-600/10 border-emerald-500/20">
+              <CardContent className="p-4">
+                <div className="flex justify-between items-start mb-3">
+                  <Skeleton className="w-48 h-6" />
+                  <Skeleton className="w-16 h-6 rounded-full" />
+                </div>
+                
+                <div className="space-y-2 mb-3">
+                  <Skeleton className="w-64 h-4" />
+                  <Skeleton className="w-48 h-4" />
+                  <Skeleton className="w-56 h-4" />
+                </div>
+                
+                <div className="flex gap-2 mt-4">
+                  <Skeleton className="w-24 h-8 rounded" />
+                  <Skeleton className="w-20 h-8 rounded" />
+                  <Skeleton className="w-28 h-8 rounded" />
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </CardContent>
+
+        <CardFooter className="justify-center">
+          <Skeleton className="w-48 h-10 rounded" />
+        </CardFooter>
+      </Card>
+    );
+  }
 
   return (
     <Card className="bg-white/5 backdrop-blur-sm border-white/10">

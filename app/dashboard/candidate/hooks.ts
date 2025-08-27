@@ -22,7 +22,7 @@ import{
 // Custom hooks for data management
 export const usePerformanceData = () => {
   const [data, setData] = useState<PerformanceData | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true); // Start with loading true
 
   const loadPerformanceData = async () => {
     setIsLoading(true);
@@ -45,7 +45,7 @@ export const usePerformanceData = () => {
 
 export const useUpcomingInterviews = () => {
   const [interviews, setInterviews] = useState<Interview[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true); // Start with loading true
   const [nextInterviewCountdown] = useState('2 days 5 hours 23 minutes');
 
   const loadInterviews = async () => {
@@ -96,7 +96,7 @@ export const useUpcomingInterviews = () => {
 
 export const useRecentActivity = () => {
   const [activities, setActivities] = useState<Activity[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true); // Start with loading true
 
   const loadRecentActivity = async () => {
     setIsLoading(true);
@@ -138,7 +138,7 @@ export const useSkillAnalysis = () => {
   const [skills, setSkills] = useState<Skill[]>([]);
   const [radarData, setRadarData] = useState<any[]>([]);
   const [recommendation, setRecommendation] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true); // Start with loading true
 
   const loadSkillAnalysis = async () => {
     setIsLoading(true);
@@ -172,7 +172,7 @@ export const useSkillAnalysis = () => {
 
 export const useJobRecommendations = () => {
   const [jobs, setJobs] = useState<Job[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true); // Start with loading true
 
   const loadJobRecommendations = async () => {
     setIsLoading(true);

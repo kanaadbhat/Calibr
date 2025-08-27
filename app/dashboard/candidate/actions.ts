@@ -11,7 +11,7 @@ export async function fetchPerformanceData(): Promise<PerformanceData> {
   return {
     overallScore: 78,
     completedAssessments: { current: 12, total: 15, percentage: 80 },
-    upcomingInterviews: { count: 3, nextTime: 'Today 2:00 PM' },
+    upcomingInterviews: { count: 3, nextTime: 'Aug 27 2:00 PM' },
     skillLevel: 'Advanced'
   };
 }
@@ -28,14 +28,14 @@ export async function fetchUpcomingInterviews(): Promise<Interview[]> {
     {
       company: 'TechCorp Inc.',
       type: 'Technical Interview',
-      time: 'Today, 2:00 PM - 3:00 PM',
+      time: 'Aug 27, 2:00 PM - 3:00 PM',
       status: 'Join Now',
       urgent: true
     },
     {
       company: 'StartupXYZ',
       type: 'HR Round',
-      time: 'Tomorrow, 10:00 AM',
+      time: 'Aug 28, 10:00 AM',
       status: 'Scheduled',
       urgent: false
     }
@@ -60,7 +60,7 @@ export async function fetchRecentActivity(): Promise<Activity[]> {
     {
       title: 'JavaScript Assessment Completed',
       description: 'Scored 85% - Excellent performance',
-      time: '2 hours ago',
+      time: 'Aug 27, 12:30 PM',
       icon: null,
       type: 'success'
     }

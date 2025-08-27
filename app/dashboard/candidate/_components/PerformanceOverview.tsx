@@ -44,40 +44,40 @@ const PerformanceOverview = () => {
       </CardHeader>
       
       <CardContent>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
           <Card className="bg-gradient-to-br from-emerald-500/20 to-green-600/20 border-emerald-500/30">
-            <CardContent className="p-4 text-center">
-              <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-gradient-to-br from-emerald-400 to-green-500 flex items-center justify-center">
-                <Target className="w-8 h-8 text-white" />
+            <CardContent className="p-6 text-center">
+              <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-emerald-400 to-green-500 flex items-center justify-center">
+                <Target className="w-10 h-10 text-white" />
               </div>
-              <div className="text-2xl font-bold text-white mb-1">{data.overallScore}%</div>
-              <div className="text-emerald-200 text-sm">Overall Score</div>
+              <div className="text-3xl font-bold text-white mb-2">{data.overallScore}%</div>
+              <div className="text-emerald-200 text-base font-medium">Overall Score</div>
             </CardContent>
           </Card>
 
           <Card className="bg-gradient-to-br from-blue-500/20 to-indigo-600/20 border-blue-500/30">
-            <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-white mb-1">{data.completedAssessments.current}/{data.completedAssessments.total}</div>
-              <div className="text-blue-200 text-sm mb-2">Completed Assessments</div>
-              <div className="text-xs text-blue-300">{data.completedAssessments.percentage}% Complete</div>
+            <CardContent className="p-6 text-center">
+              <div className="text-3xl font-bold text-white mb-2">{data.completedAssessments.current}/{data.completedAssessments.total}</div>
+              <div className="text-blue-200 text-base font-medium mb-3">Completed Assessments</div>
+              <div className="text-sm text-blue-300 bg-blue-500/10 px-3 py-1 rounded-full">{data.completedAssessments.percentage}% Complete</div>
             </CardContent>
           </Card>
 
           <Card className="bg-gradient-to-br from-purple-500/20 to-violet-600/20 border-purple-500/30">
-            <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-white mb-1">{data.upcomingInterviews.count}</div>
-              <div className="text-purple-200 text-sm mb-2">Upcoming Interviews</div>
-              <div className="text-xs text-amber-400">Next: {data.upcomingInterviews.nextTime}</div>
+            <CardContent className="p-6 text-center">
+              <div className="text-3xl font-bold text-white mb-2">{data.upcomingInterviews.count}</div>
+              <div className="text-purple-200 text-base font-medium mb-3">Upcoming Interviews</div>
+              <div className="text-sm text-amber-400 bg-amber-500/10 px-3 py-1 rounded-full">Next: {data.upcomingInterviews.nextTime}</div>
             </CardContent>
           </Card>
 
           <Card className="bg-gradient-to-br from-amber-500/20 to-orange-600/20 border-amber-500/30">
-            <CardContent className="p-4 text-center">
-              <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
-                <Award className="w-8 h-8 text-white" />
+            <CardContent className="p-6 text-center">
+              <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
+                <Award className="w-10 h-10 text-white" />
               </div>
-              <div className="text-amber-200 text-sm mb-2">Skill Level</div>
-              <div className="text-xs text-amber-300">{data.skillLevel}</div>
+              <div className="text-amber-200 text-base font-medium mb-2">Skill Level</div>
+              <div className="text-lg font-semibold text-amber-300">{data.skillLevel}</div>
             </CardContent>
           </Card>
         </div>
