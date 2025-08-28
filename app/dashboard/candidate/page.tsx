@@ -16,11 +16,11 @@ import Link from 'next/link';
 
 export default function DashboardPage() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6 lg:space-y-8">
       {/* Sticky Header with Breadcrumb */}
-      <div className="sticky top-0 z-30 bg-gradient-to-br from-[#0A0A18]/90 to-[#0D0D20]/90 backdrop-blur-xl border-b border-white/10 pb-6 pt-6">
-        <div className="px-2">
-          <h1 className="text-3xl font-bold text-white mb-2">Welcome back, John Doe</h1>
+      <div className="sticky top-0 z-30 bg-gradient-to-br from-[#0A0A18]/90 to-[#0D0D20]/90 backdrop-blur-xl border-b border-white/10 pb-4 sm:pb-6 pt-4 sm:pt-6 -mx-4 sm:-mx-6 lg:-mx-8 xl:-mx-12 px-4 sm:px-6 lg:px-8 xl:px-12">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2 sm:mb-3">Welcome back, John Doe</h1>
           <Breadcrumb>
             <BreadcrumbList className="text-white/60">
               <BreadcrumbItem>
@@ -53,13 +53,13 @@ export default function DashboardPage() {
       <PerformanceOverview />
 
       {/* Main Dashboard Grid */}
-      <div className="grid lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 lg:gap-8">
         <UpcomingInterviews />
         <RecentActivity />
       </div>
 
       {/* Bottom Grid */}
-      <div className="grid lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 lg:gap-8">
         <SkillAnalysis />
         <JobRecommendations />
       </div>

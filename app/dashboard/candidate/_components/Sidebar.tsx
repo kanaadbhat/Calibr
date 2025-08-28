@@ -23,19 +23,25 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed = false, onToggle }) => {
   ];
 
   return (
-    <div className={`bg-white/5 backdrop-blur-sm border-r border-white/10 p-6 pt-20 h-screen flex flex-col transition-all duration-300 overflow-hidden ${collapsed ? 'w-20' : 'w-64'}`}>
+    <div className={`bg-white/5 backdrop-blur-sm border-r border-white/10 p-4 sm:p-6 pt-16 sm:pt-20 h-screen flex flex-col transition-all duration-300 overflow-hidden ${collapsed ? 'w-16' : 'w-64'}`}>
       <nav className="flex flex-col space-y-2">
         {navItems.map((item) => {
           const IconComponent = item.icon;
           // Build className for nav item
           let baseClass = 'flex items-center transition-all duration-200';
           if (collapsed) {
-            baseClass += ' justify-center h-14 my-1 rounded-xl w-full'; // Centered square with auto margin
+            baseClass += ' justify-center h-12 sm:h-14 my-1 rounded-xl w-full'; // Centered square with auto margin
           } else {
-            baseClass += ' space-x-3 px-4 py-3 rounded-lg';
+            baseClass += ' space-x-2 sm:space-x-3 px-3 sm:px-4 py-2 sm:py-3 rounded-lg';
           }
           if (pathname === item.href) {
-            baseClass += ' bg-gradient-to-r from-indigo-500/20 to-rose-500/20 text-white border border-indigo-500/30';
+            if (collapsed) {
+              // When collapsed, only show background, no border
+              baseClass += ' text-white bg-gradient-to-r from-indigo-500/20 to-rose-500/20';
+            } else {
+              // When expanded, show background and border
+              baseClass += ' bg-gradient-to-r from-indigo-500/20 to-rose-500/20 text-white border border-indigo-500/30';
+            }
           } else {
             baseClass += ' text-white/60 hover:text-white hover:bg-white/5';
           }
@@ -46,8 +52,8 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed = false, onToggle }) => {
               className={baseClass}
               title={collapsed ? item.label : undefined}
             >
-              <IconComponent className="w-6 h-6 flex-shrink-0" />
-              {!collapsed && <span className="font-medium">{item.label}</span>}
+              <IconComponent className="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0" />
+              {!collapsed && <span className="font-medium text-sm sm:text-base">{item.label}</span>}
             </Link>
           );
         })}
@@ -61,9 +67,9 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed = false, onToggle }) => {
             title={collapsed ? "Expand Sidebar" : "Collapse Sidebar"}
           >
             {collapsed ? (
-              <ChevronRight className="w-5 h-5" />
+              <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
             ) : (
-              <ChevronLeft className="w-5 h-5" />
+              <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
             )}
           </button>
         </div>

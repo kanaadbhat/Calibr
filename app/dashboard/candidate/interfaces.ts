@@ -9,6 +9,7 @@ export interface Job {
 }
 
 export interface Interview {
+  id: string;
   company: string;
   type: string;
   time: string;

@@ -12,8 +12,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
       </div>
 
-    <main className="flex-1 p-6 pt-16 md:px-36 px-4 overflow-auto h-screen">
-        {children}
+      <main className="flex-1 overflow-auto h-screen">
+        <div className="p-4 sm:p-6 lg:p-8 xl:p-12 pt-16 md:pt-20">
+          {children}
+        </div>
       </main>
     </div>
   );

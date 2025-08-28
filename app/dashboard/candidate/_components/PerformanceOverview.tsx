@@ -34,10 +34,10 @@ const PerformanceOverview = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
             {Array(4).fill(0).map((_, index) => (
               <Card key={index} className="bg-white/5 border-white/10">
-                <CardContent className="p-6 space-y-4">
+                <CardContent className="p-4 sm:p-6 space-y-4">
                   <div className="flex items-center justify-between">
                     <Skeleton className="w-8 h-8 rounded" />
                     <Skeleton className="w-16 h-6 rounded-full" />
@@ -76,20 +76,20 @@ const PerformanceOverview = () => {
   return (
     <Card className="bg-white/5 backdrop-blur-sm border-white/10">
       <CardHeader>
-        <CardTitle className="flex items-center space-x-3 text-white">
+        <CardTitle className="flex items-center space-x-2 sm:space-x-3 text-white">
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
             <TrendingUp className="w-5 h-5 text-white" />
           </div>
-          <span className="text-xl font-bold">Performance Overview</span>
+          <span className="text-lg sm:text-xl font-bold">Performance Overview</span>
         </CardTitle>
       </CardHeader>
       
       <CardContent>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
           {/* Overall Score Card */}
           <Card className="bg-gradient-to-br from-emerald-500/20 to-green-600/20 border-emerald-500/30 hover:border-emerald-500/50 transition-all duration-300">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-4">
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex items-center justify-between mb-3 sm:mb-4">
                 <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-emerald-400 to-green-500 flex items-center justify-center">
                   <Target className="w-5 h-5 text-white" />
                 </div>
@@ -99,13 +99,13 @@ const PerformanceOverview = () => {
                 </div>
               </div>
               
-              <div className="space-y-2 mb-4">
-                <div className="text-3xl font-bold text-white">{data.overallScore.current}%</div>
+              <div className="space-y-2 mb-3 sm:mb-4">
+                <div className="text-2xl sm:text-3xl font-bold text-white">{data.overallScore.current}%</div>
                 <div className="text-emerald-200 text-sm font-medium">Overall Score</div>
                 <div className="text-xs text-emerald-300/70">Previous: {data.overallScore.previous || 72}%</div>
               </div>
               
-              <div className="flex items-start space-x-2 p-3 bg-emerald-500/10 rounded-lg border border-emerald-500/20">
+              <div className="flex items-start space-x-2 p-2 sm:p-3 bg-emerald-500/10 rounded-lg border border-emerald-500/20">
                 <Lightbulb className="w-4 h-4 text-emerald-400 mt-0.5 flex-shrink-0" />
                 <p className="text-xs text-emerald-200 leading-relaxed">
                   {getTipWithFallback(data.overallScore.tip, "Keep taking assessments to improve your overall performance score.")}
@@ -116,8 +116,8 @@ const PerformanceOverview = () => {
 
           {/* Completed Assessments Card */}
           <Card className="bg-gradient-to-br from-blue-500/20 to-indigo-600/20 border-blue-500/30 hover:border-blue-500/50 transition-all duration-300">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-4">
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex items-center justify-between mb-3 sm:mb-4">
                 <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center">
                   <Award className="w-5 h-5 text-white" />
                 </div>
@@ -127,8 +127,8 @@ const PerformanceOverview = () => {
                 </div>
               </div>
               
-              <div className="space-y-2 mb-4">
-                <div className="text-3xl font-bold text-white">{data.completedAssessments.current}/{data.completedAssessments.total}</div>
+              <div className="space-y-2 mb-3 sm:mb-4">
+                <div className="text-2xl sm:text-3xl font-bold text-white">{data.completedAssessments.current}/{data.completedAssessments.total}</div>
                 <div className="text-blue-200 text-sm font-medium">Completed Assessments</div>
                 <div className="text-xs text-blue-300/70">Last month: {data.completedAssessments.lastMonthCompleted || 8}</div>
               </div>
@@ -145,7 +145,7 @@ const PerformanceOverview = () => {
                   />
                 </div>
                 
-                <div className="flex items-start space-x-2 p-3 bg-blue-500/10 rounded-lg border border-blue-500/20">
+                <div className="flex items-start space-x-2 p-2 sm:p-3 bg-blue-500/10 rounded-lg border border-blue-500/20">
                   <Lightbulb className="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0" />
                   <p className="text-xs text-blue-200 leading-relaxed">
                     {getTipWithFallback(data.completedAssessments.tip, "Complete more assessments to showcase your skills and improve your ranking.")}
@@ -157,8 +157,8 @@ const PerformanceOverview = () => {
 
           {/* Upcoming Interviews Card */}
           <Card className="bg-gradient-to-br from-purple-500/20 to-violet-600/20 border-purple-500/30 hover:border-purple-500/50 transition-all duration-300">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-4">
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex items-center justify-between mb-3 sm:mb-4">
                 <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-400 to-violet-500 flex items-center justify-center">
                   <Calendar className="w-5 h-5 text-white" />
                 </div>
@@ -168,19 +168,19 @@ const PerformanceOverview = () => {
                 </div>
               </div>
               
-              <div className="space-y-2 mb-4">
-                <div className="text-3xl font-bold text-white">{data.upcomingInterviews.count}</div>
+              <div className="space-y-2 mb-3 sm:mb-4">
+                <div className="text-2xl sm:text-3xl font-bold text-white">{data.upcomingInterviews.count}</div>
                 <div className="text-purple-200 text-sm font-medium">Upcoming Interviews</div>
                 <div className="text-xs text-purple-300/70">Success rate: {data.upcomingInterviews.successRate || 85}%</div>
               </div>
               
               <div className="space-y-3">
-                <div className="text-xs text-amber-400 bg-amber-500/10 px-3 py-2 rounded-lg border border-amber-500/20">
+                <div className="text-xs text-amber-400 bg-amber-500/10 px-2 sm:px-3 py-2 rounded-lg border border-amber-500/20">
                   <div className="font-medium">Next Interview</div>
                   <div className="text-amber-300 mt-1">{data.upcomingInterviews.nextTime}</div>
                 </div>
                 
-                <div className="flex items-start space-x-2 p-3 bg-purple-500/10 rounded-lg border border-purple-500/20">
+                <div className="flex items-start space-x-2 p-2 sm:p-3 bg-purple-500/10 rounded-lg border border-purple-500/20">
                   <Lightbulb className="w-4 h-4 text-purple-400 mt-0.5 flex-shrink-0" />
                   <p className="text-xs text-purple-200 leading-relaxed">
                     {getTipWithFallback(data.upcomingInterviews.tip, "Prepare well for your upcoming interviews. Review the job requirements and practice common questions.")}
@@ -192,8 +192,8 @@ const PerformanceOverview = () => {
 
           {/* Skill Level Card */}
           <Card className="bg-gradient-to-br from-amber-500/20 to-orange-600/20 border-amber-500/30 hover:border-amber-500/50 transition-all duration-300">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-4">
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex items-center justify-between mb-3 sm:mb-4">
                 <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
                   <Award className="w-5 h-5 text-white" />
                 </div>
@@ -203,8 +203,8 @@ const PerformanceOverview = () => {
                 </div>
               </div>
               
-              <div className="space-y-2 mb-4">
-                <div className="text-2xl font-bold text-white">{data.skillLevel.current}</div>
+              <div className="space-y-2 mb-3 sm:mb-4">
+                <div className="text-xl sm:text-2xl font-bold text-white">{data.skillLevel.current}</div>
                 <div className="text-amber-200 text-sm font-medium">Current Level</div>
                 <div className="text-xs text-amber-300/70">Next: {data.skillLevel.nextLevel || 'Expert'}</div>
               </div>
@@ -221,7 +221,7 @@ const PerformanceOverview = () => {
                   />
                 </div>
                 
-                <div className="flex items-start space-x-2 p-3 bg-amber-500/10 rounded-lg border border-amber-500/20">
+                <div className="flex items-start space-x-2 p-2 sm:p-3 bg-amber-500/10 rounded-lg border border-amber-500/20">
                   <Lightbulb className="w-4 h-4 text-amber-400 mt-0.5 flex-shrink-0" />
                   <p className="text-xs text-amber-200 leading-relaxed">
                     {getTipWithFallback(data.skillLevel.tip, "Continue learning and practicing to advance to the next skill level. Focus on challenging projects.")}

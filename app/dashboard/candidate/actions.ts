@@ -49,6 +49,7 @@ export async function fetchUpcomingInterviews(): Promise<Interview[]> {
   // Future: Replace with actual API call
   return [
     {
+      id: '1',
       company: 'TechCorp Inc.',
       type: 'Technical Interview',
       time: 'Aug 27, 2:00 PM - 3:00 PM',
@@ -56,6 +57,7 @@ export async function fetchUpcomingInterviews(): Promise<Interview[]> {
       urgent: true
     },
     {
+      id: '2',
       company: 'StartupXYZ',
       type: 'HR Round',
       time: 'Aug 28, 10:00 AM',
