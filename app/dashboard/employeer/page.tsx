@@ -1,5 +1,4 @@
 import type React from "react";
-// Dashboard content (cards, pipeline, live monitoring)
 import {
   Card,
   CardContent,

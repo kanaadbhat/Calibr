@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
+import CreateJob from "./CreateJob";
 
 export function TopNav({ className }: { className?: string }) {
   const [query, setQuery] = useState("");
@@ -45,7 +46,9 @@ export function TopNav({ className }: { className?: string }) {
       </div>
 
       <div className="flex items-center gap-2">
-        <Button variant="outline">Create Job</Button>
+        <CreateJob>
+          <Button variant="outline">Create Job</Button>
+        </CreateJob>
         <Button>Schedule Interview</Button>
       </div>
 
