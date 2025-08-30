@@ -20,7 +20,7 @@ export function Sidebar() {
 
   return (
     <aside
-      className="hidden md:flex md:w-60 lg:w-64 shrink-0 flex-col bg-zinc-900 text-zinc-100"
+      className="hidden md:flex md:w-60 lg:w-64 shrink-0 flex-col bg-[#0d0d1f] text-zinc-100"
       aria-label="Primary">
       <div className="h-14 flex items-center px-4 border-b border-zinc-800">
         <span className="font-semibold text-lg tracking-tight">Calibr</span>

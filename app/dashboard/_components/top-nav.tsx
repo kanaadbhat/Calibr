@@ -12,7 +12,7 @@ export function TopNav({ className }: { className?: string }) {
   return (
     <header
       className={cn(
-        "h-14 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60",
+        "h-14 bg-[#171726]",
         "flex items-center gap-3 px-4",
         className
       )}
@@ -27,7 +27,7 @@ export function TopNav({ className }: { className?: string }) {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search candidates, jobs, or interviews..."
-            className="pl-9"
+            className="pl-9 text-neutral-100"
           />
           <svg
             aria-hidden
@@ -47,12 +47,12 @@ export function TopNav({ className }: { className?: string }) {
 
       <div className="flex items-center gap-2">
         <CreateJob>
-          <Button variant="outline">Create Job</Button>
+          <Button className="bg-purple-500 text-white font-semibold hover:bg-purple-700">Create Job</Button>
         </CreateJob>
-        <Button>Schedule Interview</Button>
+        <Button className="bg-purple-500 text-white font-semibold hover:bg-purple-700">Schedule Interview</Button>
       </div>
 
-      <div aria-label="Current user" className="text-sm text-muted-foreground">
+      <div aria-label="Current user" className="text-sm text-neutral-100">
         John Doe (Company)
       </div>
     </header>

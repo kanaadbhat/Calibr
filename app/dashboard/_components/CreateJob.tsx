@@ -54,10 +54,10 @@ export function CreateJobDialog({ children, className }: CreateJobDialogProps) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className={cn("sm:max-w-2xl", className)}>
+      <DialogContent className={cn("sm:max-w-2xl bg-[#171726] border-0", className)}>
         <DialogHeader>
-          <DialogTitle>Create Job</DialogTitle>
-          <DialogDescription>
+          <DialogTitle className="text-neutral-100">Create Job</DialogTitle>
+          <DialogDescription className="text-neutral-200">
             Fill in the details to create a new job posting.
           </DialogDescription>
         </DialogHeader>
@@ -66,29 +66,31 @@ export function CreateJobDialog({ children, className }: CreateJobDialogProps) {
           <form onSubmit={onSubmit} className="space-y-6 m-2">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label htmlFor="title">Job Title</Label>
+                <Label htmlFor="title" className="text-neutral-300">Job Title</Label>
                 <Input
                   id="title"
                   name="title"
                   placeholder="e.g., Frontend Engineer"
                   required
+                  className="border-neutral-500"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="department">Department</Label>
+                <Label htmlFor="department" className="text-neutral-300">Department</Label>
                 <Input
                   id="department"
                   name="department"
                   placeholder="e.g., Engineering"
                   required
+                  className="border-neutral-500"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <Label>Employment Type</Label>
+                <Label className="text-neutral-300">Employment Type</Label>
                 <Select name="employmentType" required>
-                  <SelectTrigger>
+                  <SelectTrigger className="border-neutral-500">
                     <SelectValue placeholder="Select type" />
                   </SelectTrigger>
                   <SelectContent>
@@ -101,9 +103,9 @@ export function CreateJobDialog({ children, className }: CreateJobDialogProps) {
               </div>
 
               <div className="space-y-1.5">
-                <Label>Seniority</Label>
+                <Label className="text-neutral-300">Seniority</Label>
                 <Select name="seniority" required>
-                  <SelectTrigger>
+                  <SelectTrigger className="border-neutral-500">
                     <SelectValue placeholder="Select level" />
                   </SelectTrigger>
                   <SelectContent>
@@ -116,9 +118,9 @@ export function CreateJobDialog({ children, className }: CreateJobDialogProps) {
               </div>
 
               <div className="space-y-1.5">
-                <Label>Location Type</Label>
+                <Label className="text-neutral-300">Location Type</Label>
                 <Select name="locationType" required>
-                  <SelectTrigger>
+                  <SelectTrigger className="border-neutral-500">
                     <SelectValue placeholder="Remote / Hybrid / Onsite" />
                   </SelectTrigger>
                   <SelectContent>
@@ -130,17 +132,18 @@ export function CreateJobDialog({ children, className }: CreateJobDialogProps) {
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="location">Location</Label>
+                <Label htmlFor="location" className="text-neutral-300">Location</Label>
                 <Input
                   id="location"
                   name="location"
                   placeholder="City, Country or Timezone"
                   required
+                  className="border-neutral-500"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="openings">Openings</Label>
+                <Label htmlFor="openings" className="text-neutral-300">Openings</Label>
                 <Input
                   id="openings"
                   name="openings"
@@ -148,91 +151,94 @@ export function CreateJobDialog({ children, className }: CreateJobDialogProps) {
                   min={1}
                   defaultValue={1}
                   required
+                  className="border-neutral-500"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label htmlFor="salaryMin">Salary Min</Label>
+                  <Label htmlFor="salaryMin" className="text-neutral-300">Salary Min</Label>
                   <Input
                     id="salaryMin"
                     name="salaryMin"
                     type="number"
                     inputMode="numeric"
                     placeholder="e.g., 80000"
+                    className="border-neutral-500"
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="salaryMax">Salary Max</Label>
+                  <Label htmlFor="salaryMax" className="text-neutral-300">Salary Max</Label>
                   <Input
                     id="salaryMax"
                     name="salaryMax"
                     type="number"
                     inputMode="numeric"
                     placeholder="e.g., 120000"
+                    className="border-neutral-500"
                   />
                 </div>
               </div>
 
               <div className="space-y-1.5 md:col-span-2">
-                <Label htmlFor="deadline">Application Deadline</Label>
-                <Input id="deadline" name="deadline" type="date" />
+                <Label htmlFor="deadline" className="text-neutral-300">Application Deadline</Label>
+                <Input id="deadline" name="deadline" type="date" className="border-neutral-500" />
               </div>
             </div>
 
             {/* Long text fields */}
             <div className="space-y-4">
               <div className="space-y-1.5">
-                <Label htmlFor="description">Job Description</Label>
+                <Label htmlFor="description" className="text-neutral-300">Job Description</Label>
                 <Textarea
                   id="description"
                   name="description"
                   placeholder="Short summary about the role and company"
-                  className="min-h-24"
+                  className="min-h-24 border-neutral-500"
                   required
                 />
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="responsibilities">Responsibilities</Label>
+                <Label htmlFor="responsibilities" className="text-neutral-300">Responsibilities</Label>
                 <Textarea
                   id="responsibilities"
                   name="responsibilities"
                   placeholder="Key responsibilities (one per line)"
-                  className="min-h-24"
+                  className="min-h-24 border-neutral-500"
                   required
                 />
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="requirements">Requirements</Label>
+                <Label htmlFor="requirements" className="text-neutral-300">Requirements</Label>
                 <Textarea
                   id="requirements"
                   name="requirements"
                   placeholder="Required skills & experience (one per line)"
-                  className="min-h-24"
+                  className="min-h-24 border-neutral-500"
                   required
                 />
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="questions">Screening Questions</Label>
+                <Label htmlFor="questions" className="text-neutral-300">Screening Questions</Label>
                 <Textarea
                   id="questions"
                   name="questions"
                   placeholder="Optional: add screening questions (one per line)"
-                  className="min-h-20"
+                  className="min-h-20 border-neutral-500"
                 />
               </div>
             </div>
 
             {/* Options */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <label className="flex items-center gap-2">
+              <label className="flex items-center gap-2 text-neutral-300">
                 <Checkbox name="public" defaultChecked />
                 <span className="text-sm">Public posting</span>
               </label>
-              <label className="flex items-center gap-2">
+              <label className="flex items-center gap-2 text-neutral-300">
                 <Checkbox name="autoScreen" />
                 <span className="text-sm">Enable auto-screening</span>
               </label>

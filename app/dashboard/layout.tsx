@@ -19,9 +19,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="antialiased">
-      {/* <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable}`}> */}
-      <body className={`font-sans`}>
+      <main className={`font-sans bg-[#0d0d1f]`}>
         <div className="min-h-dvh w-full md:flex">
           <Suspense fallback={<div>Loading...</div>}>
             <Sidebar />
@@ -32,7 +30,6 @@ export default function RootLayout({
           </Suspense>
         </div>
         <Analytics />
-      </body>
-    </html>
+      </main>
   );
 }
