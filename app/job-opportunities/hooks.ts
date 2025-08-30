@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { JobOpportunity, JobFilters } from './interfaces';
+import { JobOpportunity, JobFilters } from './types';
 import { getJobOpportunities, getTechStackOptions, getJobOpportunityById } from './actions';
 
 export const useJobOpportunities = () => {

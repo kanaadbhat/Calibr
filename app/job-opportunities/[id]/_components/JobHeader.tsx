@@ -1,6 +1,6 @@
 "use client";
 
-import { JobOpportunity } from '../interfaces';
+import { JobOpportunity } from '../../types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -132,7 +132,7 @@ export default function JobHeader({ job, isLoading }: JobHeaderProps) {
                   {job.workMode}
                 </Badge>
               )}
-              {job.techStack?.slice(0, 4).map((tech) => (
+              {job.techStack?.slice(0, 4).map((tech : string) => (
                 <Badge 
                   key={tech} 
                   variant="outline"

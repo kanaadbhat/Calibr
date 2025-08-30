@@ -1,6 +1,6 @@
 "use client";
 
-import { JobOpportunity } from '../interfaces';
+import { JobOpportunity } from '../../types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -173,7 +173,7 @@ export default function JobActions({ job, isLoading }: JobActionsProps) {
             <div className="pt-3 border-t border-white/10">
               <p className="text-sm font-medium mb-2 text-white">Tech Stack</p>
               <div className="flex flex-wrap gap-1">
-                {job.techStack.map((tech) => (
+                {job.techStack.map((tech : string) => (
                   <Badge 
                     key={tech} 
                     variant="secondary" 

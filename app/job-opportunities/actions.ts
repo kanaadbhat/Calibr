@@ -1,6 +1,6 @@
 'use server';
 
-import { JobOpportunity } from './interfaces';
+import { JobOpportunity } from './types';
 
 export async function getJobOpportunities(): Promise<JobOpportunity[]> {
   // Future: Replace with actual API call

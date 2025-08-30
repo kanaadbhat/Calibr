@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { JobOpportunity } from '../interfaces';
+import { JobOpportunity } from '../types';
 import JobCard, { JobCardSkeleton } from './JobCard';
 
 interface JobListProps {

@@ -4,9 +4,8 @@ import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import { useJobOpportunity } from '../hooks';
-import JobHeader from '../_components/JobHeader';
-import JobDetails from '../_components/JobDetails';
-import JobActions from '../_components/JobActions';
+import { JobActions, JobDetails, JobHeader } from './_components';
+
 
 export default function JobDetailPage() {
   const params = useParams();

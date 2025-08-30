@@ -1,6 +1,6 @@
 "use client";
 
-import { JobOpportunity } from '../interfaces';
+import { JobOpportunity } from '../../types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -145,7 +145,7 @@ export default function JobDetails({ job, isLoading }: JobDetailsProps) {
           </CardHeader>
           <CardContent>
             <ul className="space-y-2">
-              {job.requirements.map((requirement, index) => (
+              {job.requirements.map((requirement : string, index : number) => (
                 <li key={index} className="flex items-start gap-2">
                   <CheckCircle className="h-4 w-4 text-green-400 mt-0.5 flex-shrink-0" />
                   <span className="text-sm text-white/70">{requirement}</span>
@@ -164,7 +164,7 @@ export default function JobDetails({ job, isLoading }: JobDetailsProps) {
           </CardHeader>
           <CardContent>
             <ul className="space-y-2">
-              {job.responsibilities.map((responsibility, index) => (
+              {job.responsibilities.map((responsibility : string, index : number) => (
                 <li key={index} className="flex items-start gap-2">
                   <CheckCircle className="h-4 w-4 text-blue-400 mt-0.5 flex-shrink-0" />
                   <span className="text-sm text-white/70">{responsibility}</span>
@@ -183,7 +183,7 @@ export default function JobDetails({ job, isLoading }: JobDetailsProps) {
           </CardHeader>
           <CardContent>
             <div className="flex flex-wrap gap-2">
-              {job.benefits.map((benefit, index) => (
+              {job.benefits.map((benefit : string, index : number) => (
                 <Badge 
                   key={index} 
                   variant="secondary" 
@@ -208,7 +208,7 @@ export default function JobDetails({ job, isLoading }: JobDetailsProps) {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {job.selectionRounds.map((round, index) => (
+              {job.selectionRounds.map((round : string, index : number) => (
                 <div key={index} className="flex items-center gap-3">
                   <div className="h-8 w-8 rounded-full bg-violet-600/20 flex items-center justify-center border border-violet-500/30">
                     <span className="text-sm font-medium text-violet-300">

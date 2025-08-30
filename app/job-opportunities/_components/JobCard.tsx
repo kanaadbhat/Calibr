@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
-import { JobOpportunity } from '../interfaces';
+import { JobOpportunity } from '../types';
 
 interface JobCardProps {
   job: JobOpportunity;
