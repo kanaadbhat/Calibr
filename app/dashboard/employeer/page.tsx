@@ -1,28 +1,38 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 // Dashboard content (cards, pipeline, live monitoring)
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { FileText, Users, Star, CheckCircle2, PieChart, User2, Megaphone } from "lucide-react"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import {
+  FileText,
+  Users,
+  Star,
+  CheckCircle2,
+  PieChart,
+  User2,
+  Megaphone,
+} from "lucide-react";
 
-function StatCard({
-  value,
-  label,
-}: {
-  value: string
-  label: string
-}) {
+function StatCard({ value, label }: { value: string; label: string }) {
   return (
     <Card className="bg-[#171726] border-0">
       <CardHeader className="pb-2">
-        <CardTitle className="text-3xl font-semibold text-neutral-100">{value}</CardTitle>
+        <CardTitle className="text-3xl font-semibold text-neutral-100">
+          {value}
+        </CardTitle>
       </CardHeader>
       <CardContent className="pt-0">
         <CardDescription className="text-neutral-300">{label}</CardDescription>
       </CardContent>
     </Card>
-  )
+  );
 }
 
 function Column({
@@ -31,10 +41,10 @@ function Column({
   children,
   className,
 }: {
-  title: string
-  count: number
-  children: React.ReactNode
-  className?: string
+  title: string;
+  count: number;
+  children: React.ReactNode;
+  className?: string;
 }) {
   return (
     <div className={`rounded-md bg-[#171726] ${className || ""}`}>
@@ -45,7 +55,7 @@ function Column({
       </div>
       <div className="px-3 pb-3 space-y-3">{children}</div>
     </div>
-  )
+  );
 }
 
 function CandidateCard({
@@ -55,17 +65,17 @@ function CandidateCard({
   metaRight,
   score,
 }: {
-  name: string
-  role: string
-  metaLeft: string
-  metaRight: string
-  score: string
+  name: string;
+  role: string;
+  metaLeft: string;
+  metaRight: string;
+  score: string;
 }) {
   return (
     <div className="rounded-md bg-[#282036]">
       <div className="px-4 py-3">
         <div className="font-semibold leading-5 text-neutral-300">{name}</div>
-        <div className="text-xs text-muted-foreground text-neutral-400">{role}</div>
+        <div className="text-xs  text-neutral-400">{role}</div>
       </div>
       <div className="px-4 pb-3 text-xs text-neutral-400">
         <div className="flex items-center justify-between">
@@ -78,7 +88,7 @@ function CandidateCard({
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 function CodePreview({
@@ -86,16 +96,18 @@ function CodePreview({
   badge = "LIVE",
   metrics,
 }: {
-  title: string
-  badge?: string
-  metrics: string
+  title: string;
+  badge?: string;
+  metrics: string;
 }) {
   return (
     <Card className="bg-[#282036] border-0">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <CardTitle className="text-neutral-300">{title}</CardTitle>
-          <span className="text-xs font-medium text-red-500 border border-red-500 rounded px-1.5 py-0.5">{badge}</span>
+          <span className="text-xs font-medium text-red-500 border border-red-500 rounded px-1.5 py-0.5">
+            {badge}
+          </span>
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -119,7 +131,7 @@ No proctoring flags`}
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }
 
 function JobListItem({
@@ -129,11 +141,11 @@ function JobListItem({
   inInterview,
   rating,
 }: {
-  title: string
-  subtitle: string
-  applications: number
-  inInterview: number
-  rating: number
+  title: string;
+  subtitle: string;
+  applications: number;
+  inInterview: number;
+  rating: number;
 }) {
   return (
     <div className="rounded-md bg-[#282036] px-4 py-3">
@@ -141,10 +153,12 @@ function JobListItem({
       <div className="text-xs text-neutral-300">{subtitle}</div>
       <div className="mt-3 flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
         <span className="inline-flex items-center gap-1 text-neutral-300">
-          <FileText className="h-4 w-4" aria-hidden="true" /> {applications} Applications
+          <FileText className="h-4 w-4" aria-hidden="true" /> {applications}{" "}
+          Applications
         </span>
         <span className="inline-flex items-center gap-1 text-neutral-300">
-          <Users className="h-4 w-4" aria-hidden="true" /> {inInterview} in Interview
+          <Users className="h-4 w-4" aria-hidden="true" /> {inInterview} in
+          Interview
         </span>
         <span className="inline-flex items-center gap-1 text-neutral-300">
           <Star className="h-4 w-4 text-yellow-500" aria-hidden="true" />
@@ -152,7 +166,7 @@ function JobListItem({
         </span>
       </div>
     </div>
-  )
+  );
 }
 
 function ActivityItem({
@@ -161,43 +175,46 @@ function ActivityItem({
   meta,
   intent = "default",
 }: {
-  icon: React.ElementType
-  title: string
-  meta: string
-  intent?: "success" | "info" | "user" | "announce" | "default"
+  icon: React.ElementType;
+  title: string;
+  meta: string;
+  intent?: "success" | "info" | "user" | "announce" | "default";
 }) {
   const intentClasses =
     intent === "success"
       ? "bg-emerald-50 border-emerald-200 text-emerald-600"
       : intent === "info"
-        ? "bg-blue-50 border-blue-200 text-blue-600"
-        : intent === "user"
-          ? "bg-slate-50 border-slate-200 text-slate-700"
-          : intent === "announce"
-            ? "bg-rose-50 border-rose-200 text-rose-600"
-            : "bg-zinc-50 border-zinc-200 text-zinc-600"
+      ? "bg-blue-50 border-blue-200 text-blue-600"
+      : intent === "user"
+      ? "bg-slate-50 border-slate-200 text-slate-700"
+      : intent === "announce"
+      ? "bg-rose-50 border-rose-200 text-rose-600"
+      : "bg-zinc-50 border-zinc-200 text-zinc-600";
 
   return (
     <li className="flex items-start gap-3 py-3">
       <div
         className={`mt-0.5 inline-flex h-7 w-7 items-center justify-center rounded-full border ${intentClasses}`}
-        aria-hidden="true"
-      >
+        aria-hidden="true">
         <Icon className="h-4 w-4" />
       </div>
       <div className="flex-1">
-        <div className="text-sm font-medium leading-5 text-neutral-200">{title}</div>
-        <div className="text-xs text-muted-foreground text-neutral-300">{meta}</div>
+        <div className="text-sm font-medium leading-5 text-neutral-200">
+          {title}
+        </div>
+        <div className="text-xs text-neutral-300">{meta}</div>
       </div>
     </li>
-  )
+  );
 }
 
 export default function Page() {
   return (
     <div className="space-y-6">
       {/* KPI row */}
-      <section aria-label="KPI cards" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <section
+        aria-label="KPI cards"
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard value="12" label="Active Job Postings" />
         <StatCard value="84" label="Candidates in Pipeline" />
         <StatCard value="7" label="Interviews Today" />
@@ -209,14 +226,21 @@ export default function Page() {
         <Card className="lg:col-span-2 bg-[#171726] border-0">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-neutral-100">Candidate Pipeline</CardTitle>
-              <button className="text-sm text-primary underline-offset-4 hover:underline">View All</button>
+              <CardTitle className="text-neutral-100">
+                Candidate Pipeline
+              </CardTitle>
+              <button className="text-sm text-primary underline-offset-4 hover:underline">
+                View All
+              </button>
             </div>
           </CardHeader>
           <CardContent>
             {/* Mobile horizontally scrollable columns */}
             <div className="md:hidden -mx-2 px-2 flex gap-4 overflow-x-auto pb-1 snap-x snap-mandatory">
-              <Column title="Applied" count={24} className="min-w-[260px] snap-start">
+              <Column
+                title="Applied"
+                count={24}
+                className="min-w-[260px] snap-start">
                 <CandidateCard
                   name="Sarah Johnson"
                   role="Frontend Developer"
@@ -232,7 +256,10 @@ export default function Page() {
                   metaRight="ago"
                 />
               </Column>
-              <Column title="Screening" count={18} className="min-w-[260px] snap-start">
+              <Column
+                title="Screening"
+                count={18}
+                className="min-w-[260px] snap-start">
                 <CandidateCard
                   name="Emily Rodriguez"
                   role="UX Designer"
@@ -241,10 +268,22 @@ export default function Page() {
                   metaRight="Completed"
                 />
               </Column>
-              <Column title="Interview" count={15} className="min-w-[260px] snap-start">
-                <CandidateCard name="David Kim" role="DevOps Engineer" score="85%" metaLeft="In" metaRight="Progress" />
+              <Column
+                title="Interview"
+                count={15}
+                className="min-w-[260px] snap-start">
+                <CandidateCard
+                  name="David Kim"
+                  role="DevOps Engineer"
+                  score="85%"
+                  metaLeft="In"
+                  metaRight="Progress"
+                />
               </Column>
-              <Column title="Offer" count={5} className="min-w-[260px] snap-start">
+              <Column
+                title="Offer"
+                count={5}
+                className="min-w-[260px] snap-start">
                 <CandidateCard
                   name="James Wilson"
                   role="Product Manager"
@@ -253,7 +292,10 @@ export default function Page() {
                   metaRight="Extended"
                 />
               </Column>
-              <Column title="Hired" count={22} className="min-w-[260px] snap-start">
+              <Column
+                title="Hired"
+                count={22}
+                className="min-w-[260px] snap-start">
                 <CandidateCard
                   name="Lisa Taylor"
                   role="Backend Developer"
@@ -292,7 +334,13 @@ export default function Page() {
                 />
               </Column>
               <Column title="Interview" count={15}>
-                <CandidateCard name="David Kim" role="DevOps Engineer" score="85%" metaLeft="In" metaRight="Progress" />
+                <CandidateCard
+                  name="David Kim"
+                  role="DevOps Engineer"
+                  score="85%"
+                  metaLeft="In"
+                  metaRight="Progress"
+                />
               </Column>
               <Column title="Offer" count={5}>
                 <CandidateCard
@@ -319,8 +367,12 @@ export default function Page() {
         <Card className="bg-[#171726] border-0">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-neutral-100">Live Monitoring</CardTitle>
-              <button className="text-sm text-primary underline-offset-4 hover:underline">View All</button>
+              <CardTitle className="text-neutral-100">
+                Live Monitoring
+              </CardTitle>
+              <button className="text-sm text-primary underline-offset-4 hover:underline">
+                View All
+              </button>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -342,8 +394,12 @@ export default function Page() {
         <Card className="lg:col-span-2 bg-[#171726] border-0">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-neutral-100">Active Job Postings</CardTitle>
-              <Button size="sm" className="bg-purple-500 text-white font-semibold hover:bg-purple-700">
+              <CardTitle className="text-neutral-100">
+                Active Job Postings
+              </CardTitle>
+              <Button
+                size="sm"
+                className="bg-purple-500 text-white font-semibold hover:bg-purple-700">
                 Create New
               </Button>
             </div>
@@ -377,8 +433,12 @@ export default function Page() {
         <Card className="bg-[#171726] border-0">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-neutral-100">Recent Activity</CardTitle>
-              <Button size="sm" className="bg-purple-500 text-white font-semibold hover:bg-purple-700">
+              <CardTitle className="text-neutral-100">
+                Recent Activity
+              </CardTitle>
+              <Button
+                size="sm"
+                className="bg-purple-500 text-white font-semibold hover:bg-purple-700">
                 View All
               </Button>
             </div>
@@ -420,5 +480,5 @@ export default function Page() {
         </Card>
       </section>
     </div>
-  )
+  );
 }
