@@ -67,7 +67,7 @@ export function Sidebar() {
       )}
       aria-label="Primary"
       aria-expanded={!collapsed}>
-      <div className="h-14 flex items-center px-2 border-b border-zinc-800">
+      <div className="h-14 flex items-center px-4 border-b border-zinc-800">
         <span
           className={cn(
             "text-2xl font-bold bg-gradient-to-r from-indigo-300 to-rose-300 bg-clip-text text-transparent",
