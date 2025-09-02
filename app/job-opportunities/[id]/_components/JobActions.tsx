@@ -8,7 +8,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { 
   Bookmark, 
   Share2, 
-  Send, 
   MessageCircle, 
   Building, 
   MapPin, 
@@ -16,6 +15,7 @@ import {
   Users,
   DollarSign
 } from 'lucide-react';
+import JobApply from './JobApply';
 
 interface JobActionsProps {
   job?: JobOpportunity | null;
@@ -55,11 +55,6 @@ export default function JobActions({ job, isLoading }: JobActionsProps) {
     return null;
   }
 
-  const handleApplyClick = () => {
-    // Future: Implement apply functionality
-    console.log('Apply to job:', job.id);
-  };
-
   const handleSaveJob = () => {
     // Future: Implement save job functionality
     console.log('Save job:', job.id);
@@ -79,13 +74,7 @@ export default function JobActions({ job, isLoading }: JobActionsProps) {
     <div className="space-y-4">
       {/* Primary Actions */}
       <div className="space-y-3">
-        <Button 
-          className="w-full h-12 text-lg font-semibold bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white border-0"
-          onClick={handleApplyClick}
-        >
-          <Send className="h-5 w-5 mr-2" />
-          Apply Now
-        </Button>
+        <JobApply job={job} isLoading={isLoading} />
         
         <Button 
           variant="outline" 

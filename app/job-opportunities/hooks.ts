@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { JobOpportunity, JobFilters } from './types';
-import { getJobOpportunities, getTechStackOptions, getJobOpportunityById } from './actions';
+import type { JobOpportunity, JobFilters } from './types.d.ts';
+import { getJobOpportunities, getTechStackOptions, getJobOpportunityById, getResumes } from './actions';
 
 export const useJobOpportunities = () => {
   const [jobs, setJobs] = useState<JobOpportunity[]>([]);
@@ -120,4 +120,30 @@ export const useJobOpportunity = (id: string) => {
   }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return { job, isLoading, error, reload: loadJob };
+};
+
+export const useResumes = () => {
+  const [resumes, setResumes] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadResumes = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const result = await getResumes();
+      setResumes(result);
+    } catch (err) {
+      setError('Failed to load resumes');
+      console.error('Error fetching resumes:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadResumes();
+  }, []);
+
+  return { resumes, isLoading, error, reload: loadResumes };
 };
