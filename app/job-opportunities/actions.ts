@@ -1,6 +1,6 @@
 'use server';
 
-import { JobOpportunity } from './types';
+import type { JobOpportunity } from './types.d.ts';
 
 export async function getJobOpportunities(): Promise<JobOpportunity[]> {
   // Future: Replace with actual API call
@@ -160,4 +160,33 @@ export async function getJobOpportunityById(id: string): Promise<JobOpportunity 
   };
 
   return jobDetails;
+}
+
+export async function getResumes() {
+  // Future: Replace with actual API call to get user's resumes
+  await new Promise(resolve => setTimeout(resolve, 500)); // Simulate API delay
+  
+  return [
+    {
+      id: '1',
+      name: 'College Resume',
+      fileName: 'college_resume.pdf',
+      uploadedAt: '2024-08-15',
+      size: '245 KB'
+    },
+    {
+      id: '2', 
+      name: 'Overleaf Resume',
+      fileName: 'overleaf_resume.pdf',
+      uploadedAt: '2024-08-20',
+      size: '312 KB'
+    },
+    {
+      id: '3',
+      name: 'Professional Resume',
+      fileName: 'professional_resume.pdf',
+      uploadedAt: '2024-08-25',
+      size: '198 KB'
+    }
+  ];
 }

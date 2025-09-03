@@ -26,8 +26,29 @@ const JobFiltersComponent: React.FC<JobFiltersProps> = ({
   onExperienceChange,
   onLocationChange,
 }) => {
+  const [search, setSearch] = React.useState("");
+
+  // Call search handler on change
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearch(e.target.value);
+    onLocationChange(e.target.value);
+  };
+
   return (
     <div className="w-1/3 space-y-6 overflow-y-auto max-h-full pr-2">
+      {/* Search Bar */}
+      <Card className="bg-white/5 backdrop-blur-xl border border-white/10">
+        <CardContent className="p-6">
+          <h3 className="text-lg font-semibold text-white mb-4">Search</h3>
+          <Input
+            placeholder="Search by job name or location..."
+            value={search}
+            onChange={handleSearchChange}
+            className="bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-violet-500 mb-2"
+          />
+        </CardContent>
+      </Card>
+
       {/* Tech Stack Filter */}
       <Card className="bg-white/5 backdrop-blur-xl border border-white/10">
         <CardContent className="p-6">
@@ -87,19 +108,6 @@ const JobFiltersComponent: React.FC<JobFiltersProps> = ({
               </span>
             </div>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Location Filter */}
-      <Card className="bg-white/5 backdrop-blur-xl border border-white/10">
-        <CardContent className="p-6">
-          <h3 className="text-lg font-semibold text-white mb-4">Location</h3>
-          <Input
-            placeholder="Enter location..."
-            value={filters.location}
-            onChange={(e) => onLocationChange(e.target.value)}
-            className="bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-violet-500"
-          />
         </CardContent>
       </Card>
     </div>
