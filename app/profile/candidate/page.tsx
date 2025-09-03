@@ -34,7 +34,6 @@ export default function CandidateProfilePage() {
       github: "https://github.com/johndoe"
     }
   });
-
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isUpdateDialogOpen, setIsUpdateDialogOpen] = useState(false);
   const [editName, setEditName] = useState(profileData.name);
