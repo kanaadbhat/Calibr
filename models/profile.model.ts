@@ -52,7 +52,7 @@ const CandidateProfileSchema: Schema = new Schema(
       trim: true,
       maxlength: 100
     },
-    tagline: { type: String, trim: true, maxlength: 150 },
+    tagline: { type: String, trim: true, maxlength: 500 },
 
     summary: { type: String, trim: true, maxlength: 1000 },
 
@@ -113,5 +113,6 @@ const CandidateProfileSchema: Schema = new Schema(
   { timestamps: true }
 );
 
-export default mongoose.models.Profile ||
-  mongoose.model<CandidateProfile>("Profile", CandidateProfileSchema);
+const Profile = (mongoose.models.candidateprofile as mongoose.Model<CandidateProfile>) || mongoose.model<CandidateProfile>('candidateprofile', CandidateProfileSchema);
+
+export default Profile; 

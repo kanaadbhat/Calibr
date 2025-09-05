@@ -11,9 +11,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Edit, Upload, ExternalLink, Github, Linkedin, UploadCloud } from "lucide-react";
 import updateCandidateProfile from "./actions";
 import { useProfileData } from "./hooks";
+import { useSession } from "next-auth/react";
 
 export default function CandidateProfilePage() {
-  const { profileData, setProfileData, completionPercentage } = useProfileData('64e9b2f1c2a4f1e5b8a1d2c3');
+  const { data } = useSession();
+  const { profileData, setProfileData, completionPercentage } = useProfileData(data?.user._id as string);
 
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isUpdateDialogOpen, setIsUpdateDialogOpen] = useState(false);

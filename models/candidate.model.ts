@@ -9,7 +9,8 @@ export interface Candidate extends Document{
     bio : string
     avatar : string
     isVerified : boolean,
-    otp : number
+    otp : number,
+    role : string
 }
 const candidateSchema : Schema<Candidate>  = new Schema({
     email: { 
@@ -43,6 +44,10 @@ const candidateSchema : Schema<Candidate>  = new Schema({
     isVerified: { 
         type: Boolean, 
         default: false 
+    },
+    role : {
+        type : String,
+        required : true
     }
 });
 

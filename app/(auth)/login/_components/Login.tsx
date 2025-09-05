@@ -53,7 +53,6 @@ export default function Page() {
             role : formData.role,
             redirect: false,
           })
-
           if(res?.error){
             toast.error(res?.error)
           }
