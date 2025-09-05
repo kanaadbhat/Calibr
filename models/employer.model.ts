@@ -9,7 +9,7 @@ export interface Employer extends Document{
     isVerified : boolean,
     otp : number
 }
-const candidateSchema : Schema<Employer>  = new Schema({
+const employerSchema : Schema<Employer>  = new Schema({
     email: { 
         type: String, 
         required: [true, 'Email is required'],
@@ -19,7 +19,8 @@ const candidateSchema : Schema<Employer>  = new Schema({
     password: { 
         type: String, 
         required: [true, 'Password is required'],
-        minlength: [6, 'Password must be at least 6 characters'] 
+        minlength: [6, 'Password must be at least 6 characters'],
+        select : false
     },
     firstName: { 
         type: String, 
@@ -36,13 +37,9 @@ const candidateSchema : Schema<Employer>  = new Schema({
     isVerified: { 
         type: Boolean, 
         default: false 
-    },
-    otp: { 
-        type: Number,
-        required: true 
     }
 });
 
-const User = (mongoose.models.User as mongoose.Model<Employer>) || mongoose.model<Employer>('User', candidateSchema);
+const employer = (mongoose.models.employer as mongoose.Model<Employer>) || mongoose.model<Employer>('employer', employerSchema);
 
-export default User; 
+export default employer; 
