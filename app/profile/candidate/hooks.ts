@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { fetchCandidateProfile } from "./actions";
 import { ProfileData } from "./type";
+import { toast } from "sonner";
 
 export function useProfileData(candidateId: string) {
   const [profileData, setProfileData] = useState<ProfileData>({
@@ -31,10 +32,12 @@ export function useProfileData(candidateId: string) {
         setCompletionPercentage(result.completionPercentage);
       } else {
         setError(result.message);
+        toast.error(result.error || "Failed to load profile");
       }
     } catch (e) {
       console.error("Error loading profile:", e);
       setError("Failed to load profile");
+      toast.error("An error occurred while loading your profile");
       setCompletionPercentage(0);
     } finally {
       setIsLoading(false);
@@ -42,7 +45,9 @@ export function useProfileData(candidateId: string) {
   };
 
   useEffect(() => {
-    loadProfile();
+    if (candidateId) {
+      loadProfile();
+    }
   }, [candidateId]);
 
   return {

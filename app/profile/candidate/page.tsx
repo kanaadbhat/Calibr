@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -8,21 +8,37 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Edit, Upload, ExternalLink, Github, Linkedin, UploadCloud } from "lucide-react";
+import { Edit, ExternalLink, Github, Linkedin, UploadCloud, X, Camera } from "lucide-react";
 import updateCandidateProfile from "./actions";
 import { useProfileData } from "./hooks";
 import { useSession } from "next-auth/react";
+import { toast } from "sonner";
+
+// Define a local Skeleton component to avoid import issues
+const Skeleton = ({ className, ...props }: React.ComponentProps<"div">) => {
+  return (
+    <div
+      className={`bg-white/10 animate-pulse rounded-md ${className}`}
+      {...props}
+    />
+  );
+};
 
 export default function CandidateProfilePage() {
-  const { data } = useSession();
-  const { profileData, setProfileData, completionPercentage } = useProfileData(data?.user._id as string);
+  const { data, status } = useSession();
+  const { profileData, setProfileData, completionPercentage, isLoading } = useProfileData(status === "authenticated" ? data?.user._id as string : "");
+
 
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isUpdateDialogOpen, setIsUpdateDialogOpen] = useState(false);
+  const [isImageUploadDialogOpen, setIsImageUploadDialogOpen] = useState(false);
   const [editName, setEditName] = useState("");
   const [editTagline, setEditTagline] = useState("");
   const [editSummary, setEditSummary] = useState("");
   const [profileCompletion, setProfileCompletion] = useState(0);
+  const [imagePreview, setImagePreview] = useState<string | undefined>(undefined);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setProfileCompletion(completionPercentage);
@@ -35,38 +51,121 @@ export default function CandidateProfilePage() {
   }, [profileData.name, profileData.tagline, profileData.summary]);
 
   const handleSaveProfile = async() => {
-    const updatedData = {
-      ...profileData,
-      summary: editSummary,
-      name: editName,
-      tagline: editTagline
-    };
-    setProfileData(updatedData);
-    setIsEditDialogOpen(false);
-    console.log("Sending updated data to backend:", updatedData);
-    const res = await updateCandidateProfile(updatedData);
-    console.log("Backend response:", res);
+    try {
+      const updatedData = {
+        ...profileData,
+        summary: editSummary,
+        name: editName,
+        tagline: editTagline
+      };
+      setProfileData(updatedData);
+      setIsEditDialogOpen(false);
+      
+      const res = await updateCandidateProfile(updatedData);
+      
+      if (res.success) {
+        toast.success(res.message);
+      } else {
+        toast.error(res.error || "Failed to update profile");
+      }
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      toast.error("An error occurred while updating your profile");
+    }
   };
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      console.log("File uploaded:", file.name);
-      // Handle file upload logic here
+      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+        toast.error("Image size should be less than 5MB");
+        return;
+      }
+      
+      if (!file.type.startsWith('image/')) {
+        toast.error("Please upload an image file");
+        return;
+      }
+      
+      setImageFile(file);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setImagePreview(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+      toast.success('Image selected successfully');
     }
   };
 
   const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
+    event.stopPropagation();
     const files = event.dataTransfer.files;
     if (files.length > 0) {
-      console.log("File dropped:", files[0].name);
-      // Handle file drop logic here
+      const file = files[0];
+      
+      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+        toast.error("Image size should be less than 5MB");
+        return;
+      }
+      
+      if (!file.type.startsWith('image/')) {
+        toast.error("Please upload an image file");
+        return;
+      }
+      
+      setImageFile(file);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setImagePreview(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+      toast.success('Image dropped successfully');
     }
   };
 
   const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
+  };
+  
+  const handleImageUpload = async () => {
+    if (!imageFile) {
+      toast.error("Please select an image to upload");
+      return;
+    }
+    
+    try {
+      toast.loading("Uploading image...");
+      
+      // In a real implementation, you would upload the image to a storage service
+      // and get back a URL. For now, we'll simulate this with the data URL.
+      const imageUrl = imagePreview;
+      
+      // Update profile with the new image URL
+      const updatedData = {
+        ...profileData,
+        profileImage: imageUrl || undefined
+      };
+      
+      const res = await updateCandidateProfile(updatedData);
+      
+      if (res.success) {
+        setProfileData(updatedData);
+        toast.success("Profile image updated successfully");
+        setIsImageUploadDialogOpen(false);
+        setImagePreview(undefined);
+        setImageFile(null);
+      } else {
+        toast.error(res.error || "Failed to update profile image");
+      }
+    } catch (error) {
+      console.error("Error uploading image:", error);
+      toast.error("An error occurred while uploading the image");
+    }
+  };
+  
+  const triggerFileInput = () => {
+    fileInputRef.current?.click();
   };
 
   const updateEducation = (index: number, field: string, value: string) => {
@@ -140,12 +239,103 @@ export default function CandidateProfilePage() {
   };
 
   const handleUpdateProfile = async () => {
-    console.log("Sending data to backend:", profileData); // Debug log
-    const res = await updateCandidateProfile(profileData);
-    console.log("Backend response:", res);
-    setIsUpdateDialogOpen(false);
+    try {
+      const res = await updateCandidateProfile(profileData);
+      
+      if (res.success) {
+        toast.success(res.message);
+        setIsUpdateDialogOpen(false);
+      } else {
+        toast.error(res.error || "Failed to update profile");
+      }
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      toast.error("An error occurred while updating your profile");
+    }
   };
-
+  
+  // Show skeleton loading state while session or profile data is loading
+  if (status === "loading" || (status === "authenticated" && isLoading)) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-[#0A0A18] to-[#0D0D20]">
+      <div className="max-w-7xl mx-auto pt-16 pb-16 px-4 sm:px-6 lg:px-8">
+        {/* Header Skeleton */}
+        <div className="mb-8">
+          <div className="h-10 w-48 bg-gradient-to-r from-violet-300/20 to-purple-300/20 rounded-md animate-pulse"></div>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Sidebar skeleton */}
+          <div className="lg:col-span-1">
+            <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6">
+              <div className="flex flex-col items-center">
+                {/* Avatar skeleton */}
+                <div className="relative">
+                  <div className="w-32 h-32 rounded-full overflow-hidden mb-4">
+                    <div className="w-full h-full">
+                      <Skeleton className="w-full h-full" />
+                    </div>
+                  </div>
+                </div>
+                {/* Name skeleton */}
+                <Skeleton className="h-8 w-48 mb-2" />
+                {/* Tagline skeleton */}
+                <Skeleton className="h-6 w-64 mb-4" />
+                {/* Completion bar skeleton */}
+                <Skeleton className="h-4 w-full mb-2" />
+                {/* Social links skeleton */}
+                <div className="flex space-x-4 mt-4">
+                  <Skeleton className="h-10 w-10 rounded-full" />
+                  <Skeleton className="h-10 w-10 rounded-full" />
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Main content skeleton */}
+          <div className="lg:col-span-2">
+            <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 mb-6">
+              {/* Summary skeleton */}
+              <Skeleton className="h-6 w-32 mb-4" />
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-3/4" />
+              </div>
+            </div>
+            
+            {/* Tabs skeleton */}
+            <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6">
+              <div className="flex mb-6 space-x-2">
+                <Skeleton className="h-10 w-24" />
+                <Skeleton className="h-10 w-24" />
+                <Skeleton className="h-10 w-24" />
+              </div>
+              
+              {/* Tab content skeleton */}
+              <div className="space-y-6">
+                <div>
+                  <Skeleton className="h-6 w-32 mb-4" />
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-4 w-2/3" />
+                    </div>
+                    <div className="space-y-2">
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-4 w-3/4" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      </div>
+    );
+  }
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#0A0A18] to-[#0D0D20]">
       <div className="max-w-7xl mx-auto pt-16 pb-16 px-4 sm:px-6 lg:px-8">
@@ -167,17 +357,95 @@ export default function CandidateProfilePage() {
                     {/* Profile Avatar */}
                     <div className="relative">
                       <Avatar className="w-32 h-32">
-                        <AvatarImage src="/api/placeholder/128/128" />
-                        <AvatarFallback className="bg-violet-600 text-white text-4xl">
-                          {profileData.name.split(' ').map(n => n[0]).join('')}
-                        </AvatarFallback>
+                        {profileData.profileImage ? (
+                          <AvatarImage src={profileData.profileImage} />
+                        ) : (
+                          <AvatarFallback className="bg-violet-600 text-white text-4xl">
+                            {profileData.name.split(' ').map(n => n[0]).join('')}
+                          </AvatarFallback>
+                        )}
                       </Avatar>
-                      <Button
-                        size="sm"
-                        className="absolute -bottom-2 -right-2 w-8 h-8 rounded-full bg-violet-600 hover:bg-violet-700 border-none"
-                      >
-                        <Upload className="w-4 h-4" />
-                      </Button>
+                      <Dialog open={isImageUploadDialogOpen} onOpenChange={setIsImageUploadDialogOpen}>
+                        <DialogTrigger asChild>
+                          <Button
+                            size="sm"
+                            className="absolute -bottom-2 -right-2 w-8 h-8 rounded-full bg-violet-600 hover:bg-violet-700 border-none"
+                          >
+                            <Camera className="w-4 h-4" />
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="bg-[#0D0D20] border-white/20 text-white max-w-md">
+                          <DialogHeader>
+                            <DialogTitle className="text-white">Upload Profile Image</DialogTitle>
+                            <DialogDescription className="text-white/70">
+                              Upload a profile picture to personalize your profile.
+                            </DialogDescription>
+                          </DialogHeader>
+                          <div className="space-y-4 py-4">
+                            <input
+                              type="file"
+                              ref={fileInputRef}
+                              onChange={handleFileUpload}
+                              accept="image/*"
+                              className="hidden"
+                            />
+                            <div
+                              className="border-2 border-dashed border-white/30 rounded-lg p-8 text-center cursor-pointer hover:border-white/50 transition-colors"
+                              onClick={triggerFileInput}
+                              onDrop={handleDrop}
+                              onDragOver={handleDragOver}
+                            >
+                              {imagePreview ? (
+                                <div className="flex flex-col items-center">
+                                  <img
+                                    src={imagePreview}
+                                    alt="Preview"
+                                    className="max-h-48 max-w-full mb-4 rounded-lg"
+                                  />
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setImagePreview(undefined);
+                                      setImageFile(null);
+                                    }}
+                                    className="text-red-400 hover:text-red-300 hover:bg-red-900/20"
+                                  >
+                                    <X className="w-4 h-4 mr-2" /> Remove
+                                  </Button>
+                                </div>
+                              ) : (
+                                <div className="flex flex-col items-center">
+                                  <UploadCloud className="w-12 h-12 text-white/50 mb-2" />
+                                  <p className="text-white/70 mb-1">Drag and drop an image here or click to browse</p>
+                                  <p className="text-white/50 text-sm">PNG, JPG or GIF (max 5MB)</p>
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex justify-end gap-3 pt-4">
+                              <Button
+                                variant="destructive"
+                                onClick={() => {
+                                  setIsImageUploadDialogOpen(false);
+                                  setImagePreview(undefined);
+                                  setImageFile(null);
+                                }}
+                                className="bg-red-800 hover:bg-red-900"
+                              >
+                                Cancel
+                              </Button>
+                              <Button
+                                onClick={handleImageUpload}
+                                disabled={!imageFile}
+                                className="bg-white text-[#0A0A18] hover:bg-white/90 border-none disabled:bg-white/50 disabled:text-[#0A0A18]/50"
+                              >
+                                Upload Image
+                              </Button>
+                            </div>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
                     </div>
 
                     {/* Name */}

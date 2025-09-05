@@ -6,6 +6,7 @@ export interface CandidateProfile extends Document {
   tagline?: string;
   summary?: string;
   workDetails?: string;
+  profileImage?: string;
   education: {
     _id: mongoose.Types.ObjectId;
     year: string;
@@ -57,6 +58,8 @@ const CandidateProfileSchema: Schema = new Schema(
     summary: { type: String, trim: true, maxlength: 1000 },
 
     workDetails: { type: String, trim: true, maxlength: 2000 },
+    
+    profileImage: { type: String, trim: true },
 
     education: [
       {
@@ -115,4 +118,4 @@ const CandidateProfileSchema: Schema = new Schema(
 
 const Profile = (mongoose.models.candidateprofile as mongoose.Model<CandidateProfile>) || mongoose.model<CandidateProfile>('candidateprofile', CandidateProfileSchema);
 
-export default Profile; 
+export default Profile;

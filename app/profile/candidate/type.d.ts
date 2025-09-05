@@ -4,6 +4,7 @@ export interface ProfileData {
   tagline: string;
   summary?: string;
   workDetails: string;
+  profileImage?: string;
   education: Education[];
   skills: string; 
   projects: Project[];
@@ -41,4 +42,5 @@ export interface ProfileResponse {
   message: string;
   data: ProfileData | null;
   completionPercentage: number;
+  error?: string;
 }

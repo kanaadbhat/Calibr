@@ -6,24 +6,29 @@ import candidate from "@/models/candidate.model";
 import { ProfileData, ProfileResponse } from "./type";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import mongoose from "mongoose";
 
 export default async function updateCandidateProfile(
   profileData: ProfileData
-): Promise<{ success: boolean; message: string }> {
-  const session = await getServerSession(authOptions);
-  const candidateId = session?.user._id;
-  console.log(session)
-  if (!candidateId) {
-    return { success: false, message: "Unauthorized" };
-  }
-
-  await connectToDatabase();
-
+): Promise<{ success: boolean; message: string; error?: string }> {
   try {
+    const session = await getServerSession(authOptions);
+    const candidateId = session?.user._id;
+    
+    if (!candidateId) {
+      return { success: false, message: "Unauthorized", error: "User session not found" };
+    }
+
+    await connectToDatabase();
+
     // Fetch candidate name
     const candidateDoc = await candidate.findById(candidateId).select("firstName lastName");
-    const name = candidateDoc ? `${candidateDoc.firstName} ${candidateDoc.lastName}` : "";
-
+    
+    if (!candidateDoc) {
+      return { success: false, message: "Candidate not found", error: "Unable to find candidate information" };
+    }
+    
+    const name = `${candidateDoc.firstName} ${candidateDoc.lastName}`;
     const data = { ...profileData, candidate: candidateId, name };
 
     let profile = await Profile.findOne({ candidate: candidateId });
@@ -41,18 +46,49 @@ export default async function updateCandidateProfile(
     }
   } catch (err) {
     console.error("Error updating profile:", err);
-    return { success: false, message: "Error updating profile" };
+    let errorMessage = "Error updating profile";
+    
+    if (err instanceof mongoose.Error.ValidationError) {
+      errorMessage = "Invalid profile data provided";
+    } else if (err instanceof mongoose.Error.CastError) {
+      errorMessage = "Invalid ID format";
+    } else if (err instanceof Error) {
+      errorMessage = err.message;
+    }
+    
+    return { success: false, message: "Error updating profile", error: errorMessage };
   }
 }
 
 
 
 export async function fetchCandidateProfile(candidateId: string): Promise<ProfileResponse> {
-  await connectToDatabase();
   try {
+    if (!candidateId) {
+      return { 
+        success: false, 
+        message: "Invalid candidate ID", 
+        data: null, 
+        completionPercentage: 0,
+        error: "Candidate ID is required" 
+      };
+    }
+    
+    await connectToDatabase();
 
-    let name: any = await candidate.findById(candidateId).select('firstName lastName');
-    name = name?.firstName + " " + name?.lastName;
+    const candidateInfo = await candidate.findById(candidateId).select('firstName lastName');
+    
+    if (!candidateInfo) {
+      return { 
+        success: false, 
+        message: "Candidate not found", 
+        data: null, 
+        completionPercentage: 0,
+        error: "Unable to find candidate with the provided ID" 
+      };
+    }
+    
+    const name = `${candidateInfo.firstName} ${candidateInfo.lastName}`;
     const profile = await Profile.findOne({ candidate: candidateId });
 
     const data : any = {
@@ -60,6 +96,7 @@ export async function fetchCandidateProfile(candidateId: string): Promise<Profil
       tagline: profile?.tagline || "",
       summary: profile?.summary || "",
       workDetails: profile?.workDetails || "",
+      profileImage: profile?.profileImage || "",
       education: profile?.education?.map((edu: any) => ({
         year: edu.year,
         degree: edu.degree,
@@ -89,20 +126,33 @@ export async function fetchCandidateProfile(candidateId: string): Promise<Profil
       completionPercentage: calculateCompletion(data)
     };
 
-
   } catch (err) {
-    console.error(err);
-    return { success: false, message: "Error fetching profile", data: null, completionPercentage: 0 }
+    console.error("Error fetching profile:", err);
+    let errorMessage = "Error fetching profile";
+    
+    if (err instanceof mongoose.Error.CastError) {
+      errorMessage = "Invalid candidate ID format";
+    } else if (err instanceof Error) {
+      errorMessage = err.message;
+    }
+    
+    return { 
+      success: false, 
+      message: "Error fetching profile", 
+      data: null, 
+      completionPercentage: 0,
+      error: errorMessage 
+    };
   }
 
 }
-//need to be updated
 function calculateCompletion(data: any): number {
   const fields = [
     data.name,
     data.tagline,
     data.summary,
     data.workDetails,
+    data.profileImage,
     data.education?.length,
     data.skills,
     data.projects?.length,
@@ -110,5 +160,5 @@ function calculateCompletion(data: any): number {
     data.socialLinks?.linkedin,
     data.socialLinks?.github
   ];
-  return Math.round((fields.filter(Boolean).length / 10) * 100);
+  return Math.round((fields.filter(Boolean).length / 11) * 100);
 }
