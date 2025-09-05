@@ -179,15 +179,6 @@ const Header: React.FC = () => {
               )}
             </div>
 
-            {/* Desktop CTA */}
-            <div className="hidden md:flex items-center space-x-4">
-              <Button
-                variant="ghost"
-                className="text-white/70 hover:text-white hover:bg-white/5">
-                Sign In
-              </Button>
-            </div>
-
             {/* Mobile Menu Button */}
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -225,14 +216,18 @@ const Header: React.FC = () => {
                   Pricing
                 </a>
                 <div className="pt-4 border-t border-white/10 flex flex-col space-y-3">
-                  <Button
-                    variant="ghost"
-                    className="text-white/70 hover:text-white hover:bg-white/5 justify-start">
-                    Sign In
-                  </Button>
-                  <Button className="bg-gradient-to-r from-indigo-500 to-rose-500 text-white hover:shadow-lg hover:shadow-indigo-500/30 transition-all duration-300">
-                    Get Started <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
+                  <Link href="/login">
+                    <Button
+                      variant="ghost"
+                      className="text-white/70 hover:text-white hover:bg-white/5 justify-start">
+                      Sign In
+                    </Button>
+                  </Link>
+                  <Link href="/signup">
+                    <Button className="bg-gradient-to-r from-indigo-500 to-rose-500 text-white hover:shadow-lg hover:shadow-indigo-500/30 transition-all duration-300 w-full">
+                      Get started <ArrowRight className="ml-2 h-4 w-4" />
+                    </Button>
+                  </Link>
                 </div>
               </div>
             </div>
