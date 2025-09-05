@@ -9,51 +9,43 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Edit, Upload, ExternalLink, Github, Linkedin, UploadCloud } from "lucide-react";
+import updateCandidateProfile from "./actions";
+import { useProfileData } from "./hooks";
+import { useSession } from "next-auth/react";
 
 export default function CandidateProfilePage() {
-  const [profileData, setProfileData] = useState({
-    name: "John Doe",
-    tagline: "Full Stack Developer passionate about creating amazing web experiences",
-    summary: "Experienced Full Stack Developer with 5+ years in building scalable web applications. Passionate about clean code, user experience, and continuous learning. Skilled in modern web technologies including React, Node.js, and cloud platforms.",
-    workDetails: "Currently working as Senior Frontend Developer at TechCorp Inc. Previously worked at StartupXYZ as Full Stack Developer for 3 years.",
-    education: [
-      { year: "2018", degree: "B.Tech Computer Science", institution: "ABC University" },
-      { year: "2020", degree: "Master's in Software Engineering", institution: "XYZ Institute" }
-    ],
-    skills: "JavaScript, TypeScript, React, Node.js, Python, AWS, Docker, MongoDB, PostgreSQL, Git, Agile Development",
-    projects: [
-      { name: "E-commerce Platform", description: "Built a full-stack e-commerce platform with React and Node.js", link: "https://github.com/johndoe/ecommerce" },
-      { name: "Task Management App", description: "Real-time task management application with live updates", link: "https://taskapp-demo.com" }
-    ],
-    certificates: [
-      { name: "AWS Solutions Architect", issuer: "Amazon", link: "https://aws.amazon.com/certification/" },
-      { name: "React Developer Certification", issuer: "Meta", link: "https://developers.facebook.com/docs/development/" }
-    ],
-    socialLinks: {
-      linkedin: "https://linkedin.com/in/johndoe",
-      github: "https://github.com/johndoe"
-    }
-  });
+  const { data } = useSession();
+  const { profileData, setProfileData, completionPercentage } = useProfileData(data?.user._id as string);
+
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isUpdateDialogOpen, setIsUpdateDialogOpen] = useState(false);
-  const [editName, setEditName] = useState(profileData.name);
-  const [editTagline, setEditTagline] = useState(profileData.tagline);
-  const [profileCompletion, setProfileCompletion] = useState(70);
+  const [editName, setEditName] = useState("");
+  const [editTagline, setEditTagline] = useState("");
+  const [editSummary, setEditSummary] = useState("");
+  const [profileCompletion, setProfileCompletion] = useState(0);
 
-  const handleProfileCompletion = () => {
-    setProfileCompletion(100);
-  }
   useEffect(() => {
-    handleProfileCompletion();
-  }, []);
+    setProfileCompletion(completionPercentage);
+  }, [completionPercentage]);
 
-  const handleSaveProfile = () => {
-    setProfileData(prev => ({
-      ...prev,
+  useEffect(() => {
+    setEditName(profileData.name || "");
+    setEditTagline(profileData.tagline || "");
+    setEditSummary(profileData.summary || "");
+  }, [profileData.name, profileData.tagline, profileData.summary]);
+
+  const handleSaveProfile = async() => {
+    const updatedData = {
+      ...profileData,
+      summary: editSummary,
       name: editName,
       tagline: editTagline
-    }));
+    };
+    setProfileData(updatedData);
     setIsEditDialogOpen(false);
+    console.log("Sending updated data to backend:", updatedData);
+    const res = await updateCandidateProfile(updatedData);
+    console.log("Backend response:", res);
   };
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -147,16 +139,10 @@ export default function CandidateProfilePage() {
     }));
   };
 
-  const handleUpdateProfile = () => {
-    setProfileData(prev => ({
-      ...prev,
-      workDetails: profileData.workDetails,
-      skills: profileData.skills,
-      education: profileData.education,
-      projects: profileData.projects,
-      certificates: profileData.certificates,
-      socialLinks: profileData.socialLinks
-    }));
+  const handleUpdateProfile = async () => {
+    console.log("Sending data to backend:", profileData); // Debug log
+    const res = await updateCandidateProfile(profileData);
+    console.log("Backend response:", res);
     setIsUpdateDialogOpen(false);
   };
 
@@ -235,6 +221,16 @@ export default function CandidateProfilePage() {
                               className="bg-white/10 border-white/20 text-white placeholder:text-white/50 min-h-[100px]"
                               placeholder="Enter your professional tagline"
                             />
+                            <div className="space-y-2">
+                              <Label htmlFor="summary">Summary</Label>
+                              <Textarea
+                                id="summary"
+                                value={editSummary}
+                                onChange={(e) => setEditSummary(e.target.value)}
+                                placeholder="Briefly describe your professional background and skills"
+                                className="min-h-[100px]"
+                              />
+                            </div>
                           </div>
                           <div className="flex justify-end gap-3 pt-4">
                             <Button
@@ -303,39 +299,39 @@ export default function CandidateProfilePage() {
                         <p className="text-white/70">Your profile is {profileCompletion}% complete</p>
                       </div>
                     </div>
-                    
+
                     <Dialog open={isUpdateDialogOpen} onOpenChange={setIsUpdateDialogOpen}>
                       <DialogTrigger asChild>
-                                                  <Button className="bg-white/80 text-[#0A0A18] hover:bg-white/70 border-none">
-                            Update Now
-                          </Button>
+                        <Button className="bg-white/80 text-[#0A0A18] hover:bg-white/70 border-none">
+                          Update Now
+                        </Button>
                       </DialogTrigger>
-                        <DialogContent className="bg-[#0D0D20] border-white/20 text-white w-[90vw] max-w-6xl max-h-[90vh] overflow-y-auto">
-                          <DialogHeader className=" bg-[#0D0D20] z-10 pb-4">
-                            <div className="bg-white/10 backdrop-blur-xl border border-white/10 rounded-2xl p-6">
+                      <DialogContent className="bg-[#0D0D20] border-white/20 text-white w-[90vw] max-w-6xl max-h-[90vh] overflow-y-auto">
+                        <DialogHeader className=" bg-[#0D0D20] z-10 pb-4">
+                          <div className="bg-white/10 backdrop-blur-xl border border-white/10 rounded-2xl p-6">
                             <DialogTitle className="text-white">Update Your Profile</DialogTitle>
                             <DialogDescription className="text-white/70">
                               Complete your profile information or upload your resume.
                             </DialogDescription>
-                            </div>
-                          </DialogHeader>
-                          
-                          <Tabs defaultValue="form" className="w-full">
-                            <TabsList className="grid w-full grid-cols-2 bg-white/10 border border-white/10 top-16 z-10">
-                              <TabsTrigger 
-                                value="form" 
-                                className="data-[state=active]:bg-white/80 data-[state=active]:text-[#0A0A18] text-white"
-                              >
-                                Form
-                              </TabsTrigger>
-                              <TabsTrigger 
-                                value="resume" 
-                                className="data-[state=active]:bg-white/80 data-[state=active]:text-[#0A0A18] text-white"
-                              >
-                                Resume
-                              </TabsTrigger>
-                            </TabsList>
-                          
+                          </div>
+                        </DialogHeader>
+
+                        <Tabs defaultValue="form" className="w-full">
+                          <TabsList className="grid w-full grid-cols-2 bg-white/10 border border-white/10 top-16 z-10">
+                            <TabsTrigger
+                              value="form"
+                              className="data-[state=active]:bg-white/80 data-[state=active]:text-[#0A0A18] text-white"
+                            >
+                              Form
+                            </TabsTrigger>
+                            <TabsTrigger
+                              value="resume"
+                              className="data-[state=active]:bg-white/80 data-[state=active]:text-[#0A0A18] text-white"
+                            >
+                              Resume
+                            </TabsTrigger>
+                          </TabsList>
+
                           <TabsContent value="form" className="space-y-4 mt-6">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               <div className="space-y-2">
@@ -361,7 +357,7 @@ export default function CandidateProfilePage() {
                                 />
                               </div>
                             </div>
-                            
+
                             <div className="space-y-2">
                               <Label htmlFor="education" className="text-white">Education</Label>
                               <div className="space-y-3">
@@ -397,7 +393,7 @@ export default function CandidateProfilePage() {
                                       onClick={() => removeEducation(index)}
                                       className="text-red-500 hover:text-red-400"
                                     >
-                                      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-x-circle"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                                      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-x-circle"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
                                     </Button>
                                   </div>
                                 ))}
@@ -410,7 +406,7 @@ export default function CandidateProfilePage() {
                                 </Button>
                               </div>
                             </div>
-                            
+
                             <div className="space-y-2">
                               <Label htmlFor="projects" className="text-white">Projects</Label>
                               <div className="space-y-3">
@@ -446,7 +442,7 @@ export default function CandidateProfilePage() {
                                         onClick={() => removeProject(index)}
                                         className="text-red-500 hover:text-red-400"
                                       >
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-x-circle"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-x-circle"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
                                       </Button>
                                     </div>
                                   </div>
@@ -460,7 +456,7 @@ export default function CandidateProfilePage() {
                                 </Button>
                               </div>
                             </div>
-                            
+
                             <div className="space-y-2">
                               <Label htmlFor="certificates" className="text-white">Certificates</Label>
                               <div className="space-y-3">
@@ -495,7 +491,7 @@ export default function CandidateProfilePage() {
                                       onClick={() => removeCertificate(index)}
                                       className="text-red-500 hover:text-red-400"
                                     >
-                                      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-x-circle"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                                      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-x-circle"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
                                     </Button>
                                   </div>
                                 ))}
@@ -529,16 +525,16 @@ export default function CandidateProfilePage() {
                                 placeholder="https://github.com/your-profile"
                               />
                             </div>
-                            
+
                             <div className="flex justify-end gap-3 pt-4">
-                              <Button 
-                                variant="destructive" 
+                              <Button
+                                variant="destructive"
                                 onClick={() => setIsUpdateDialogOpen(false)}
                                 className="bg-red-800 hover:bg-red-900"
                               >
                                 Cancel
                               </Button>
-                              <Button 
+                              <Button
                                 onClick={handleUpdateProfile}
                                 className="bg-white/80 text-[#0A0A18] hover:bg-white/70 border-none"
                               >
@@ -546,7 +542,7 @@ export default function CandidateProfilePage() {
                               </Button>
                             </div>
                           </TabsContent>
-                          
+
                           <TabsContent value="resume" className="mt-6">
                             <div className="space-y-4">
                               <div
@@ -571,10 +567,10 @@ export default function CandidateProfilePage() {
                                   id="resume-upload"
                                 />
                               </div>
-                              
+
                               <div className="flex justify-end gap-3 pt-4">
-                                <Button 
-                                  variant="destructive" 
+                                <Button
+                                  variant="destructive"
                                   onClick={() => setIsUpdateDialogOpen(false)}
                                   className=""
                                 >
@@ -595,7 +591,7 @@ export default function CandidateProfilePage() {
                 {/* Personal Info Section */}
                 <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6">
                   <h3 className="text-xl font-semibold text-white mb-6">Personal Information</h3>
-                  
+
                   <div className="space-y-8">
                     {/* Work Details */}
                     <div>

@@ -9,7 +9,8 @@ export interface Candidate extends Document{
     bio : string
     avatar : string
     isVerified : boolean,
-    otp : number
+    otp : number,
+    role : string
 }
 const candidateSchema : Schema<Candidate>  = new Schema({
     email: { 
@@ -43,9 +44,13 @@ const candidateSchema : Schema<Candidate>  = new Schema({
     isVerified: { 
         type: Boolean, 
         default: false 
+    },
+    role : {
+        type : String,
+        required : true
     }
 });
 
-const candidate = (mongoose.models.candidates as mongoose.Model<Candidate>) || mongoose.model<Candidate>('candidates', candidateSchema);
+const candidate = (mongoose.models.candidate as mongoose.Model<Candidate>) || mongoose.model<Candidate>('candidate', candidateSchema);
 
 export default candidate; 

@@ -7,7 +7,8 @@ export interface Employer extends Document{
     lastName : string
     avatar : string
     isVerified : boolean,
-    otp : number
+    otp : number,
+    role : string
 }
 const employerSchema : Schema<Employer>  = new Schema({
     email: { 
@@ -37,9 +38,13 @@ const employerSchema : Schema<Employer>  = new Schema({
     isVerified: { 
         type: Boolean, 
         default: false 
+    },
+    role : {
+        type : String,
+        required : true
     }
 });
 
-const employer = (mongoose.models.employer as mongoose.Model<Employer>) || mongoose.model<Employer>('employer', employerSchema);
+const employer = (mongoose.models.employers as mongoose.Model<Employer>) || mongoose.model<Employer>('employers', employerSchema);
 
 export default employer; 
