@@ -21,7 +21,8 @@ const candidateSchema : Schema<Candidate>  = new Schema({
     password: { 
         type: String, 
         required: [true, 'Password is required'],
-        minlength: [6, 'Password must be at least 6 characters'] 
+        minlength: [6, 'Password must be at least 6 characters'],
+        select : false 
     },
     firstName: { 
         type: String, 
@@ -42,10 +43,6 @@ const candidateSchema : Schema<Candidate>  = new Schema({
     isVerified: { 
         type: Boolean, 
         default: false 
-    },
-    otp: { 
-        type: Number,
-        required: true 
     }
 });
 
