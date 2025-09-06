@@ -23,12 +23,12 @@ import StatCard from "./_components/StatCard";
 export default function Page() {
   return (
     <div className="space-y-4 sm:space-y-6 lg:space-y-8 mt-16">
-      <div className="sticky top-0 z-30 bg-gradient-to-br from-[#0A0A18]/90 to-[#0D0D20]/90 backdrop-blur-xl border-b border-white/10 pb-4 sm:pb-6 pt-4 sm:pt-6 px-4 sm:px-6 lg:px-8 xl:px-12">
+      <div className="sticky top-0 z-30 bg-gradient-to-br from-[#0A0A18]/90 to-[#0D0D20]/90 backdrop-blur-xl border-b border-white/10 pb-4 pt-8 sm:pt-6 px-4 sm:px-6 lg:px-8 xl:px-12">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2 sm:mb-3">
             Welcome back, John Doe
           </h1>
-          <Breadcrumb>
+          <Breadcrumb className="mt-4">
             <BreadcrumbList className="text-white/60">
               <BreadcrumbItem>
                 <BreadcrumbLink asChild>
@@ -64,10 +64,15 @@ export default function Page() {
       <section
         aria-label="KPI cards"
         className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard value="12" label="Active Job Postings" />
-        <StatCard value="84" label="Candidates in Pipeline" />
-        <StatCard value="7" label="Interviews Today" />
-        <StatCard value="68%" label="Acceptance Rate" />
+        <StatCard value="12" label="Active Job Postings" trend="▲ 2" />
+        <StatCard
+          value="84"
+          label="Candidates in Pipeline"
+          trend="▼ 5"
+          trendDirection="down"
+        />
+        <StatCard value="7" label="Interviews Today" trend="▲ 3" />
+        <StatCard value="68%" label="Acceptance Rate" trend="+4%" />
       </section>
 
       {/* Pipeline + Live Monitoring */}
