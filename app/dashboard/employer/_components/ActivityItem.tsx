@@ -1,6 +1,7 @@
 import React from "react";
 import { Activity } from "../types";
 import { CheckCircle, Megaphone, UserPlus } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const ICONS: Record<Activity["icon"], React.ElementType> = {
   "check-circle": CheckCircle,
@@ -13,11 +14,13 @@ export default function ActivityItem({
   title,
   meta,
   intent = "default",
+  loading = false,
 }: {
   icon: Activity["icon"];
   title: string;
   meta: string;
   intent?: "success" | "info" | "user" | "announce" | "default";
+  loading?: boolean;
 }) {
   const Icon = ICONS[icon];
 
@@ -31,6 +34,18 @@ export default function ActivityItem({
       : intent === "announce"
       ? "bg-rose-100 border-rose-300 text-rose-700"
       : "bg-zinc-100 border-zinc-300 text-zinc-700";
+
+  if (loading) {
+    return (
+      <li className="flex items-start gap-3 py-2.5">
+        <Skeleton className="mt-0.5 h-8 w-8 rounded-full" />
+        <div className="flex-1">
+          <Skeleton className="h-4 w-3/4 mb-1" />
+          <Skeleton className="h-3 w-1/2" />
+        </div>
+      </li>
+    );
+  }
 
   return (
     <li className="flex items-start gap-3 py-2.5">

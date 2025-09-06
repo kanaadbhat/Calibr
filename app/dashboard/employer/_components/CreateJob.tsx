@@ -17,8 +17,9 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Upload, X, FileText } from "lucide-react"
+import { Upload, X, FileText} from "lucide-react"
 import { cn } from "@/lib/utils"
+import { toast } from "sonner";
 
 type CreateJobDialogProps = {
   children: React.ReactNode // trigger
@@ -73,6 +74,13 @@ export function CreateJobDialog({ children, className }: CreateJobDialogProps) {
     console.log("[v0] Create Job payload:", payload)
     if (uploadedFile) {
       console.log("[v0] Uploaded file:", uploadedFile.name, uploadedFile.size, "bytes")
+    }
+    try {
+      // Simulate API call or job creation logic here
+      // If successful:
+      toast.success("Job posting created!");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : String(err));
     }
 
     setSubmitting(true)

@@ -1,14 +1,40 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function CodePreview({
   title,
   badge = "LIVE",
   metrics,
+  loading = false,
 }: {
   title: string;
   badge: string;
   metrics: string;
+  loading?: boolean;
 }) {
+  if (loading) {
+    return (
+      <Card className="bg-[#282036] border border-white/5 rounded-lg shadow-sm">
+        <CardHeader className="pb-2 px-4">
+          <div className="flex items-center justify-between">
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-4 w-8 rounded" />
+          </div>
+        </CardHeader>
+        <CardContent className="px-4 space-y-3">
+          <div className="grid md:grid-cols-2 gap-3">
+            <Skeleton className="h-20 w-full rounded-md" />
+            <Skeleton className="h-20 w-full rounded-md" />
+          </div>
+          <div className="space-y-1">
+            <Skeleton className="h-3 w-16" />
+            <Skeleton className="h-3 w-32" />
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card className="bg-[#282036] border border-white/5 rounded-lg shadow-sm">
       <CardHeader className="pb-2 px-4">
