@@ -1,215 +1,65 @@
 "use client";
 
 import type React from "react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
-  FileText,
-  Users,
-  Star,
-  CheckCircle2,
-  PieChart,
-  User2,
-  Megaphone,
-} from "lucide-react";
-
-function StatCard({ value, label }: { value: string; label: string }) {
-  return (
-    <Card className="bg-[#171726] border-0">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-3xl font-semibold text-neutral-100">
-          {value}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="pt-0">
-        <CardDescription className="text-neutral-300">{label}</CardDescription>
-      </CardContent>
-    </Card>
-  );
-}
-
-function Column({
-  title,
-  count,
-  children,
-  className,
-}: {
-  title: string;
-  count: number;
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <div className={`rounded-md bg-[#171726] ${className || ""}`}>
-      <div className="flex items-baseline justify-between px-4 py-3">
-        <h4 className="font-semibold text-neutral-200">
-          {title} <span className="text-neutral-200">({count})</span>
-        </h4>
-      </div>
-      <div className="px-3 pb-3 space-y-3">{children}</div>
-    </div>
-  );
-}
-
-function CandidateCard({
-  name,
-  role,
-  metaLeft,
-  metaRight,
-  score,
-}: {
-  name: string;
-  role: string;
-  metaLeft: string;
-  metaRight: string;
-  score: string;
-}) {
-  return (
-    <div className="rounded-md bg-[#282036]">
-      <div className="px-4 py-3">
-        <div className="font-semibold leading-5 text-neutral-300">{name}</div>
-        <div className="text-xs  text-neutral-400">{role}</div>
-      </div>
-      <div className="px-4 pb-3 text-xs text-neutral-400">
-        <div className="flex items-center justify-between">
-          <span>Score:</span>
-          <span>{score}</span>
-        </div>
-        <div className="flex items-center justify-between">
-          <span>{metaLeft}</span>
-          <span>{metaRight}</span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function CodePreview({
-  title,
-  badge = "LIVE",
-  metrics,
-}: {
-  title: string;
-  badge?: string;
-  metrics: string;
-}) {
-  return (
-    <Card className="bg-[#282036] border-0">
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-neutral-300">{title}</CardTitle>
-          <span className="text-xs font-medium text-red-500 border border-red-500 rounded px-1.5 py-0.5">
-            {badge}
-          </span>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <div className="grid md:grid-cols-2 gap-3">
-          <pre className="rounded-md border bg-zinc-950 text-zinc-100 p-3 text-xs overflow-auto">
-            {`function calculateScore(ans) {
-  let score = 0;
-  // Calculating
-  // total score...
-}`}
-          </pre>
-          <pre className="rounded-md border bg-zinc-950 text-zinc-100 p-3 text-xs overflow-auto">
-            {`[Video Feed Preview]
-Candidate is focused
-No proctoring flags`}
-          </pre>
-        </div>
-        <div className="text-xs text-neutral-300">
-          <span className="font-semibold">Metrics: </span>
-          {metrics}
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function JobListItem({
-  title,
-  subtitle,
-  applications,
-  inInterview,
-  rating,
-}: {
-  title: string;
-  subtitle: string;
-  applications: number;
-  inInterview: number;
-  rating: number;
-}) {
-  return (
-    <div className="rounded-md bg-[#282036] px-4 py-3">
-      <div className="font-semibold text-neutral-100">{title}</div>
-      <div className="text-xs text-neutral-300">{subtitle}</div>
-      <div className="mt-3 flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
-        <span className="inline-flex items-center gap-1 text-neutral-300">
-          <FileText className="h-4 w-4" aria-hidden="true" /> {applications}{" "}
-          Applications
-        </span>
-        <span className="inline-flex items-center gap-1 text-neutral-300">
-          <Users className="h-4 w-4" aria-hidden="true" /> {inInterview} in
-          Interview
-        </span>
-        <span className="inline-flex items-center gap-1 text-neutral-300">
-          <Star className="h-4 w-4 text-yellow-500" aria-hidden="true" />
-          {rating.toFixed(1)}/5 Rating
-        </span>
-      </div>
-    </div>
-  );
-}
-
-function ActivityItem({
-  icon: Icon,
-  title,
-  meta,
-  intent = "default",
-}: {
-  icon: React.ElementType;
-  title: string;
-  meta: string;
-  intent?: "success" | "info" | "user" | "announce" | "default";
-}) {
-  const intentClasses =
-    intent === "success"
-      ? "bg-emerald-50 border-emerald-200 text-emerald-600"
-      : intent === "info"
-      ? "bg-blue-50 border-blue-200 text-blue-600"
-      : intent === "user"
-      ? "bg-slate-50 border-slate-200 text-slate-700"
-      : intent === "announce"
-      ? "bg-rose-50 border-rose-200 text-rose-600"
-      : "bg-zinc-50 border-zinc-200 text-zinc-600";
-
-  return (
-    <li className="flex items-start gap-3 py-3">
-      <div
-        className={`mt-0.5 inline-flex h-7 w-7 items-center justify-center rounded-full border ${intentClasses}`}
-        aria-hidden="true">
-        <Icon className="h-4 w-4" />
-      </div>
-      <div className="flex-1">
-        <div className="text-sm font-medium leading-5 text-neutral-200">
-          {title}
-        </div>
-        <div className="text-xs text-neutral-300">{meta}</div>
-      </div>
-    </li>
-  );
-}
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
+import { CheckCircle2, PieChart, User2, Megaphone, Home } from "lucide-react";
+import Link from "next/link";
+import ActivityItem from "./_components/ActivityItem";
+import JobListItem from "./_components/JobListItem";
+import CodePreview from "./_components/CodePreview";
+import CandidateCard from "./_components/CandidateCard";
+import Column from "./_components/Column";
+import StatCard from "./_components/StatCard";
 
 export default function Page() {
   return (
-    <div className="space-y-6 mt-12">
+    <div className="space-y-4 sm:space-y-6 lg:space-y-8 mt-16">
+      <div className="sticky top-0 z-30 bg-gradient-to-br from-[#0A0A18]/90 to-[#0D0D20]/90 backdrop-blur-xl border-b border-white/10 pb-4 sm:pb-6 pt-4 sm:pt-6 px-4 sm:px-6 lg:px-8 xl:px-12">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2 sm:mb-3">
+            Welcome back, John Doe
+          </h1>
+          <Breadcrumb>
+            <BreadcrumbList className="text-white/60">
+              <BreadcrumbItem>
+                <BreadcrumbLink asChild>
+                  <Link
+                    href="/"
+                    className="flex items-center hover:text-white transition-colors">
+                    <Home className="w-4 h-4" />
+                  </Link>
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator className="text-white/40" />
+              <BreadcrumbItem>
+                <BreadcrumbLink asChild>
+                  <Link
+                    href="/dashboard"
+                    className="hover:text-white transition-colors">
+                    Dashboard
+                  </Link>
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator className="text-white/40" />
+              <BreadcrumbItem>
+                <BreadcrumbPage className="text-white font-semibold">
+                  Employer
+                </BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
+        </div>
+      </div>
+
       {/* KPI row */}
       <section
         aria-label="KPI cards"
@@ -223,9 +73,9 @@ export default function Page() {
       {/* Pipeline + Live Monitoring */}
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-2 bg-[#171726] border-0">
-          <CardHeader className="pb-2">
+          <CardHeader className="pb-4">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-neutral-100">
+              <CardTitle className="text-xl font-semibold text-neutral-100">
                 Candidate Pipeline
               </CardTitle>
               <Button className="bg-purple-500 text-white font-semibold hover:bg-purple-700">
@@ -233,7 +83,7 @@ export default function Page() {
               </Button>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-6">
             {/* Mobile horizontally scrollable columns */}
             <div className="md:hidden -mx-2 px-2 flex gap-4 overflow-x-auto pb-1 snap-x snap-mandatory">
               <Column
@@ -364,9 +214,9 @@ export default function Page() {
         </Card>
 
         <Card className="bg-[#171726] border-0">
-          <CardHeader className="pb-2">
+          <CardHeader className="pb-4">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-neutral-100">
+              <CardTitle className="text-xl font-semibold text-neutral-100">
                 Live Monitoring
               </CardTitle>
               <Button className="bg-purple-500 text-white font-semibold hover:bg-purple-700">
@@ -374,7 +224,7 @@ export default function Page() {
               </Button>
             </div>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-6 px-6">
             <CodePreview
               title="Alex Morgan - Coding Assessment"
               metrics="Code Quality: 87% | Speed: 92% | Originality: 96%"
@@ -391,9 +241,9 @@ export default function Page() {
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Active Job Postings */}
         <Card className="lg:col-span-2 bg-[#171726] border-0">
-          <CardHeader className="pb-2">
+          <CardHeader className="pb-4">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-neutral-100">
+              <CardTitle className="text-xl font-semibold text-neutral-100">
                 Active Job Postings
               </CardTitle>
               <Button
@@ -403,7 +253,7 @@ export default function Page() {
               </Button>
             </div>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-4 px-6">
             <JobListItem
               title="Senior Frontend Developer"
               subtitle="React, TypeScript, GraphQL • Remote"
@@ -430,9 +280,9 @@ export default function Page() {
 
         {/* Recent Activity */}
         <Card className="bg-[#171726] border-0">
-          <CardHeader className="pb-2">
+          <CardHeader className="pb-4">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-neutral-100">
+              <CardTitle className="text-xl font-semibold text-neutral-100">
                 Recent Activity
               </CardTitle>
               <Button
@@ -442,7 +292,7 @@ export default function Page() {
               </Button>
             </div>
           </CardHeader>
-          <CardContent className="pt-2">
+          <CardContent className="pt-3 px-6">
             <ul className="divide-y">
               <ActivityItem
                 icon={CheckCircle2}
