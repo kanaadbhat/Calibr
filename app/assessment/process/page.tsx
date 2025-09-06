@@ -1,7 +1,7 @@
 "use client"
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { CheckCircle, Lock, Play, Clock, BarChart3, Brain, Code, Users } from 'lucide-react';
+import { CheckCircle, Lock, Play, Clock, BarChart3, Brain, Code, Users, AlertTriangle, Loader2 } from 'lucide-react';
 import { useSession } from "next-auth/react";
 import { format } from 'date-fns';
 
@@ -28,6 +28,63 @@ const InterviewProgress = () => {
   const { data: session } = useSession();
   const userName = session?.user?.name || "Candidate";
   const firstName = userName.split(" ")[0];
+  
+  // System check validation states
+  const [isValidatingSystemCheck, setIsValidatingSystemCheck] = useState(true);
+  const [hasValidSystemCheck, setHasValidSystemCheck] = useState(false);
+  
+  // Validate system check on component mount
+  useEffect(() => {
+    const validateSystemCheck = () => {
+      try {
+        // Check if system check was completed
+        const systemCheckResults = localStorage.getItem('calibr_system_check_results');
+        
+        if (!systemCheckResults) {
+          setHasValidSystemCheck(false);
+          setIsValidatingSystemCheck(false);
+          return;
+        }
+        
+        const parsedResults = JSON.parse(systemCheckResults);
+        const timestamp = new Date(parsedResults.timestamp);
+        const now = new Date();
+        
+        // Check if system check was done within the last 30 minutes
+        const timeDiff = (now.getTime() - timestamp.getTime()) / (1000 * 60); // minutes
+        
+        if (timeDiff > 30) {
+          // System check is too old
+          setHasValidSystemCheck(false);
+        } else {
+          // Validate that all checks passed
+          const allChecksPass = parsedResults.results.every(
+            (check: {status: string}) => check.status === 'success' || check.status === 'warning'
+          );
+          
+          setHasValidSystemCheck(allChecksPass);
+        }
+      } catch {
+        // Invalid system check results
+        setHasValidSystemCheck(false);
+      } finally {
+        setIsValidatingSystemCheck(false);
+      }
+    };
+    
+    validateSystemCheck();
+    
+    // Listen for fullscreen changes
+    const handleFullscreenChange = () => {
+      if (!document.fullscreenElement) {
+        // User exited fullscreen, show warning
+        alert('Warning: Exiting full-screen mode during an assessment may result in automatic submission. Please return to full-screen mode.');
+      }
+    };
+    
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
 
   const defaultRounds: InterviewRound[] = [
     {
@@ -63,8 +120,25 @@ const InterviewProgress = () => {
   const currentRound = 2; // This could come from API or state management
   const isMockMode = true; // This could be determined by route or props
 
-  const handleStartRound = (roundIndex: number) => {
-    router.push(`/assessment/round/${roundIndex}`);
+  const handleStartRound = async (roundIndex: number) => {
+    try {
+      // Ensure we're in fullscreen mode before starting the round
+      if (!document.fullscreenElement) {
+        try {
+          await document.documentElement.requestFullscreen();
+        } catch (err) {
+          console.error('Error attempting to enable fullscreen mode:', err);
+          if (!confirm('Fullscreen mode is recommended for the assessment. Continue anyway?')) {
+            return;
+          }
+        }
+      }
+      
+      router.push(`/assessment/round/${roundIndex}`);
+    } catch (error) {
+      console.error('Error starting round:', error);
+      alert('There was an error starting this assessment round. Please try again.');
+    }
   };
 
   const interviewRounds = defaultRounds;
@@ -144,6 +218,62 @@ const InterviewProgress = () => {
   const getFormattedDate = () => {
     return format(new Date(), 'MM/dd/yyyy');
   };
+
+  // Redirect to precheck if system check validation fails
+  const handleRedirectToPrecheck = () => {
+    router.push('/assessment/precheck');
+  };
+
+  // If still validating or system check failed, show appropriate UI
+  if (isValidatingSystemCheck) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-[#0A0A18] to-[#0D0D20] flex flex-col items-center justify-center p-6">
+        <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-8 max-w-md w-full text-center">
+          <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-indigo-400" />
+          <h2 className="text-2xl font-bold mb-2">Validating System Requirements</h2>
+          <p className="text-white/70 mb-4">Please wait while we verify your system compatibility...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!hasValidSystemCheck) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-[#0A0A18] to-[#0D0D20] flex flex-col items-center justify-center p-6 text-white">
+        <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-8 max-w-md w-full">
+          <div className="flex items-center justify-center mb-6">
+            <div className="bg-amber-500/20 p-3 rounded-full">
+              <AlertTriangle className="h-8 w-8 text-amber-400" />
+            </div>
+          </div>
+          <h2 className="text-2xl font-bold mb-2 text-center">System Check Required</h2>
+          <p className="text-white/70 mb-6 text-center">
+            Before proceeding with your assessment, we need to verify that your system meets all the necessary requirements.
+          </p>
+          <div className="space-y-4 mb-6">
+            <div className="bg-white/5 p-4 rounded-lg">
+              <h3 className="font-medium mb-2">Why is this important?</h3>
+              <p className="text-sm text-white/70">
+                The system check ensures your camera, microphone, internet connection, and browser settings are properly configured for an optimal assessment experience.
+              </p>
+            </div>
+            <div className="bg-white/5 p-4 rounded-lg">
+              <h3 className="font-medium mb-2">What happens next?</h3>
+              <p className="text-sm text-white/70">
+                You&aposll be redirected to our system check page. Once all checks pass, you can return to continue with your assessment.
+              </p>
+            </div>
+          </div>
+          <button 
+            onClick={handleRedirectToPrecheck}
+            className="w-full py-3 px-4 bg-gradient-to-r from-indigo-500 to-rose-500 hover:from-indigo-600 hover:to-rose-600 text-white font-medium rounded-xl transition-all duration-200 flex items-center justify-center"
+          >
+            Proceed to System Check
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#0A0A18] to-[#0D0D20]">
