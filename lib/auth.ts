@@ -69,13 +69,13 @@ export const authOptions : NextAuthOptions = {
     })
   ],
   pages: {
-    signIn: '/',
+    signIn: '/login',
     signOut: '/',
     error: '/',
   },
   session: {
     strategy: "jwt",
-    maxAge: 30 * 24 * 60 * 60, // 30 days
+    maxAge: 24 * 60 * 60, // 24hr
   },
 callbacks: {
   async jwt({ token, user, trigger, session }) {
