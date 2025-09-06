@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import { Sidebar as ShadcnSidebar, useSidebar } from "@/components/ui/sidebar";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
@@ -19,7 +20,10 @@ import {
   SettingsIcon,
   ChevronLeft,
   ChevronRight,
+  Plus,
+  Calendar,
 } from "lucide-react";
+import { CreateJobDialog } from "./CreateJob";
 
 const items = [
   { label: "Dashboard", href: "/", icon: LayoutDashboard },
@@ -83,6 +87,21 @@ export function Sidebar() {
             </div>
           </div>
         )}
+
+        {/* Action Buttons Section */}
+        <div className="mb-6 space-y-3">
+          <CreateJobDialog>
+            <Button className="w-full bg-purple-500 text-white font-semibold hover:bg-purple-700 flex items-center justify-center gap-2">
+              <Plus className="w-4 h-4" />
+              {!collapsed && "Create Job"}
+            </Button>
+          </CreateJobDialog>
+          
+          <Button className="w-full bg-indigo-500 text-white font-semibold hover:bg-indigo-700 flex items-center justify-center gap-2">
+            <Calendar className="w-4 h-4" />
+            {!collapsed && "Schedule Interview"}
+          </Button>
+        </div>
 
         <TooltipProvider delayDuration={200}>
           <nav className="flex-1">

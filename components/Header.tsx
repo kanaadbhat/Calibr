@@ -60,8 +60,104 @@ const Header: React.FC = () => {
     return "/profile";
   };
 
-  const isDashboardEmployeerPage = pathname?.startsWith("/dashboard/employeer");
+  const isDashboardEmployeerPage = pathname?.startsWith("/dashboard/employer");
 
+  // Dashboard header - just logo and profile
+  if (isDashboardEmployeerPage) {
+    return (
+      <header className="fixed top-0 left-0 right-0 bg-[#0A0A18]/90 backdrop-blur-xl border-b border-white/10 z-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            {/* Logo */}
+            <div className="flex items-center space-x-2">
+              <Link href="/">
+                <span className="text-2xl font-bold bg-gradient-to-r from-indigo-300 to-rose-300 bg-clip-text text-transparent cursor-pointer">
+                  Calibr
+                </span>
+              </Link>
+            </div>
+
+            {/* Profile Section */}
+            <div className="flex items-center space-x-4">
+              {status === "authenticated" ? (
+                <div className="relative" ref={dropdownRef}>
+                  <button
+                    onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                    className="flex items-center space-x-2 p-2 rounded-lg hover:bg-white/5 transition-colors">
+                    {session.user?.image ? (
+                      <Image
+                        src={session.user.image}
+                        alt="User Avatar"
+                        width={32}
+                        height={32}
+                        className="rounded-full"
+                      />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-r from-indigo-500 to-rose-500 flex items-center justify-center">
+                        <User className="h-4 w-4 text-white" />
+                      </div>
+                    )}
+                  </button>
+
+                  {/* Dropdown Menu */}
+                  {isDropdownOpen && (
+                    <div className="absolute right-0 top-12 mt-1 w-48 bg-[#0A0A18] border border-white/20 rounded-lg shadow-lg backdrop-blur-xl py-2 z-50">
+                      <div className="px-4 py-2 border-b border-white/10">
+                        <p className="text-white text-sm font-medium">
+                          {session.user?.name}
+                        </p>
+                        <p className="text-white/60 text-xs">
+                          {session.user?.email}
+                        </p>
+                      </div>
+
+                      <Link
+                        href={getDashboardRoute()}
+                        className="flex items-center px-4 py-2 text-white/70 hover:text-white hover:bg-white/5 transition-colors"
+                        onClick={() => setIsDropdownOpen(false)}>
+                        <LayoutDashboard className="h-4 w-4 mr-2" />
+                        Dashboard
+                      </Link>
+
+                      <Link
+                        href={getProfileRoute()}
+                        className="flex items-center px-4 py-2 text-white/70 hover:text-white hover:bg-white/5 transition-colors"
+                        onClick={() => setIsDropdownOpen(false)}>
+                        <UserCircle className="h-4 w-4 mr-2" />
+                        Profile
+                      </Link>
+
+                      <div className="border-t border-white/10 my-1"></div>
+
+                      <button
+                        onClick={() => {
+                          setIsDropdownOpen(false);
+                          handleSignOut();
+                        }}
+                        className="flex items-center w-full px-4 py-2 text-white/70 hover:text-white hover:bg-white/5 transition-colors">
+                        <LogOut className="h-4 w-4 mr-2" />
+                        Logout
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <Link href="/login">
+                  <Button
+                    variant="outline"
+                    className="bg-[#0A0A18]/90 text-white">
+                    Sign In
+                  </Button>
+                </Link>
+              )}
+            </div>
+          </div>
+        </div>
+      </header>
+    );
+  }
+
+  // Landing page header - full navigation
   if (!isDashboardEmployeerPage)
     return (
       <header className="fixed top-0 left-0 right-0 bg-[#0A0A18]/90 backdrop-blur-xl border-b border-white/10 z-50">

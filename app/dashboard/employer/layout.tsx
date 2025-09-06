@@ -5,7 +5,7 @@ import type { Metadata } from "next";
 import { Analytics } from "@vercel/analytics/next";
 // import "./globals.css";
 import { Sidebar}  from "./_components/sidebar";
-import Header from "./_components/Header";
+import Header from "@/components/Header";
 import { Suspense } from "react";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 
