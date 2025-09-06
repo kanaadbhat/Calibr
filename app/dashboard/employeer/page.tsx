@@ -228,9 +228,9 @@ export default function Page() {
               <CardTitle className="text-neutral-100">
                 Candidate Pipeline
               </CardTitle>
-              <button className="text-sm text-primary underline-offset-4 hover:underline">
+              <Button className="bg-purple-500 text-white font-semibold hover:bg-purple-700">
                 View All
-              </button>
+              </Button>
             </div>
           </CardHeader>
           <CardContent>
@@ -369,9 +369,9 @@ export default function Page() {
               <CardTitle className="text-neutral-100">
                 Live Monitoring
               </CardTitle>
-              <button className="text-sm text-primary underline-offset-4 hover:underline">
+              <Button className="bg-purple-500 text-white font-semibold hover:bg-purple-700">
                 View All
-              </button>
+              </Button>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
