@@ -95,15 +95,17 @@ function Hero({
         },
     };
 
-    const [stats, setStats] = useState([
+    const initialStats = [
         { value: 0, target: 95, label: "Accuracy Rate", suffix: "%" },
         { value: 0, target: 500, label: "Companies Using", prefix: "+" },
         { value: 0, target: 78, label: "Time Saved", suffix: "%" },
-    ]);
+    ];
+
+    const [stats, setStats] = useState(initialStats);
 
     useEffect(() => {
-        stats.forEach((_, index) => {
-            animate(0, stats[index].target, {
+        initialStats.forEach((stat, index) => {
+            animate(0, stat.target, {
                 duration: 2.5,
                 delay: 1.5 + index * 0.3,
                 onUpdate: (latest) => {

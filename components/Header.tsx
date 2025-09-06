@@ -3,14 +3,38 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Menu, X, ArrowRight, User, LogOut, LayoutDashboard, UserCircle } from 'lucide-react';
 import { Button } from './ui/button';
 import { useSession, signOut } from 'next-auth/react';
+import { usePathname } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 
 const Header: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isDashboardPage, setIsDashboardPage] = useState(false);
   const { data: session, status } = useSession();
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const pathname = usePathname();
+
+  // Function to check if current page is a dashboard page
+  const checkIfDashboardPage = () => {
+    const dashboardRoutes = [
+      '/dashboard',
+      '/dashboard/employer',
+      '/dashboard/candidate',
+      '/profile/employer',
+      '/profile/candidate',
+      '/profile',
+      '/assessment'
+    ];
+    
+    const isDashboard = dashboardRoutes.some(route => pathname.startsWith(route));
+    setIsDashboardPage(isDashboard);
+  };
+
+  // Check dashboard page status on pathname change
+  useEffect(() => {
+    checkIfDashboardPage();
+  }, [pathname]);
 
   const handleSignOut = async () => {
     await signOut({ redirect: true, callbackUrl: '/' });
@@ -60,12 +84,14 @@ const Header: React.FC = () => {
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-8">
-            <a href="#features" className="text-white/70 hover:text-white transition-colors">Features</a>
-            <a href="#benefits" className="text-white/70 hover:text-white transition-colors">Benefits</a>
-            <a href="#testimonials" className="text-white/70 hover:text-white transition-colors">Testimonials</a>
-            <a href="#pricing" className="text-white/70 hover:text-white transition-colors">Pricing</a>
-          </nav>
+          {!isDashboardPage && (
+            <nav className="hidden md:flex items-center space-x-8">
+              <a href="#features" className="text-white/70 hover:text-white transition-colors">Features</a>
+              <a href="#benefits" className="text-white/70 hover:text-white transition-colors">Benefits</a>
+              <a href="#testimonials" className="text-white/70 hover:text-white transition-colors">Testimonials</a>
+              <a href="#pricing" className="text-white/70 hover:text-white transition-colors">Pricing</a>
+            </nav>
+          )}
 
           {/* Desktop CTA */}
           <div className="hidden md:flex items-center space-x-4">
