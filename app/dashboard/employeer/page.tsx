@@ -11,7 +11,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { CheckCircle2, PieChart, User2, Megaphone, Home } from "lucide-react";
+import { Home } from "lucide-react";
 import Link from "next/link";
 import ActivityItem from "./_components/ActivityItem";
 import JobListItem from "./_components/JobListItem";

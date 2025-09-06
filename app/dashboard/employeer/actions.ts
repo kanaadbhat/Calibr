@@ -17,6 +17,7 @@ export async function fetchStats(): Promise<{
   try {
     return { success: true, data: dashboardData.stats };
   } catch (error) {
+    console.log(error);
     return { success: false, data: [] };
   }
 }
@@ -29,6 +30,7 @@ export async function fetchActivities(): Promise<{
   try {
     return { success: true, data: dashboardData.activities };
   } catch (error) {
+    console.log(error);
     return { success: false, data: [] };
   }
 }
@@ -41,6 +43,7 @@ export async function fetchCandidates(): Promise<{
   try {
     return { success: true, data: dashboardData.candidatesByStage };
   } catch (error) {
+    console.log(error);
     return {
       success: false,
       data: { applied: [], screening: [], interview: [], offer: [], hired: [] },
@@ -56,6 +59,7 @@ export async function fetchLiveMonitoring(): Promise<{
   try {
     return { success: true, data: dashboardData.codePreview };
   } catch (error) {
+    console.log(error);
     return { success: false, data: [] };
   }
 }
@@ -65,6 +69,7 @@ export async function fetchJobs(): Promise<{ success: boolean; data: Job[] }> {
   try {
     return { success: true, data: dashboardData.jobs };
   } catch (error) {
+    console.log(error);
     return { success: false, data: [] };
   }
 }

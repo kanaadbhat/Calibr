@@ -1,5 +1,3 @@
-import { CheckCircle, Megaphone, UserPlus } from "lucide-react";
-
 export type Stat = {
   value: string;
   label: string;
