@@ -7,6 +7,7 @@ import { Analytics } from "@vercel/analytics/next";
 import { Sidebar}  from "./_components/sidebar";
 import Header from "./_components/Header";
 import { Suspense } from "react";
+import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 
 export const metadata: Metadata = {
   title: "Calibr Dashboard",
@@ -20,15 +21,17 @@ export default function RootLayout({
 }) {
   return (
     <main className={`font-sans bg-[#0d0d1f]`}>
-      <div className="min-h-dvh w-full md:flex">
-        <Suspense fallback={<div>Loading...</div>}>
-          <Sidebar />
-          <div className="flex-1 flex flex-col">
-            <Header />
-            <main className="flex-1 p-4 lg:p-6">{children}</main>
-          </div>
-        </Suspense>
-      </div>
+      <SidebarProvider defaultOpen={true}>
+        <div className="min-h-dvh w-full flex bg-[#0d0d1f]">
+          <Suspense fallback={<div>Loading...</div>}>
+            <Sidebar />
+            <SidebarInset className="flex-1 flex flex-col bg-[#0d0d1f] text-white">
+              <Header />
+              <main className="flex-1 p-4 lg:p-6 bg-[#0d0d1f]">{children}</main>
+            </SidebarInset>
+          </Suspense>
+        </div>
+      </SidebarProvider>
       <Analytics />
     </main>
   );
