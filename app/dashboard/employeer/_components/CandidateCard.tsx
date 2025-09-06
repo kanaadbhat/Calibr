@@ -1,3 +1,5 @@
+import { Badge } from "@/components/ui/badge";
+
 export default function CandidateCard({
   name,
   role,
@@ -12,15 +14,19 @@ export default function CandidateCard({
   score: string;
 }) {
   return (
-    <div className="rounded-md bg-[#282036]">
-      <div className="px-4 py-3">
-        <div className="font-semibold leading-5 text-neutral-300">{name}</div>
-        <div className="text-xs  text-neutral-400">{role}</div>
+    <div className="rounded-md bg-[#282036] border border-zinc-700 shadow-sm">
+      <div className="px-4 py-3 space-y-1 flex gap-3">
+        <div className="font-semibold leading-5 text-neutral-200">{name}</div>
+        <Badge
+          variant="outline"
+          className="text-[11px] px-2 py-0.5 rounded-full border border-zinc-600 text-neutral-300 bg-[#171726]">
+          {role}
+        </Badge>
       </div>
-      <div className="px-4 pb-3 text-xs text-neutral-400">
+      <div className="px-4 pb-3 text-xs text-neutral-400 space-y-1.5">
         <div className="flex items-center justify-between">
           <span>Score:</span>
-          <span>{score}</span>
+          <span className="font-medium text-neutral-200">{score}</span>
         </div>
         <div className="flex items-center justify-between">
           <span>{metaLeft}</span>

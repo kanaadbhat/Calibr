@@ -12,13 +12,19 @@ export default function Column({
   className?: string;
 }) {
   return (
-    <div className={`rounded-md bg-[#171726] ${className || ""}`}>
-      <div className="flex items-baseline justify-between px-4 py-3">
-        <h4 className="font-semibold text-neutral-200">
-          {title} <span className="text-neutral-200">({count})</span>
+    <div
+      className={`rounded-lg bg-[#171726] border border-white/5 ${
+        className || ""
+      }`}>
+      <div className="flex items-baseline justify-between px-4 py-2.5 border-b border-white/5">
+        <h4 className="text-lg font-semibold text-neutral-100">
+          {title}{" "}
+          <span className="text-xs text-neutral-400 font-normal">
+            ({count})
+          </span>
         </h4>
       </div>
-      <div className="px-3 pb-3 space-y-3">{children}</div>
+      <div className="p-3 space-y-2.5">{children}</div>
     </div>
   );
 }
