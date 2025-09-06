@@ -1,56 +1,14 @@
-export type Stat = {
-  value: string;
-  label: string;
-  trend: string;
-  trendDirection?: "up" | "down";
-};
+"use server";
+import type {
+  Stat,
+  Activity,
+  CandidatesByStage,
+  CodePreview,
+  Job,
+  DashboardData
+} from './types';
 
-export type Activity = {
-  intent: "success" | "info" | "announce";
-  title: string;
-  meta: string;
-  icon: "check-circle" | "user-plus" | "megaphone"; // use string identifiers
-};
-
-export type Candidate = {
-  name: string;
-  role: string;
-  metaLeft: string;
-  metaRight: string;
-  score: string;
-};
-
-export type CandidatesByStage = {
-  applied: Candidate[];
-  screening: Candidate[];
-  interview: Candidate[];
-  offer: Candidate[];
-  hired: Candidate[];
-};
-
-export type Job = {
-  title: string;
-  subtitle: string;
-  applications: number;
-  inInterview: number;
-  rating: number;
-};
-
-export type CodePreview = {
-  title: string;
-  badge: string;
-  metrics: string;
-};
-
-export type DashboardData = {
-  stats: Stat[];
-  activities: Activity[];
-  candidatesByStage: CandidatesByStage;
-  codePreview: CodePreview[];
-  jobs: Job[];
-};
-
-export const dashboardData: DashboardData = {
+ const dashboardData: DashboardData = {
   stats: [
     { value: "12", label: "Active Job Postings", trend: "▲ 2" },
     {
@@ -168,3 +126,68 @@ export const dashboardData: DashboardData = {
     },
   ],
 };
+
+// Fetch Stats
+export async function fetchStats(): Promise<{
+  success: boolean;
+  data: Stat[];
+}> {
+  try {
+    return { success: true, data: dashboardData.stats };
+  } catch (error) {
+    console.log(error);
+    return { success: false, data: [] };
+  }
+}
+
+// Fetch Activities
+export async function fetchActivities(): Promise<{
+  success: boolean;
+  data: Activity[];
+}> {
+  try {
+    return { success: true, data: dashboardData.activities };
+  } catch (error) {
+    console.log(error);
+    return { success: false, data: [] };
+  }
+}
+
+// Fetch Candidates (Pipeline)
+export async function fetchCandidates(): Promise<{
+  success: boolean;
+  data: CandidatesByStage;
+}> {
+  try {
+    return { success: true, data: dashboardData.candidatesByStage };
+  } catch (error) {
+    console.log(error);
+    return {
+      success: false,
+      data: { applied: [], screening: [], interview: [], offer: [], hired: [] },
+    };
+  }
+}
+
+// Fetch Live Monitoring (CodePreview)
+export async function fetchLiveMonitoring(): Promise<{
+  success: boolean;
+  data: CodePreview[];
+}> {
+  try {
+    return { success: true, data: dashboardData.codePreview };
+  } catch (error) {
+    console.log(error);
+    return { success: false, data: [] };
+  }
+}
+
+// Fetch Jobs
+export async function fetchJobs(): Promise<{ success: boolean; data: Job[] }> {
+  try {
+    return { success: true, data: dashboardData.jobs };
+  } catch (error) {
+    console.log(error);
+    return { success: false, data: [] };
+  }
+}

@@ -28,7 +28,7 @@ import {
   fetchActivities,
 } from "./actions";
 import { useEffect, useState } from "react";
-import { DashboardData, Stat } from "./data";
+import { DashboardData, Stat } from "./types";
 
 export default function Page() {
   const [data, setData] = useState<DashboardData | null>(null);

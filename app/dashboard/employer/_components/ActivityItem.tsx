@@ -1,5 +1,5 @@
 import React from "react";
-import { Activity } from "../data";
+import { Activity } from "../types";
 import { CheckCircle, Megaphone, UserPlus } from "lucide-react";
 
 const ICONS: Record<Activity["icon"], React.ElementType> = {

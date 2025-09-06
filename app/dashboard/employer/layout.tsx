@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 // import { GeistMono } from "geist/font/mono";
 import { Analytics } from "@vercel/analytics/next";
 // import "./globals.css";
-import { Sidebar } from "./_components/sidebar";
+import { Sidebar}  from "./_components/sidebar";
 import Header from "./_components/Header";
 import { Suspense } from "react";
 
