@@ -50,7 +50,7 @@ export default function CreateAssessmentFlow({
     }
 
     try {
-      // Transform the complete assessment data to match the existing AssessmentFormData interface
+      // Transform the complete assessment data to match the backend structure
       const assessmentFormData = {
         title: completeData.general.title,
         description: completeData.general.description,
@@ -62,10 +62,12 @@ export default function CreateAssessmentFlow({
           ...(completeData.aptitude && {
             aptitude: {
               enabled: true,
-              questionsCount: completeData.aptitude.numberOfQuestions,
+              questionsCount: completeData.aptitude.totalQuestions,
               timeLimit: completeData.aptitude.duration,
-              weightage: completeData.aptitude.score.required,
+              weightage: completeData.aptitude.passingScore,
               topics: Object.keys(completeData.aptitude.sectionWeightage),
+              // Pass the full aptitude data for the backend
+              fullData: completeData.aptitude
             },
           }),
           // Other rounds will be added when their forms are implemented

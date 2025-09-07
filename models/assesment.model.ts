@@ -16,148 +16,7 @@ export interface Assessment extends Document {
   };
 
   // Aptitude Round Configuration
-  aptitude?: {
-    numberOfQuestions: number;
-    scheduledDate?: Date;
-    startTime?: string; // Format: "HH:MM"
-    endTime?: string; // Format: "HH:MM"
-    addManualQuestion: boolean;
-    duration: number; // in minutes
-    
-    score: {
-      min: number;
-      max: number;
-      required: number; // minimum score to pass
-    };
-    
-    warnings: {
-      fullscreen: number;
-      tabSwitch: number;
-      audio: number;
-    };
-    
-    // Weightage for different sections (must add up to 100)
-    sectionWeightage: {
-      logicalReasoning: number; // percentage
-      quantitative: number; // percentage
-      technical: number; // percentage
-      verbal: number; // percentage
-    };
-    
-    candidateIds: mongoose.Types.ObjectId[];
-    
-    // Question pool configuration
-    questionPool: {
-      logicalReasoning: number; // number of questions from this category
-      quantitative: number;
-      technical: number;
-      verbal: number;
-    };
-    
-    // Additional settings
-    randomizeQuestions: boolean;
-    showResultImmediately: boolean;
-    allowReviewBeforeSubmit: boolean;
-    negativeMarking: boolean;
-    negativeMarkingPercentage?: number; // if negative marking is enabled
-  };
-
-  // Coding Round Configuration (structure for future implementation)
-  /*
-  coding?: {
-    numberOfProblems: number;
-    scheduledDate?: Date;
-    startTime?: string;
-    endTime?: string;
-    duration: number; // in minutes
-    
-    score: {
-      min: number;
-      max: number;
-      required: number;
-    };
-    
-    warnings: {
-      fullscreen: number;
-      tabSwitch: number;
-      audio: number;
-    };
-    
-    candidateIds: mongoose.Types.ObjectId[];
-    
-    // Coding specific settings
-    allowedLanguages: string[];
-    testCasesVisible: boolean;
-    compilerTimeout: number; // in seconds
-    memoryLimit: number; // in MB
-    
-    // Problem difficulty weightage
-    difficultyWeightage: {
-      easy: number;
-      medium: number;
-      hard: number;
-    };
-  };
-
-  // Technical Interview Configuration (structure for future implementation)
-  technicalInterview?: {
-    scheduledDate?: Date;
-    startTime?: string;
-    endTime?: string;
-    duration: number; // in minutes
-    interviewerIds: mongoose.Types.ObjectId[];
-    candidateIds: mongoose.Types.ObjectId[];
-    
-    score: {
-      min: number;
-      max: number;
-      required: number;
-    };
-    
-    // Interview criteria
-    evaluationCriteria: {
-      technicalKnowledge: number; // percentage weightage
-      problemSolving: number;
-      communication: number;
-      codeQuality: number;
-    };
-    
-    // Meeting configuration
-    meetingLink?: string;
-    meetingPlatform?: string; // 'zoom', 'teams', 'google-meet', etc.
-    recordSession: boolean;
-  };
-
-  // HR Interview Configuration (structure for future implementation)
-  hrInterview?: {
-    scheduledDate?: Date;
-    startTime?: string;
-    endTime?: string;
-    duration: number; // in minutes
-    interviewerIds: mongoose.Types.ObjectId[];
-    candidateIds: mongoose.Types.ObjectId[];
-    
-    score: {
-      min: number;
-      max: number;
-      required: number;
-    };
-    
-    // HR Interview criteria
-    evaluationCriteria: {
-      communication: number; // percentage weightage
-      culturalFit: number;
-      motivation: number;
-      leadership: number;
-      teamwork: number;
-    };
-    
-    // Meeting configuration
-    meetingLink?: string;
-    meetingPlatform?: string;
-    recordSession: boolean;
-  };
-  */
+    aptitudeId?: mongoose.Types.ObjectId;
 
   // Overall assessment settings
   overallPassingCriteria: {
@@ -242,50 +101,9 @@ const AssessmentSchema: Schema = new Schema(
       hrInterview: { type: Boolean, default: false }
     },
     
-    aptitude: {
-      numberOfQuestions: { type: Number, min: 1, max: 200 },
-      scheduledDate: { type: Date },
-      startTime: { type: String, match: /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/ },
-      endTime: { type: String, match: /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/ },
-      addManualQuestion: { type: Boolean, default: false },
-      duration: { type: Number, min: 15, max: 480 }, // 15 minutes to 8 hours
-      
-      score: {
-        min: { type: Number, default: 0 },
-        max: { type: Number, required: true },
-        required: { type: Number, required: true }
-      },
-      
-      warnings: {
-        fullscreen: { type: Number, default: 3, min: 0 },
-        tabSwitch: { type: Number, default: 2, min: 0 },
-        audio: { type: Number, default: 1, min: 0 }
-      },
-      
-      sectionWeightage: {
-        logicalReasoning: { type: Number, min: 0, max: 100, default: 25 },
-        quantitative: { type: Number, min: 0, max: 100, default: 25 },
-        technical: { type: Number, min: 0, max: 100, default: 25 },
-        verbal: { type: Number, min: 0, max: 100, default: 25 }
-      },
-      
-      candidateIds: [{
-        type: Schema.Types.ObjectId,
-        ref: "candidate"
-      }],
-      
-      questionPool: {
-        logicalReasoning: { type: Number, default: 0, min: 0 },
-        quantitative: { type: Number, default: 0, min: 0 },
-        technical: { type: Number, default: 0, min: 0 },
-        verbal: { type: Number, default: 0, min: 0 }
-      },
-      
-      randomizeQuestions: { type: Boolean, default: true },
-      showResultImmediately: { type: Boolean, default: false },
-      allowReviewBeforeSubmit: { type: Boolean, default: true },
-      negativeMarking: { type: Boolean, default: false },
-      negativeMarkingPercentage: { type: Number, min: 0, max: 50 }
+    aptitudeId: {
+      type: Schema.Types.ObjectId,
+      ref: "aptitude"
     },
     
     /*
@@ -453,33 +271,15 @@ AssessmentSchema.index({ "coding.scheduledDate": 1 });
 
 // Virtual for total weightage validation
 AssessmentSchema.virtual('aptitudeWeightageTotal').get(function() {
-  const doc = this as unknown as Assessment;
-  if (!doc.aptitude?.sectionWeightage) return 0;
-  const weightage = doc.aptitude.sectionWeightage;
-  return weightage.logicalReasoning + weightage.quantitative + weightage.technical + weightage.verbal;
+  // Aptitude is now referenced by aptitudeId; sectionWeightage logic should be handled in Aptitude model/service
+  return 0;
 });
 
 // Validation middleware
 AssessmentSchema.pre('save', function(next) {
   const doc = this as unknown as Assessment;
   
-  // Remove round configurations if the round is not enabled
-  if (!doc.toConductRounds?.aptitude && doc.aptitude) {
-    doc.aptitude = undefined;
-  }
-  
-  // Validate aptitude section weightage adds up to 100
-  if (doc.toConductRounds?.aptitude && doc.aptitude?.sectionWeightage) {
-    const weightage = doc.aptitude.sectionWeightage;
-    const total = weightage.logicalReasoning + 
-                  weightage.quantitative + 
-                  weightage.technical + 
-                  weightage.verbal;
-    
-    if (total !== 100) {
-      return next(new Error('Aptitude section weightage must add up to 100%'));
-    }
-  }
+  // Aptitude round config and sectionWeightage validation should be handled in Aptitude model/service
   
   // Validate overall round weightage if specified
   if (doc.overallPassingCriteria?.weightagePerRound) {

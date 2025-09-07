@@ -20,6 +20,7 @@ export interface AssessmentFormData {
       timeLimit: number;
       weightage: number;
       topics: string[];
+      fullData?: any; // Full aptitude data from the form
     };
     coding?: {
       enabled: boolean;
@@ -71,11 +72,11 @@ export function useAssessmentCreation() {
 
         // Configure rounds based on enabled status
         ...(data.rounds.aptitude?.enabled && {
-          aptitude: {
-            numberOfQuestions: data.rounds.aptitude.questionsCount,
+          aptitude: data.rounds.aptitude?.fullData || {
+            totalQuestions: data.rounds.aptitude.questionsCount, // Updated field name
             addManualQuestion: false,
             duration: data.rounds.aptitude.timeLimit,
-            score: { min: 0, max: 100, required: 60 },
+            passingScore: 60, // Updated field name
             warnings: { fullscreen: 3, tabSwitch: 5, audio: 2 },
             sectionWeightage: { logicalReasoning: 40, quantitative: 30, technical: 20, verbal: 10 },
             candidateIds: [],
@@ -88,7 +89,18 @@ export function useAssessmentCreation() {
             randomizeQuestions: true,
             showResultImmediately: false,
             allowReviewBeforeSubmit: true,
-            negativeMarking: false
+            negativeMarking: false,
+            negativeMarkingPercentage: 25,
+            questionIds: [],
+            expiredQuestionIds: [],
+            sections: [
+              { name: 'Logical Reasoning', description: 'Problem solving and logical thinking', questionIds: [] },
+              { name: 'Quantitative', description: 'Mathematical and analytical skills', questionIds: [] },
+              { name: 'Technical', description: 'Technical knowledge assessment', questionIds: [] },
+              { name: 'Verbal', description: 'Language and communication skills', questionIds: [] }
+            ],
+            status: 'inactive',
+            currentQuestionIndex: 0
           }
         }),
 

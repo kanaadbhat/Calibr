@@ -15,44 +15,42 @@ interface AptitudeFormProps {
 }
 
 export interface AptitudeFormData {
-  numberOfQuestions: number;
+  totalQuestions: number; // renamed from numberOfQuestions
   scheduledDate?: Date;
   startTime?: string;
   endTime?: string;
   addManualQuestion: boolean;
   duration: number;
-  
-  score: {
-    min: number;
-    max: number;
-    required: number;
-  };
-  
+  passingScore: number; // simplified from score.required
   warnings: {
     fullscreen: number;
     tabSwitch: number;
     audio: number;
   };
-  
   sectionWeightage: {
     logicalReasoning: number;
     quantitative: number;
     technical: number;
     verbal: number;
   };
-  
   questionPool: {
     logicalReasoning: number;
     quantitative: number;
     technical: number;
     verbal: number;
   };
-  
   randomizeQuestions: boolean;
   showResultImmediately: boolean;
   allowReviewBeforeSubmit: boolean;
   negativeMarking: boolean;
   negativeMarkingPercentage?: number;
+  sections: {
+    name: string;
+    description?: string;
+    timeLimit?: number;
+  }[];
+  status: 'inactive' | 'active' | 'completed';
+  currentQuestionIndex: number;
 }
 
 export default function AptitudeForm({ 
@@ -60,14 +58,10 @@ export default function AptitudeForm({
   onNext 
 }: AptitudeFormProps) {
   const [formData, setFormData] = useState<AptitudeFormData>({
-    numberOfQuestions: 50,
+    totalQuestions: 50, // renamed from numberOfQuestions
     addManualQuestion: false,
     duration: 60,
-    score: {
-      min: 0,
-      max: 100,
-      required: 60,
-    },
+    passingScore: 60, // simplified from score.required
     warnings: {
       fullscreen: 3,
       tabSwitch: 2,
@@ -90,6 +84,14 @@ export default function AptitudeForm({
     allowReviewBeforeSubmit: true,
     negativeMarking: false,
     negativeMarkingPercentage: 25,
+    sections: [
+      { name: 'Logical Reasoning', description: 'Problem solving and logical thinking' },
+      { name: 'Quantitative', description: 'Mathematical and analytical skills' },
+      { name: 'Technical', description: 'Technical knowledge assessment' },
+      { name: 'Verbal', description: 'Language and communication skills' }
+    ],
+    status: 'inactive',
+    currentQuestionIndex: 0,
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -116,16 +118,16 @@ export default function AptitudeForm({
     const newErrors: Record<string, string> = {};
     
     // Validation
-    if (formData.numberOfQuestions < 1 || formData.numberOfQuestions > 200) {
-      newErrors.numberOfQuestions = 'Number of questions must be between 1 and 200';
+    if (formData.totalQuestions < 1 || formData.totalQuestions > 200) {
+      newErrors.totalQuestions = 'Number of questions must be between 1 and 200';
     }
     
     if (formData.duration < 15 || formData.duration > 480) {
       newErrors.duration = 'Duration must be between 15 and 480 minutes';
     }
     
-    if (formData.score.required < formData.score.min || formData.score.required > formData.score.max) {
-      newErrors.requiredScore = 'Required score must be between minimum and maximum score';
+    if (formData.passingScore < 0 || formData.passingScore > 100) {
+      newErrors.passingScore = 'Passing score must be between 0 and 100';
     }
     
     const totalWeightage = getTotalSectionWeightage();
@@ -134,8 +136,8 @@ export default function AptitudeForm({
     }
     
     const totalQuestions = getTotalQuestions();
-    if (totalQuestions !== formData.numberOfQuestions) {
-      newErrors.questionPool = `Question pool total (${totalQuestions}) must match number of questions (${formData.numberOfQuestions})`;
+    if (totalQuestions !== formData.totalQuestions) {
+      newErrors.questionPool = `Question pool total (${totalQuestions}) must match number of questions (${formData.totalQuestions})`;
     }
     
     if (formData.negativeMarking && (!formData.negativeMarkingPercentage || formData.negativeMarkingPercentage < 0 || formData.negativeMarkingPercentage > 50)) {
@@ -194,17 +196,17 @@ export default function AptitudeForm({
           <CardContent className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="space-y-2">
-                <Label htmlFor="numberOfQuestions" className="text-white">Number of Questions</Label>
+                <Label htmlFor="totalQuestions" className="text-white">Number of Questions</Label>
                 <Input
-                  id="numberOfQuestions"
+                  id="totalQuestions"
                   type="number"
                   min="1"
                   max="200"
-                  value={formData.numberOfQuestions}
-                  onChange={(e) => setFormData(prev => ({ ...prev, numberOfQuestions: parseInt(e.target.value) || 0 }))}
-                  className={`bg-[#1f1f35] border-white/10 text-white ${errors.numberOfQuestions ? 'border-red-500' : ''}`}
+                  value={formData.totalQuestions}
+                  onChange={(e) => setFormData(prev => ({ ...prev, totalQuestions: parseInt(e.target.value) || 0 }))}
+                  className={`bg-[#1f1f35] border-white/10 text-white ${errors.totalQuestions ? 'border-red-500' : ''}`}
                 />
-                {errors.numberOfQuestions && <p className="text-red-500 text-sm mt-1">{errors.numberOfQuestions}</p>}
+                {errors.totalQuestions && <p className="text-red-500 text-sm mt-1">{errors.totalQuestions}</p>}
               </div>
               
               <div className="space-y-2">
@@ -286,52 +288,38 @@ export default function AptitudeForm({
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <Label htmlFor="minScore" className="text-white">Minimum Score</Label>
+                <Label htmlFor="passingScore" className="text-white">Passing Score (%)</Label>
                 <Input
-                  id="minScore"
+                  id="passingScore"
                   type="number"
                   min="0"
-                  value={formData.score.min}
+                  max="100"
+                  value={formData.passingScore}
                   onChange={(e) => setFormData(prev => ({ 
                     ...prev, 
-                    score: { ...prev.score, min: parseInt(e.target.value) || 0 }
+                    passingScore: parseInt(e.target.value) || 0 
                   }))}
-                  className="bg-[#1f1f35] border-white/10 text-white"
+                  className={`bg-[#1f1f35] border-white/10 text-white ${errors.passingScore ? 'border-red-500' : ''}`}
                 />
+                {errors.passingScore && <p className="text-red-500 text-sm mt-1">{errors.passingScore}</p>}
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="maxScore" className="text-white">Maximum Score</Label>
-                <Input
-                  id="maxScore"
-                  type="number"
-                  min="1"
-                  value={formData.score.max}
+                <Label className="text-white">Status</Label>
+                <select
+                  value={formData.status}
                   onChange={(e) => setFormData(prev => ({ 
                     ...prev, 
-                    score: { ...prev.score, max: parseInt(e.target.value) || 100 }
+                    status: e.target.value as 'inactive' | 'active' | 'completed' 
                   }))}
-                  className="bg-[#1f1f35] border-white/10 text-white"
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="requiredScore" className="text-white">Required Score to Pass</Label>
-                <Input
-                  id="requiredScore"
-                  type="number"
-                  min={formData.score.min}
-                  max={formData.score.max}
-                  value={formData.score.required}
-                  onChange={(e) => setFormData(prev => ({ 
-                    ...prev, 
-                    score: { ...prev.score, required: parseInt(e.target.value) || 0 }
-                  }))}
-                  className={`bg-[#1f1f35] border-white/10 text-white ${errors.requiredScore ? 'border-red-500' : ''}`}
-                />
-                {errors.requiredScore && <p className="text-red-500 text-sm mt-1">{errors.requiredScore}</p>}
+                  className="w-full bg-[#1f1f35] border-white/10 text-white rounded-md p-2"
+                >
+                  <option value="inactive">Inactive</option>
+                  <option value="active">Active</option>
+                  <option value="completed">Completed</option>
+                </select>
               </div>
             </div>
             
@@ -442,8 +430,8 @@ export default function AptitudeForm({
           <CardHeader>
             <CardTitle className="text-white flex items-center justify-between">
               Question Pool Distribution
-              <span className={`text-sm font-normal ${getTotalQuestions() === formData.numberOfQuestions ? 'text-green-400' : 'text-red-400'}`}>
-                Total: {getTotalQuestions()}/{formData.numberOfQuestions}
+              <span className={`text-sm font-normal ${getTotalQuestions() === formData.totalQuestions ? 'text-green-400' : 'text-red-400'}`}>
+                Total: {getTotalQuestions()}/{formData.totalQuestions}
               </span>
             </CardTitle>
             <CardDescription className="text-white/60">
@@ -497,6 +485,62 @@ export default function AptitudeForm({
               </div>
             </div>
             {errors.questionPool && <p className="text-red-500 text-sm">{errors.questionPool}</p>}
+          </CardContent>
+        </Card>
+
+        {/* Sections Configuration */}
+        <Card className="bg-[#171726] border-0">
+          <CardHeader>
+            <CardTitle className="text-white">Test Sections</CardTitle>
+            <CardDescription className="text-white/60">
+              Configure individual sections for the aptitude test
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {formData.sections.map((section, index) => (
+              <div key={index} className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-[#1f1f35] rounded-lg">
+                <div className="space-y-2">
+                  <Label className="text-white">Section Name</Label>
+                  <Input
+                    type="text"
+                    value={section.name}
+                    onChange={(e) => {
+                      const newSections = [...formData.sections];
+                      newSections[index].name = e.target.value;
+                      setFormData(prev => ({ ...prev, sections: newSections }));
+                    }}
+                    className="bg-[#2a2a40] border-white/10 text-white"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-white">Description</Label>
+                  <Input
+                    type="text"
+                    value={section.description || ''}
+                    onChange={(e) => {
+                      const newSections = [...formData.sections];
+                      newSections[index].description = e.target.value;
+                      setFormData(prev => ({ ...prev, sections: newSections }));
+                    }}
+                    className="bg-[#2a2a40] border-white/10 text-white"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-white">Time Limit (minutes)</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    value={section.timeLimit || ''}
+                    onChange={(e) => {
+                      const newSections = [...formData.sections];
+                      newSections[index].timeLimit = parseInt(e.target.value) || undefined;
+                      setFormData(prev => ({ ...prev, sections: newSections }));
+                    }}
+                    className="bg-[#2a2a40] border-white/10 text-white"
+                  />
+                </div>
+              </div>
+            ))}
           </CardContent>
         </Card>
 
