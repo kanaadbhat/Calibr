@@ -12,7 +12,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
@@ -27,22 +26,25 @@ import {
   ChevronRight,
   Plus,
   Calendar,
+  FileText,
 } from "lucide-react";
-import { CreateJobDialog } from "./CreateJob";
 
 const items = [
-  { label: "Dashboard", href: "/", icon: LayoutDashboard },
-  { label: "Job Postings", href: "/jobs", icon: Briefcase },
-  { label: "Candidates", href: "/candidates", icon: Users },
-  { label: "Interviews", href: "/interviews", icon: CalendarClock },
-  { label: "Live Monitoring", href: "/monitoring", icon: ActivitySquare },
-  { label: "Analytics", href: "/analytics", icon: LineChart },
-  { label: "Team", href: "/team", icon: UsersRound },
-  { label: "Settings", href: "/settings", icon: SettingsIcon },
+  { label: "Create Job", action: "create-job", icon: Plus, type: "action" },
+  { label: "Schedule Interview", icon: Calendar, type: "dialog", component: null },
+  { label: "Add Assessment", action: "add-assessment", icon: FileText, type: "action" },
+  { label: "Dashboard", action: "dashboard", icon: LayoutDashboard, type: "action" },
+  { label: "Job Postings", href: "/dashboard/employer/jobs", icon: Briefcase, type: "link" },
+  { label: "Candidates", href: "/dashboard/employer/candidates", icon: Users, type: "link" },
+  { label: "Interviews", href: "/dashboard/employer/interviews", icon: CalendarClock, type: "link" },
+  { label: "Live Monitoring", href: "/dashboard/employer/monitoring", icon: ActivitySquare, type: "link" },
+  { label: "Analytics", href: "/dashboard/employer/analytics", icon: LineChart, type: "link" },
+  { label: "Team", href: "/dashboard/employer/team", icon: UsersRound, type: "link" },
+  { label: "Settings", href: "/dashboard/employer/settings", icon: SettingsIcon, type: "link" },
 ];
 
-// Export items so TopNav can render them inside the mobile sheet
-export const NAV_ITEMS = items;
+// Export navigation items (excluding action items) so TopNav can render them inside the mobile sheet
+export const NAV_ITEMS = items.filter(item => item.type === "link");
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -95,67 +97,14 @@ export function Sidebar() {
         </div>
       )}
 
-      {/* Action Buttons Section */}
-      <div className={cn("mb-6 space-y-3", collapsed && "flex flex-col items-center")}> 
-        <CreateJobDialog>
-          <Button
-            className={cn(
-              "bg-purple-500 text-white font-semibold hover:bg-purple-700 transition-all",
-              collapsed
-                ? "h-9 w-9 p-0 flex items-center justify-center rounded-xl" 
-                : "w-full flex items-center justify-center gap-2 rounded-md px-4 py-2"
-            )}
-            aria-label="Create Job"
-            title={collapsed ? "Create Job" : undefined}
-          >
-            <TooltipProvider delayDuration={200}>
-              <Tooltip open={collapsed ? undefined : false}>
-                <TooltipTrigger asChild>
-                  <span className="flex items-center justify-center w-full h-full">
-                    <Plus className="w-4 h-4" />
-                    {!collapsed && <span>Create Job</span>}
-                  </span>
-                </TooltipTrigger>
-                {collapsed && (
-                  <TooltipContent side="right">Create Job</TooltipContent>
-                )}
-              </Tooltip>
-            </TooltipProvider>
-          </Button>
-        </CreateJobDialog>
-
-        <TooltipProvider delayDuration={200}>
-          <Tooltip open={collapsed ? undefined : false}>
-            <TooltipTrigger asChild>
-              <Button
-                className={cn(
-                  "bg-indigo-500 text-white font-semibold hover:bg-indigo-700 transition-all",
-                  collapsed
-                    ? "h-9 w-9 p-0 flex items-center justify-center rounded-xl"
-                    : "w-full flex items-center justify-center gap-2 rounded-md px-4 py-2"
-                )}
-                aria-label="Schedule Interview"
-                title={collapsed ? "Schedule Interview" : undefined}
-              >
-                <Calendar className="w-4 h-4" />
-                {!collapsed && <span>Schedule Interview</span>}
-              </Button>
-            </TooltipTrigger>
-            {collapsed && (
-              <TooltipContent side="right">Schedule Interview</TooltipContent>
-            )}
-          </Tooltip>
-        </TooltipProvider>
-      </div>
-
       <TooltipProvider delayDuration={200}>
         <nav className="flex-1">
           <ul className="flex flex-col">
             {items.map((item) => {
-              const active = pathname === item.href;
+              const active = item.type === "link" && pathname === item.href;
               const Icon = item.icon;
 
-              let baseClass = "flex items-center transition-all duration-200";
+              let baseClass = "flex items-center transition-all duration-200 cursor-pointer";
               if (collapsed) {
                 baseClass +=
                   " justify-center h-12 sm:h-14 my-1 rounded-xl w-full";
@@ -176,26 +125,64 @@ export function Sidebar() {
                   " text-white/60 hover:text-white hover:bg-gradient-to-r hover:from-indigo-500/20 hover:to-rose-500/20";
               }
 
+              const content = (
+                <>
+                  <Icon
+                    className="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0"
+                    aria-hidden="true"
+                  />
+                  {!collapsed && (
+                    <span className="font-medium text-sm sm:text-base">
+                      {item.label}
+                    </span>
+                  )}
+                </>
+              );
+
+              const handleActionClick = () => {
+                if (item.type === "action" && item.action) {
+                  if ((window as any).handleViewChange) {
+                    (window as any).handleViewChange(item.action);
+                  }
+                }
+              };
+
               return (
-                <li key={item.href}>
+                <li key={item.label}>
                   <Tooltip open={collapsed ? undefined : false}>
                     <TooltipTrigger asChild>
-                      <Link
-                        href={item.href}
-                        className={baseClass}
-                        aria-current={active ? "page" : undefined}
-                        title={collapsed ? item.label : undefined}
-                      >
-                        <Icon
-                          className="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0"
-                          aria-hidden="true"
-                        />
-                        {!collapsed && (
-                          <span className="font-medium text-sm sm:text-base">
-                            {item.label}
-                          </span>
-                        )}
-                      </Link>
+                      {item.type === "dialog" ? (
+                        <div
+                          className={baseClass}
+                          role="button"
+                          tabIndex={0}
+                          aria-label={item.label}
+                          title={collapsed ? item.label : undefined}
+                          onClick={() => console.log(`${item.label} clicked`)}
+                        >
+                          {content}
+                        </div>
+                      ) : item.type === "action" ? (
+                        <div
+                          className={baseClass}
+                          role="button"
+                          tabIndex={0}
+                          aria-label={item.label}
+                          title={collapsed ? item.label : undefined}
+                          onClick={handleActionClick}
+                        >
+                          {content}
+                        </div>
+                      ) : (
+                        <Link
+                          href={item.href!}
+                          className={baseClass}
+                          aria-current={active ? "page" : undefined}
+                          title={collapsed ? item.label : undefined}
+                        >
+                          {content}
+                        </Link>
+                      )}
                     </TooltipTrigger>
                     {collapsed && (
                       <TooltipContent side="right">{item.label}</TooltipContent>

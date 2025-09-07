@@ -1,15 +1,6 @@
 "use client";
 
 import * as React from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -23,19 +14,22 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Upload, X, FileText } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Upload, X, FileText, Home } from "lucide-react";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import Link from "next/link";
 import { toast } from "sonner";
 import { useCreateJob } from "../hook";
 import type { JobCreationData } from "../actions";
 
-type CreateJobDialogProps = {
-  children: React.ReactNode; // trigger
-  className?: string;
-};
-
-export function CreateJobDialog({ children, className }: CreateJobDialogProps) {
-  const [open, setOpen] = React.useState(false);
+export default function CreateJobPage() {
   const [uploadedFile, setUploadedFile] = React.useState<File | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [tab, setTab] = React.useState<"form" | "upload">("form");
@@ -130,12 +124,15 @@ export function CreateJobDialog({ children, className }: CreateJobDialogProps) {
 
       if (result.success) {
         toast.success(result.message || "Job posting created successfully!");
-        setOpen(false);
         setUploadedFile(null);
         if (fileInputRef.current) {
           fileInputRef.current.value = "";
         }
         form.reset();
+        // Return to dashboard after successful creation
+        if ((window as any).handleViewChange) {
+          (window as any).handleViewChange("dashboard");
+        }
       } else {
         toast.error(result.message || "Failed to create job posting");
       }
@@ -147,48 +144,80 @@ export function CreateJobDialog({ children, className }: CreateJobDialogProps) {
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent
-        className={cn("sm:max-w-2xl bg-[#171726] border-0", className)}
-      >
-        <DialogHeader>
-          <DialogTitle className="text-neutral-100">Create Job</DialogTitle>
-          <DialogDescription className="text-neutral-200">
-            Fill in the details to create a new job posting.
-          </DialogDescription>
-        </DialogHeader>
+    <div className="space-y-4 sm:space-y-6 lg:space-y-8 mt-16">
+      {/* Header */}
+      <div className="sticky top-0 z-30 bg-gradient-to-br from-[#0A0A18]/90 to-[#0D0D20]/90 backdrop-blur-xl border-b border-white/10 pb-4 pt-8 sm:pt-6 px-4 sm:px-6 lg:px-8 xl:px-12">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2 sm:mb-3">
+            Create Job Posting
+          </h1>
+          <Breadcrumb className="mt-4">
+            <BreadcrumbList className="text-white/60">
+              <BreadcrumbItem>
+                <BreadcrumbLink asChild>
+                  <Link
+                    href="/"
+                    className="flex items-center hover:text-white transition-colors">
+                    <Home className="w-4 h-4" />
+                  </Link>
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator className="text-white/40" />
+              <BreadcrumbItem>
+                <BreadcrumbLink asChild>
+                  <Link
+                    href="/dashboard/employer"
+                    className="hover:text-white transition-colors">
+                    Dashboard
+                  </Link>
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator className="text-white/40" />
+              <BreadcrumbItem>
+                <BreadcrumbPage className="text-white font-semibold">
+                  Create Job
+                </BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
+        </div>
+      </div>
 
-        <Tabs
-          value={tab}
-          onValueChange={(v) => setTab(v as "form" | "upload")}
-          className="w-full"
-        >
-          <TabsList className="grid w-full grid-cols-2 bg-[#5A5A75] rounded-lg">
-            <TabsTrigger
-              value="form"
-              className="text-neutral-100 data-[state=active]:bg-purple-600"
+      {/* Main Content */}
+      <div className="px-4 sm:px-6 lg:px-8 xl:px-12">
+        <Card className="bg-[#171726] border-0">
+          <CardHeader>
+            <CardTitle className="text-neutral-100">Job Details</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Tabs
+              value={tab}
+              onValueChange={(v) => setTab(v as "form" | "upload")}
+              className="w-full"
             >
-              Form
-            </TabsTrigger>
-            <TabsTrigger
-              value="upload"
-              className="text-neutral-100 data-[state=active]:bg-purple-600"
-            >
-              Upload
-            </TabsTrigger>
-          </TabsList>
+              <TabsList className="grid w-full grid-cols-2 bg-[#5A5A75] rounded-lg mb-6">
+                <TabsTrigger
+                  value="form"
+                  className="text-neutral-100 data-[state=active]:bg-purple-600"
+                >
+                  Form
+                </TabsTrigger>
+                <TabsTrigger
+                  value="upload"
+                  className="text-neutral-100 data-[state=active]:bg-purple-600"
+                >
+                  Upload
+                </TabsTrigger>
+              </TabsList>
 
-          {/* FORM TAB */}
-          <TabsContent value="form" className="mt-4">
-            <div className="max-h-[70dvh] overflow-y-auto pr-1">
-              <form onSubmit={onSubmit} className="space-y-6 m-2">
-                {uploadedFile && (
-                  <div className="flex items-center gap-2 p-2 bg-[#5A5A75] rounded-md text-sm text-neutral-100">
-                    <FileText className="h-4 w-4" />
-                    <span>Document attached: {uploadedFile.name}</span>
-                  </div>
-                )}
+              {/* FORM TAB */}
+              <TabsContent value="form" className="mt-4">
+                <form onSubmit={onSubmit} className="space-y-6">{uploadedFile && (
+                    <div className="flex items-center gap-2 p-2 bg-[#5A5A75] rounded-md text-sm text-neutral-100">
+                      <FileText className="h-4 w-4" />
+                      <span>Document attached: {uploadedFile.name}</span>
+                    </div>
+                  )}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
@@ -465,10 +494,14 @@ export function CreateJobDialog({ children, className }: CreateJobDialogProps) {
 
                 {/* Removed duplicate public and autoScreen checkboxes */}
 
-                <DialogFooter>
+                <div className="flex gap-4 pt-6">
                   <Button
                     type="button"
-                    onClick={() => setOpen(false)}
+                    onClick={() => {
+                      if ((window as any).handleViewChange) {
+                        (window as any).handleViewChange("dashboard");
+                      }
+                    }}
                     className="bg-[#5A5A75] hover:bg-[#4A4A61] text-neutral-100"
                   >
                     Cancel
@@ -480,14 +513,12 @@ export function CreateJobDialog({ children, className }: CreateJobDialogProps) {
                   >
                     {isLoading ? "Creating..." : "Create Job"}
                   </Button>
-                </DialogFooter>
+                </div>
               </form>
-            </div>
-          </TabsContent>
+            </TabsContent>
 
-          {/* UPLOAD TAB */}
-          <TabsContent value="upload" className="mt-4">
-            <div className="max-h-[70dvh] overflow-y-auto pr-1">
+            {/* UPLOAD TAB */}
+            <TabsContent value="upload" className="mt-4">
               <div className="space-y-6">
                 <div className="text-sm text-neutral-300">
                   Upload a job description document to automatically populate
@@ -576,12 +607,11 @@ export function CreateJobDialog({ children, className }: CreateJobDialogProps) {
                   </div>
                 )}
               </div>
-            </div>
-          </TabsContent>
-        </Tabs>
-      </DialogContent>
-    </Dialog>
+            </TabsContent>
+            </Tabs>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
   );
 }
-
-export default CreateJobDialog;

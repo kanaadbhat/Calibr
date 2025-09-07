@@ -20,6 +20,9 @@ import CandidateCard from "./_components/CandidateCard";
 import Column from "./_components/Column";
 import StatCard from "./_components/StatCard";
 import { Skeleton } from "@/components/ui/skeleton";
+import CreateJobPage from "./_components/CreateJob";
+import AddAssessmentPage from "./_components/addAssesment";
+import CreateAssessmentFlow from "./_components/CreateAssessmentFlow";
 import {
   fetchStats,
   fetchCandidates,
@@ -30,9 +33,12 @@ import {
 import { useEffect, useState } from "react";
 import { DashboardData, Stat } from "./types";
 
+type PageView = "dashboard" | "create-job" | "add-assessment" | "create-assessment";
+
 export default function Page() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [currentView, setCurrentView] = useState<PageView>("dashboard");
 
   useEffect(() => {
     async function loadData() {
@@ -73,6 +79,31 @@ export default function Page() {
 
     loadData();
   }, []);
+
+  // Function to handle view changes from sidebar
+  const handleViewChange = (view: PageView) => {
+    setCurrentView(view);
+  };
+
+  // Make this function available globally for sidebar to call
+  useEffect(() => {
+    (window as any).handleViewChange = handleViewChange;
+    return () => {
+      delete (window as any).handleViewChange;
+    };
+  }, []);
+
+  if (currentView === "create-job") {
+    return <CreateJobPage />;
+  }
+
+  if (currentView === "add-assessment") {
+    return <AddAssessmentPage />;
+  }
+
+  if (currentView === "create-assessment") {
+    return <CreateAssessmentFlow onBack={() => setCurrentView("dashboard")} />;
+  }
 
   if (loading) {
     return (
