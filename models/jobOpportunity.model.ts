@@ -1,55 +1,66 @@
 import mongoose, { Schema, Document } from "mongoose";
 
 export interface JobOpportunity extends Document {
-  company: string;
-  logo: string;
   title: string;
+  department: string;
   position: string;
-  timePosted: string;
+  employmentType: string;
+  seniority: string;
+  locationType: string;
   location: string;
+  openings: number;
+  experience?: string;
+  workMode?: string;
+  salaryMin?: number;
+  salaryMax?: number;
+  deadline?: string;
   techStack: string[];
   description?: string;
-  salary?: string;
-  type?: string;
-  requirements?: string[];
-  responsibilities?: string[];
-  profileMatch?: number;
+  requirements?: string;
+  benefits?: string;
   startDate?: string;
-  selectionRounds?: string[];
-  benefits?: string[];
-  workMode?: string;
-  experience?: string;
-  postedDate?: string;
-  applicants?: number;
+  autoScreen?: boolean;
+  isPublic?: boolean;
 }
+
 
 const JobOpportunitySchema: Schema = new Schema(
   {
-    company: { type: String, required: true, trim: true },
-    logo: { type: String, required: true, trim: true },
     title: { type: String, required: true, trim: true },
+    department: { type: String, required: true, trim: true },
     position: { type: String, required: true, trim: true },
-    timePosted: { type: String, required: true, trim: true },
+    employmentType: { 
+      type: String, 
+      required: true, 
+      enum: ['full-time', 'part-time', 'contract', 'internship'],
+      trim: true 
+    },
+    seniority: { 
+      type: String, 
+      required: true, 
+      enum: ['junior', 'mid', 'senior', 'lead'],
+      trim: true 
+    },
+    locationType: { 
+      type: String, 
+      required: true, 
+      enum: ['remote', 'hybrid', 'onsite'],
+      trim: true 
+    },
     location: { type: String, required: true, trim: true },
-
-    techStack: [{ type: String, trim: true }],
-
-    description: { type: String, trim: true },
-    salary: { type: String, trim: true },
-    type: { type: String, trim: true },
-
-    requirements: [{ type: String, trim: true }],
-    responsibilities: [{ type: String, trim: true }],
-
-    profileMatch: { type: Number, min: 0, max: 100 },
-
-    startDate: { type: String, trim: true },
-    selectionRounds: [{ type: String, trim: true }],
-    benefits: [{ type: String, trim: true }],
-    workMode: { type: String, trim: true },
+    openings: { type: Number, required: true, min: 1, default: 1 },
     experience: { type: String, trim: true },
-    postedDate: { type: String, trim: true },
-    applicants: { type: Number, min: 0, default: 0 },
+    workMode: { type: String, trim: true },
+    salaryMin: { type: Number, min: 0 },
+    salaryMax: { type: Number, min: 0 },
+    deadline: { type: Date },
+    techStack: [{ type: String, trim: true }],
+    description: { type: String, trim: true },
+    requirements: { type: String, trim: true },
+    benefits: { type: String, trim: true },
+    startDate: { type: String, trim: true },
+    autoScreen: { type: Boolean, default: false },
+    isPublic: { type: Boolean, default: true },
   },
   { timestamps: true }
 );

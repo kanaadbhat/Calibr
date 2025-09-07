@@ -8,6 +8,13 @@ import type {
   DashboardData
 } from './types';
 
+import JobOpportunityModel, { JobOpportunity } from '@/models/jobOpportunity.model';
+import { connectToDatabase } from '@/utils/connectDb';
+import { Document } from 'mongoose';
+
+// Create a clean type for job creation
+export type JobCreationData = Omit<JobOpportunity, keyof Document | 'createdAt' | 'updatedAt'>;
+
  const dashboardData: DashboardData = {
   stats: [
     { value: "12", label: "Active Job Postings", trend: "▲ 2" },
@@ -189,5 +196,35 @@ export async function fetchJobs(): Promise<{ success: boolean; data: Job[] }> {
   } catch (error) {
     console.log(error);
     return { success: false, data: [] };
+  }
+}
+
+// Create Job Posting
+export async function createJobPosting(jobData: JobCreationData): Promise<{ success: boolean; message: string; data?: JobOpportunity }> {
+  try {
+    await connectToDatabase();
+
+    const newJobPosting = new JobOpportunityModel({
+      ...jobData,
+      deadline: jobData.deadline ? new Date(jobData.deadline) : undefined,
+    });
+
+    const savedJob = await newJobPosting.save();
+    const jobPlain = JSON.parse(JSON.stringify(savedJob)) as any;
+    delete jobPlain.__v;
+    delete jobPlain.createdAt;
+    delete jobPlain.updatedAt;
+
+    return {
+      success: true,
+      message: "Job posting created successfully!",
+      data: jobPlain,
+    };
+  } catch (error) {
+    console.error("Error creating job posting:", error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : "Failed to create job posting",
+    };
   }
 }

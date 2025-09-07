@@ -1,6 +1,6 @@
-"use client"
+"use client";
 
-import * as React from "react"
+import * as React from "react";
 import {
   Dialog,
   DialogContent,
@@ -9,104 +9,174 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Upload, X, FileText} from "lucide-react"
-import { cn } from "@/lib/utils"
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Upload, X, FileText } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { useCreateJob } from "../hook";
+import type { JobCreationData } from "../actions";
 
 type CreateJobDialogProps = {
-  children: React.ReactNode // trigger
-  className?: string
-}
+  children: React.ReactNode; // trigger
+  className?: string;
+};
 
 export function CreateJobDialog({ children, className }: CreateJobDialogProps) {
-  const [open, setOpen] = React.useState(false)
-  const [submitting, setSubmitting] = React.useState(false)
-  const [uploadedFile, setUploadedFile] = React.useState<File | null>(null)
-  const fileInputRef = React.useRef<HTMLInputElement>(null)
-  const [tab, setTab] = React.useState<"form" | "upload">("form")
+  const [open, setOpen] = React.useState(false);
+  const [uploadedFile, setUploadedFile] = React.useState<File | null>(null);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const [tab, setTab] = React.useState<"form" | "upload">("form");
+
+  const { createJob, isLoading } = useCreateJob();
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
+    const file = e.target.files?.[0];
     if (file) {
-      setUploadedFile(file)
-      setTab("form")
+      setUploadedFile(file);
+      setTab("form");
     }
-  }
+  };
 
   const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault()
-    const file = e.dataTransfer.files?.[0]
+    e.preventDefault();
+    const file = e.dataTransfer.files?.[0];
     if (file) {
-      setUploadedFile(file)
-      setTab("form")
+      setUploadedFile(file);
+      setTab("form");
     }
-  }
+  };
 
   const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault()
-  }
+    e.preventDefault();
+  };
 
   const removeFile = () => {
-    setUploadedFile(null)
+    setUploadedFile(null);
     if (fileInputRef.current) {
-      fileInputRef.current.value = ""
+      fileInputRef.current.value = "";
     }
-  }
+  };
 
-  function onSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    const form = e.currentTarget
-    const data = new FormData(form)
+  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const data = new FormData(form);
 
     if (uploadedFile) {
-      data.append("jobDocument", uploadedFile)
+      data.append("jobDocument", uploadedFile);
     }
 
-    const payload = Object.fromEntries(data.entries())
-    console.log("[v0] Create Job payload:", payload)
+    // Process form data with proper types
+    const techStackString = data.get("techStack") as string;
+    const techStack = techStackString
+      ? techStackString
+          .split(",")
+          .map((skill) => skill.trim())
+          .filter(Boolean)
+      : [];
+
+    const payload: JobCreationData = {
+      title: data.get("title") as string,
+      department: data.get("department") as string,
+      position: data.get("position") as string,
+      employmentType: data.get("employmentType") as string,
+      seniority: data.get("seniority") as string,
+      locationType: data.get("locationType") as string,
+      location: data.get("location") as string,
+      openings: parseInt(data.get("openings") as string) || 1,
+      experience: (data.get("experience") as string) || undefined,
+      workMode: (data.get("workMode") as string) || undefined,
+      salaryMin: data.get("salaryMin")
+        ? parseInt(data.get("salaryMin") as string)
+        : undefined,
+      salaryMax: data.get("salaryMax")
+        ? parseInt(data.get("salaryMax") as string)
+        : undefined,
+      deadline: (data.get("deadline") as string) || undefined,
+      techStack,
+      description: (data.get("description") as string) || undefined,
+      requirements: (data.get("requirements") as string) || undefined,
+      benefits: (data.get("benefits") as string) || undefined,
+      startDate: (data.get("startDate") as string) || undefined,
+      autoScreen: data.get("autoScreen") === "on",
+      isPublic: data.get("isPublic") === "on",
+    };
+
+    console.log("[v0] Create Job payload:", payload);
     if (uploadedFile) {
-      console.log("[v0] Uploaded file:", uploadedFile.name, uploadedFile.size, "bytes")
+      console.log(
+        "[v0] Uploaded file:",
+        uploadedFile.name,
+        uploadedFile.size,
+        "bytes"
+      );
     }
+
     try {
-      // Simulate API call or job creation logic here
-      // If successful:
-      toast.success("Job posting created!");
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : String(err));
-    }
+      const result = await createJob(payload);
 
-    setSubmitting(true)
-    setTimeout(() => {
-      setSubmitting(false)
-      setOpen(false)
-      setUploadedFile(null)
-      if (fileInputRef.current) {
-        fileInputRef.current.value = ""
+      if (result.success) {
+        toast.success(result.message || "Job posting created successfully!");
+        setOpen(false);
+        setUploadedFile(null);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
+        form.reset();
+      } else {
+        toast.error(result.message || "Failed to create job posting");
       }
-    }, 800)
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "An unexpected error occurred"
+      );
+    }
   }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className={cn("sm:max-w-2xl bg-[#171726] border-0", className)}>
+      <DialogContent
+        className={cn("sm:max-w-2xl bg-[#171726] border-0", className)}
+      >
         <DialogHeader>
           <DialogTitle className="text-neutral-100">Create Job</DialogTitle>
-          <DialogDescription className="text-neutral-200">Fill in the details to create a new job posting.</DialogDescription>
+          <DialogDescription className="text-neutral-200">
+            Fill in the details to create a new job posting.
+          </DialogDescription>
         </DialogHeader>
 
-        <Tabs value={tab} onValueChange={(v) => setTab(v as "form" | "upload")} className="w-full">
+        <Tabs
+          value={tab}
+          onValueChange={(v) => setTab(v as "form" | "upload")}
+          className="w-full"
+        >
           <TabsList className="grid w-full grid-cols-2 bg-[#5A5A75] rounded-lg">
-            <TabsTrigger value="form" className="text-neutral-100 data-[state=active]:bg-purple-600">Form</TabsTrigger>
-            <TabsTrigger value="upload" className="text-neutral-100 data-[state=active]:bg-purple-600">Upload</TabsTrigger>
+            <TabsTrigger
+              value="form"
+              className="text-neutral-100 data-[state=active]:bg-purple-600"
+            >
+              Form
+            </TabsTrigger>
+            <TabsTrigger
+              value="upload"
+              className="text-neutral-100 data-[state=active]:bg-purple-600"
+            >
+              Upload
+            </TabsTrigger>
           </TabsList>
 
           {/* FORM TAB */}
@@ -122,13 +192,42 @@ export function CreateJobDialog({ children, className }: CreateJobDialogProps) {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <Label htmlFor="title" className="text-neutral-300">Job Title</Label>
-                    <Input id="title" name="title" placeholder="e.g., Frontend Engineer" required className="border-neutral-500 bg-[#171726] text-neutral-100" />
+                    <Label htmlFor="title" className="text-neutral-300">
+                      Job Title
+                    </Label>
+                    <Input
+                      id="title"
+                      name="title"
+                      placeholder="e.g., Frontend Engineer"
+                      required
+                      className="border-neutral-500 bg-[#171726] text-neutral-100"
+                    />
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label htmlFor="department" className="text-neutral-300">Department</Label>
-                    <Input id="department" name="department" placeholder="e.g., Engineering" required className="border-neutral-500 bg-[#171726] text-neutral-100" />
+                    <Label htmlFor="department" className="text-neutral-300">
+                      Department
+                    </Label>
+                    <Input
+                      id="department"
+                      name="department"
+                      placeholder="e.g., Engineering"
+                      required
+                      className="border-neutral-500 bg-[#171726] text-neutral-100"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="position" className="text-neutral-300">
+                      Position/Role
+                    </Label>
+                    <Input
+                      id="position"
+                      name="position"
+                      placeholder="e.g., Software Engineer"
+                      required
+                      className="border-neutral-500 bg-[#171726] text-neutral-100"
+                    />
                   </div>
 
                   <div className="space-y-1.5">
@@ -176,69 +275,210 @@ export function CreateJobDialog({ children, className }: CreateJobDialogProps) {
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label htmlFor="location" className="text-neutral-300">Location</Label>
-                    <Input id="location" name="location" placeholder="City, Country or Timezone" required className="border-neutral-500 bg-[#171726] text-neutral-100" />
+                    <Label htmlFor="location" className="text-neutral-300">
+                      Location
+                    </Label>
+                    <Input
+                      id="location"
+                      name="location"
+                      placeholder="City, Country or Timezone"
+                      required
+                      className="border-neutral-500 bg-[#171726] text-neutral-100"
+                    />
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label htmlFor="openings" className="text-neutral-300">Openings</Label>
-                    <Input id="openings" name="openings" type="number" min={1} defaultValue={1} required className="border-neutral-500 bg-[#171726] text-neutral-100" />
+                    <Label htmlFor="openings" className="text-neutral-300">
+                      Openings
+                    </Label>
+                    <Input
+                      id="openings"
+                      name="openings"
+                      type="number"
+                      min={1}
+                      defaultValue={1}
+                      required
+                      className="border-neutral-500 bg-[#171726] text-neutral-100"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="experience" className="text-neutral-300">
+                      Experience Required
+                    </Label>
+                    <Input
+                      id="experience"
+                      name="experience"
+                      placeholder="e.g., 2-4 years"
+                      className="border-neutral-500 bg-[#171726] text-neutral-100"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="workMode" className="text-neutral-300">
+                      Work Mode
+                    </Label>
+                    <Input
+                      id="workMode"
+                      name="workMode"
+                      placeholder="e.g., Flexible hours, 9-5"
+                      className="border-neutral-500 bg-[#171726] text-neutral-100"
+                    />
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1.5">
-                      <Label htmlFor="salaryMin" className="text-neutral-300">Salary Min</Label>
-                      <Input id="salaryMin" name="salaryMin" type="number" inputMode="numeric" placeholder="e.g., 80000" className="border-neutral-500 bg-[#171726] text-neutral-100" />
+                      <Label htmlFor="salaryMin" className="text-neutral-300">
+                        Salary Min
+                      </Label>
+                      <Input
+                        id="salaryMin"
+                        name="salaryMin"
+                        type="number"
+                        inputMode="numeric"
+                        placeholder="e.g., 80000"
+                        className="border-neutral-500 bg-[#171726] text-neutral-100"
+                      />
                     </div>
                     <div className="space-y-1.5">
-                      <Label htmlFor="salaryMax" className="text-neutral-300">Salary Max</Label>
-                      <Input id="salaryMax" name="salaryMax" type="number" inputMode="numeric" placeholder="e.g., 120000" className="border-neutral-500 bg-[#171726] text-neutral-100" />
+                      <Label htmlFor="salaryMax" className="text-neutral-300">
+                        Salary Max
+                      </Label>
+                      <Input
+                        id="salaryMax"
+                        name="salaryMax"
+                        type="number"
+                        inputMode="numeric"
+                        placeholder="e.g., 120000"
+                        className="border-neutral-500 bg-[#171726] text-neutral-100"
+                      />
                     </div>
                   </div>
 
                   <div className="space-y-1.5 md:col-span-2">
-                    <Label htmlFor="deadline" className="text-neutral-300">Application Deadline</Label>
-                    <Input id="deadline" name="deadline" type="date" className="border-neutral-500 bg-[#171726] text-neutral-100" />
+                    <Label htmlFor="deadline" className="text-neutral-300">
+                      Application Deadline
+                    </Label>
+                    <Input
+                      id="deadline"
+                      name="deadline"
+                      type="date"
+                      className="border-neutral-500 bg-[#171726] text-neutral-100"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5 md:col-span-2">
+                    <Label htmlFor="techStack" className="text-neutral-300">
+                      Tech Stack / Skills
+                    </Label>
+                    <Input
+                      id="techStack"
+                      name="techStack"
+                      placeholder="e.g., React, Node.js, Python (comma separated)"
+                      className="border-neutral-500 bg-[#171726] text-neutral-100"
+                    />
                   </div>
                 </div>
 
                 <div className="space-y-4">
                   <div className="space-y-1.5">
-                    <Label htmlFor="description" className="text-neutral-300">Job Description</Label>
-                    <Textarea id="description" name="description" placeholder="Short summary about the role and company" className="min-h-24 border-neutral-500 bg-[#171726] text-neutral-100" required />
+                    <Label htmlFor="description" className="text-neutral-300">
+                      Job Description
+                    </Label>
+                    <Textarea
+                      id="description"
+                      name="description"
+                      placeholder="Describe the role, responsibilities, and what makes this position exciting..."
+                      className="min-h-[120px] border-neutral-500 bg-[#171726] text-neutral-100 resize-none"
+                      required
+                    />
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label htmlFor="responsibilities" className="text-neutral-300">Responsibilities</Label>
-                    <Textarea id="responsibilities" name="responsibilities" placeholder="Key responsibilities (one per line)" className="min-h-24 border-neutral-500 bg-[#171726] text-neutral-100" required />
+                    <Label htmlFor="requirements" className="text-neutral-300">
+                      Requirements
+                    </Label>
+                    <Textarea
+                      id="requirements"
+                      name="requirements"
+                      placeholder="List the essential skills, qualifications, and experience needed..."
+                      className="min-h-[100px] border-neutral-500 bg-[#171726] text-neutral-100 resize-none"
+                      required
+                    />
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label htmlFor="requirements" className="text-neutral-300">Requirements</Label>
-                    <Textarea id="requirements" name="requirements" placeholder="Required skills & experience (one per line)" className="min-h-24 border-neutral-500 bg-[#171726] text-neutral-100" required />
+                    <Label htmlFor="benefits" className="text-neutral-300">
+                      Benefits & Perks
+                    </Label>
+                    <Textarea
+                      id="benefits"
+                      name="benefits"
+                      placeholder="Health insurance, flexible PTO, remote work, learning budget, etc."
+                      className="min-h-[80px] border-neutral-500 bg-[#171726] text-neutral-100 resize-none"
+                    />
                   </div>
 
-                  <div className="space-y-1.5">
-                    <Label htmlFor="questions" className="text-neutral-300">Screening Questions</Label>
-                    <Textarea id="questions" name="questions" placeholder="Optional: add screening questions (one per line)" className="min-h-20 border-neutral-500 bg-[#171726] text-neutral-100" />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="startDate" className="text-neutral-300">
+                        Start Date
+                      </Label>
+                      <Input
+                        id="startDate"
+                        name="startDate"
+                        type="date"
+                        className="border-neutral-500 bg-[#171726] text-neutral-100"
+                      />
+                    </div>
+
+                    <div className="flex items-center space-x-2 pt-6">
+                      <Checkbox
+                        id="autoScreen"
+                        name="autoScreen"
+                        className="border-neutral-500 data-[state=checked]:bg-blue-600"
+                      />
+                      <Label
+                        htmlFor="autoScreen"
+                        className="text-sm text-neutral-300"
+                      >
+                        Enable automatic candidate screening
+                      </Label>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="isPublic"
+                      name="isPublic"
+                      defaultChecked
+                      className="border-neutral-500 data-[state=checked]:bg-blue-600"
+                    />
+                    <Label
+                      htmlFor="isPublic"
+                      className="text-sm text-neutral-300"
+                    >
+                      Make this job posting public
+                    </Label>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <label className="flex items-center gap-2 text-neutral-300">
-                    <Checkbox name="public" defaultChecked />
-                    <span className="text-sm">Public posting</span>
-                  </label>
-                  <label className="flex items-center gap-2 text-neutral-300">
-                    <Checkbox name="autoScreen" />
-                    <span className="text-sm">Enable auto-screening</span>
-                  </label>
-                </div>
+                {/* Removed duplicate public and autoScreen checkboxes */}
 
                 <DialogFooter>
-                  <Button type="button" onClick={() => setOpen(false)} className="bg-[#5A5A75] hover:bg-[#4A4A61] text-neutral-100">Cancel</Button>
-                  <Button type="submit" disabled={submitting} className="bg-purple-500 text-white font-semibold hover:bg-purple-700">
-                    {submitting ? "Creating..." : "Create Job"}
+                  <Button
+                    type="button"
+                    onClick={() => setOpen(false)}
+                    className="bg-[#5A5A75] hover:bg-[#4A4A61] text-neutral-100"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={isLoading}
+                    className="bg-purple-500 text-white font-semibold hover:bg-purple-700"
+                  >
+                    {isLoading ? "Creating..." : "Create Job"}
                   </Button>
                 </DialogFooter>
               </form>
@@ -250,7 +490,8 @@ export function CreateJobDialog({ children, className }: CreateJobDialogProps) {
             <div className="max-h-[70dvh] overflow-y-auto pr-1">
               <div className="space-y-6">
                 <div className="text-sm text-neutral-300">
-                  Upload a job description document to automatically populate the form fields.
+                  Upload a job description document to automatically populate
+                  the form fields.
                 </div>
 
                 <div
@@ -264,13 +505,37 @@ export function CreateJobDialog({ children, className }: CreateJobDialogProps) {
                         <FileText className="h-8 w-8 text-neutral-400" />
                         <div>
                           <div className="font-medium">{uploadedFile.name}</div>
-                          <div className="text-neutral-400">{(uploadedFile.size / 1024).toFixed(1)} KB</div>
+                          <div className="text-neutral-400">
+                            {(uploadedFile.size / 1024).toFixed(1)} KB
+                          </div>
                         </div>
                       </div>
                       <div className="flex flex-wrap gap-2 justify-center">
-                        <Button type="button" variant="default" size="sm" onClick={() => setTab("form")} className="bg-purple-500 text-white hover:bg-purple-700">Attach to Form</Button>
-                        <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} className="border-neutral-500 text-neutral-200">Replace File</Button>
-                        <Button type="button" variant="outline" size="sm" onClick={removeFile} className="border-neutral-500 text-neutral-200">
+                        <Button
+                          type="button"
+                          variant="default"
+                          size="sm"
+                          onClick={() => setTab("form")}
+                          className="bg-purple-500 text-white hover:bg-purple-700"
+                        >
+                          Attach to Form
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => fileInputRef.current?.click()}
+                          className="border-neutral-500 text-neutral-200"
+                        >
+                          Replace File
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={removeFile}
+                          className="border-neutral-500 text-neutral-200"
+                        >
                           <X className="h-4 w-4 mr-1" /> Remove
                         </Button>
                       </div>
@@ -279,18 +544,35 @@ export function CreateJobDialog({ children, className }: CreateJobDialogProps) {
                     <div className="space-y-4">
                       <Upload className="h-12 w-12 mx-auto text-neutral-400" />
                       <div>
-                        <div className="text-lg font-medium text-neutral-100">Drop your file here</div>
-                        <div className="text-sm text-neutral-400">or click to browse</div>
+                        <div className="text-lg font-medium text-neutral-100">
+                          Drop your file here
+                        </div>
+                        <div className="text-sm text-neutral-400">
+                          or click to browse
+                        </div>
                       </div>
-                      <Button type="button" onClick={() => fileInputRef.current?.click()} className="bg-purple-500 text-white font-semibold hover:bg-purple-700">Browse Files</Button>
+                      <Button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="bg-purple-500 text-white font-semibold hover:bg-purple-700"
+                      >
+                        Browse Files
+                      </Button>
                     </div>
                   )}
-                  <input ref={fileInputRef} type="file" className="hidden" accept=".pdf,.doc,.docx,.txt" onChange={handleFileUpload} />
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    className="hidden"
+                    accept=".pdf,.doc,.docx,.txt"
+                    onChange={handleFileUpload}
+                  />
                 </div>
 
                 {uploadedFile && (
                   <div className="space-y-4 text-sm text-neutral-400">
-                    File ready to attach to your job posting. Switch to the Form tab to complete the details.
+                    File ready to attach to your job posting. Switch to the Form
+                    tab to complete the details.
                   </div>
                 )}
               </div>
@@ -299,7 +581,7 @@ export function CreateJobDialog({ children, className }: CreateJobDialogProps) {
         </Tabs>
       </DialogContent>
     </Dialog>
-  )
+  );
 }
 
-export default CreateJobDialog
+export default CreateJobDialog;
