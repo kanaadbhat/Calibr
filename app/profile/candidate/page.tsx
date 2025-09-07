@@ -24,7 +24,7 @@ import {
   X,
   Camera,
 } from "lucide-react";
-import updateCandidateProfile from "./actions";
+import updateCandidateProfile, { parseAndUpdateResume } from "./actions";
 import { useProfileData } from "./hooks";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
@@ -58,6 +58,8 @@ export default function CandidateProfilePage() {
   );
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
+  const [parsingLoading, setParsingLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -272,6 +274,30 @@ export default function CandidateProfilePage() {
     } catch (error) {
       console.error("Error updating profile:", error);
       toast.error("An error occurred while updating your profile");
+    }
+  };
+
+  const handleResumeUpload = async () => {
+    if (!selectedFile) {
+      toast.error("Please select a resume first");
+      return;
+    }
+
+    try {
+      setParsingLoading(true);
+      const res = await parseAndUpdateResume(selectedFile);
+      if (res.success) {
+        toast.success(res.message);
+        setIsUpdateDialogOpen(false); // close dialog after success
+      } else {
+        toast.error(res.error || "Resume parsing failed");
+      }
+    } catch (err: any) {
+      toast.error("Something went wrong while uploading resume");
+      console.error(err);
+    } finally {
+      setParsingLoading(false);
+      window.location.reload();
     }
   };
 
@@ -1000,25 +1026,72 @@ export default function CandidateProfilePage() {
                           <TabsContent value="resume" className="mt-6">
                             <div className="space-y-4">
                               <div
-                                className="border-2 border-dashed border-white/30 rounded-lg p-8 text-center hover:border-white/50 transition-colors cursor-pointer"
-                                onDrop={handleDrop}
-                                onDragOver={handleDragOver}
-                                onClick={() =>
-                                  document
-                                    .getElementById("resume-upload")
-                                    ?.click()
+                                className={`border-2 border-dashed border-white/30 rounded-lg p-8 text-center hover:border-white/50 transition-colors ${
+                                  parsingLoading
+                                    ? "cursor-not-allowed opacity-60"
+                                    : "cursor-pointer"
+                                }`}
+                                onDrop={
+                                  !parsingLoading ? handleDrop : undefined
+                                }
+                                onDragOver={
+                                  !parsingLoading ? handleDragOver : undefined
+                                }
+                                onClick={
+                                  !parsingLoading
+                                    ? () =>
+                                        document
+                                          .getElementById("resume-upload")
+                                          ?.click()
+                                    : undefined
                                 }>
-                                <UploadCloud className="w-12 h-12 text-white/60 mx-auto mb-4" />
-                                <h3 className="text-lg font-medium text-white mb-2">
-                                  Upload your resume
-                                </h3>
-                                <p className="text-white/70 mb-4">
-                                  Drag and drop your resume here, or click to
-                                  browse
-                                </p>
-                                <p className="text-sm text-white/60 font-medium">
-                                  Calibr AI will automatically extract info
-                                </p>
+                                {parsingLoading ? (
+                                  <>
+                                    <div className="w-12 h-12 mx-auto mb-4 animate-spin">
+                                      <svg
+                                        className="w-full h-full text-white/60"
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        fill="none"
+                                        viewBox="0 0 24 24">
+                                        <circle
+                                          className="opacity-25"
+                                          cx="12"
+                                          cy="12"
+                                          r="10"
+                                          stroke="currentColor"
+                                          strokeWidth="4"></circle>
+                                        <path
+                                          className="opacity-75"
+                                          fill="currentColor"
+                                          d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                      </svg>
+                                    </div>
+                                    <h3 className="text-lg font-medium text-white mb-2">
+                                      Processing your resume...
+                                    </h3>
+                                    <p className="text-white/70 mb-4">
+                                      AI is extracting information from your
+                                      document
+                                    </p>
+                                    <p className="text-sm text-white/60 font-medium">
+                                      This may take a few moments
+                                    </p>
+                                  </>
+                                ) : (
+                                  <>
+                                    <UploadCloud className="w-12 h-12 text-white/60 mx-auto mb-4" />
+                                    <h3 className="text-lg font-medium text-white mb-2">
+                                      Upload your resume
+                                    </h3>
+                                    <p className="text-white/70 mb-4">
+                                      Drag and drop your resume here, or click
+                                      to browse
+                                    </p>
+                                    <p className="text-sm text-white/60 font-medium">
+                                      Calibr AI will automatically extract info
+                                    </p>
+                                  </>
+                                )}
 
                                 <input
                                   type="file"
@@ -1026,9 +1099,10 @@ export default function CandidateProfilePage() {
                                   onChange={handleFileUpload}
                                   className="hidden"
                                   id="resume-upload"
+                                  disabled={parsingLoading}
                                 />
 
-                                {selectedFile && (
+                                {selectedFile && !parsingLoading && (
                                   <p className="mt-4 text-sm text-green-400 font-medium">
                                     ✅ Selected file: {selectedFile.name}
                                   </p>
@@ -1038,11 +1112,40 @@ export default function CandidateProfilePage() {
                               <div className="flex justify-end gap-3 pt-4">
                                 <Button
                                   variant="destructive"
-                                  onClick={() => setIsUpdateDialogOpen(false)}>
+                                  onClick={() => setIsUpdateDialogOpen(false)}
+                                  disabled={parsingLoading}>
                                   Cancel
                                 </Button>
-                                <Button className="bg-white/80 text-[#0A0A18] hover:bg-white/70 border-none">
-                                  Upload Resume
+                                <Button
+                                  className="bg-white/80 text-[#0A0A18] hover:bg-white/70 border-none"
+                                  onClick={handleResumeUpload}
+                                  disabled={parsingLoading || !selectedFile}>
+                                  {parsingLoading ? (
+                                    <>
+                                      <div className="w-4 h-4 mr-2 animate-spin">
+                                        <svg
+                                          className="w-full h-full"
+                                          xmlns="http://www.w3.org/2000/svg"
+                                          fill="none"
+                                          viewBox="0 0 24 24">
+                                          <circle
+                                            className="opacity-25"
+                                            cx="12"
+                                            cy="12"
+                                            r="10"
+                                            stroke="currentColor"
+                                            strokeWidth="4"></circle>
+                                          <path
+                                            className="opacity-75"
+                                            fill="currentColor"
+                                            d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                      </div>
+                                      Processing...
+                                    </>
+                                  ) : (
+                                    "Upload Resume"
+                                  )}
                                 </Button>
                               </div>
                             </div>
