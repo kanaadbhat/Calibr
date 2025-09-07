@@ -30,11 +30,11 @@ Extract the following details from the resume and return your response in **only
   ],
   "projects": [
     {{
-      "title": "string",
+      "name": "string",
       "description": "string",
       "technologies_used": ["string"],
       "github_link": "string",
-      "live_demo": "string",
+      "link": "string",(this is the live link)
       "duration": "string"
     }}
   ],

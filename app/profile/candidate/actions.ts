@@ -9,7 +9,7 @@ import { authOptions } from "@/lib/auth";
 import mongoose from "mongoose";
 import axios from "axios";
 import { extractJsonFromResponse } from "@/ai-engine/ai-call/aiCall";
-import { resumePrompt } from "@/app/prompts/prompt";
+import { resumePrompt } from "@/ai-engine/prompts/prompt";
 
 const apiKey = process.env.NEXT_GEMINI_API;
 
