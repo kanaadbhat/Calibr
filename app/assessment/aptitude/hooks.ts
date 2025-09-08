@@ -2,23 +2,27 @@
 import { useState, useEffect } from 'react'
 import { fetchTestSession } from './actions'
 
-export function useTestQuestions(assessmentId: string | null) {
+
+export function useTestQuestions(aptitudeId: string | null) {
   const [questions, setQuestions] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [aptitudeData,setAptitudeData] = useState<any>(null)
 
   useEffect(() => {
-    if (!assessmentId) {
-      setError('No assessmentId provided')
+    if (!aptitudeId) {
+      setError('No aptitude allotted for you ')
       setLoading(false)
       return
     }
 
     const loadQuestions = async () => {
       try {
-        const result = await fetchTestSession(assessmentId)
-        if (result.success && result.data?.allQuestions) {
+        const result = await fetchTestSession(aptitudeId)
+        if (result.success && result.data) {
           setQuestions(result.data.allQuestions)
+          setAptitudeData(result.data)
+
         } else {
           setError(result.error || 'Failed to load questions')
         }
@@ -31,7 +35,7 @@ export function useTestQuestions(assessmentId: string | null) {
     }
 
     loadQuestions()
-  }, [assessmentId])
+  }, [aptitudeId])
 
-  return { questions, loading, error }
+  return { questions , aptitudeData , loading , error }
 }

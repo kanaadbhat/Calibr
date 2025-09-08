@@ -4,10 +4,10 @@ import { Types } from 'mongoose';
 export interface Question {
   id: number | string;
   question: string;
+  text?: string;
   options: string[];
   correctAnswer: number;
   section: 'A' | 'B' | 'C' | 'D';
-  
 }
 
 export interface TestSession {
@@ -28,7 +28,9 @@ export interface TestSession {
 
 export type Section = { 
   name: string; 
-  questionIds: (number | string)[] 
+  title: string;
+  questions: Question[];
+  questionIds?: (number | string)[] 
 };
 
 export type Test = {
@@ -101,3 +103,24 @@ export type SubmitTestResponse = {
   result?: TestResult;
   error?: string;
 };
+
+export interface AptitudeData {
+  _id: string;
+  totalQuestions: number;
+  duration: number;
+  passingScore: number;
+  status: 'inactive' | 'active' | 'completed';
+  sections: {
+    name: string;
+    description?: string;
+    questionIds: number[];
+    timeLimit?: number;
+  }[];
+  warnings: {
+    fullscreen: number;
+    tabSwitch: number;
+    audio: number;
+  };
+  matchingQuestions: number;
+  allQuestions: Question[];
+}

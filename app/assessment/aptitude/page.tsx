@@ -55,16 +55,16 @@ export default function AptitudeExamPage() {
   // };
 
   
-  const assessmentId = '65f7a1b2c3d4e5f6a7b8c9d1'
-  const { questions, loading } = useTestQuestions(assessmentId)
+  const aptitudeId = '68bddf75f175b972b73cc232'
+  const { questions, loading } = useTestQuestions(aptitudeId)
 
   useEffect(() => {
     setMounted(true);
     
-    // Load test questions for integration
+    
     const loadTestQuestions = async () => {
       try {
-        const result = await fetchTestSession(assessmentId);
+        const result = await fetchTestSession(aptitudeId);
         if (result && result.success && result.data) {
           console.log(`✅ Loaded ${result.data.matchingQuestions} questions 
             successfully`);
@@ -132,17 +132,39 @@ export default function AptitudeExamPage() {
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
-  const sections: Section[] = [
-    {
-      name: "A",
-      title: "Aptitude",
-      questions: (questions || []).slice(0, 11).map((q, idx) => ({
-        id: q.id ?? idx + 1,
-        text: q.question ?? q.text ?? '',
-        options: q.options ?? [],
-      })),
+  // Dynamic function to distribute questions across 4 sections
+  const distributeQuestions = (questions: any[]) => {
+    const totalQuestions = questions.length;
+    const questionsPerSection = Math.ceil(totalQuestions / 4);
+    
+    const sectionTitles = [
+      "Quantitative Aptitude",
+      "Logical Reasoning", 
+      "Verbal Ability",
+      "General Knowledge"
+    ];
+    
+    const sections: Section[] = [];
+    
+    for (let i = 0; i < 4; i++) {
+      const startIndex = i * questionsPerSection;
+      const endIndex = Math.min(startIndex + questionsPerSection, totalQuestions);
+      
+      sections.push({
+        name: String.fromCharCode(65 + i), // A, B, C, D
+        title: sectionTitles[i],
+        questions: questions.slice(startIndex, endIndex).map((q, idx) => ({
+          id:  idx + 1,
+          text: q.question ?? q.text ?? '',
+          options: q.options ?? [],
+        })),
+      });
     }
-  ];
+    
+    return sections;
+  };
+
+  const sections: Section[] = distributeQuestions(questions || []);
 
   const [activeSection, setActiveSection] = useState("A");
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);

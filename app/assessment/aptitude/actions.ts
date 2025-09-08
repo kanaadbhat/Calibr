@@ -3,23 +3,20 @@ import { connectToDatabase } from '@/utils/connectDb'
 import Aptitude from '@/models/aptitude.model'
 import questionsData from './aptitude_questions_31k.json'
 
-
-
-export async function fetchTestSession(assessmentId?: string) {
+export async function fetchTestSession(aptitudeId?: string) {
   try {
     await connectToDatabase()
-    
-    
-    const assessment = assessmentId
-      ? await Aptitude.findOne({ assessmentId })
+
+    const aptitude = aptitudeId
+      ? await Aptitude.findById( aptitudeId )
       : null;
     
-    if (assessment) {
+    if (aptitude) {
       
       try {
         const questionsArray = (questionsData as any).questions;
         if (Array.isArray(questionsArray)) {
-          const questionIds = assessment.questionIds || [];
+          const questionIds = aptitude.questionIds || [];
           
           
           const matchingQuestions = questionsArray
@@ -30,9 +27,22 @@ export async function fetchTestSession(assessmentId?: string) {
           return {
             success: true,
             data: {
-              assessmentId: (assessment._id as any).toString(),
-              totalQuestions: assessment.totalQuestions,
-              duration: assessment.duration,
+              aptitudeId: String(aptitude._id),
+              totalQuestions: aptitude.totalQuestions,
+              passingScore:aptitude.passingScore,
+              duration: aptitude.duration,
+              status: aptitude.status,
+              sections: aptitude.sections.map(section => ({
+                name: section.name,
+                description: section.description || '',
+                questionIds: section.questionIds,
+                timeLimit: section.timeLimit || null
+              })),
+              warnings: {
+                fullscreen: aptitude.warnings.fullscreen,
+                tabSwitch: aptitude.warnings.tabSwitch,
+                audio: aptitude.warnings.audio
+              },
               matchingQuestions: matchingQuestions.length,
               allQuestions: matchingQuestions.map((q: any) => ({
                 id: q.id,
@@ -52,7 +62,7 @@ export async function fetchTestSession(assessmentId?: string) {
         return { success: false, error: 'Failed to load questions data' };
       }
     } else {
-      return { success: false, error: 'No assessment found for the provided assessmentId' };
+      return { success: false, error: 'No aptitude found for the provided assessmentId' };
     }
   } catch (error) {
     console.error('❌ Error in fetchTestSession:', error);
