@@ -1,8 +1,31 @@
-import PerformanceOverview from './_components/PerformanceOverview';
-import UpcomingInterviews from './_components/UpcomingInterviews';
-import RecentActivity from './_components/RecentActivity';
-import SkillAnalysis from './_components/SkillAnalysis';
-import JobRecommendations from './_components/JobRecommendations';
+"use client"
+import dynamic from "next/dynamic";
+
+const PerformanceOverview = dynamic(
+  () => import("./_components/PerformanceOverview"),
+  { ssr: false, loading: () => <p>Loading performance...</p> }
+);
+
+const UpcomingInterviews = dynamic(
+  () => import("./_components/UpcomingInterviews"),
+  { ssr: false, loading: () => <p>Loading interviews...</p> }
+);
+
+const RecentActivity = dynamic(
+  () => import("./_components/RecentActivity"),
+  { ssr: false, loading: () => <p>Loading activity...</p> }
+);
+
+const SkillAnalysis = dynamic(
+  () => import("./_components/SkillAnalysis"),
+  { ssr: false, loading: () => <p>Loading skills...</p> }
+);
+
+const JobRecommendations = dynamic(
+  () => import("./_components/JobRecommendations"),
+  { ssr: false, loading: () => <p>Loading jobs...</p> }
+);
+
 import {
   Breadcrumb,
   BreadcrumbItem,
