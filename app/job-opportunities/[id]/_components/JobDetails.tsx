@@ -65,7 +65,7 @@ export default function JobDetails({ job, isLoading }: JobDetailsProps) {
   return (
     <div className="space-y-6">
       {/* Profile Match Card */}
-      {job.profileMatch && (
+      {job.profileMatch && job.profileMatch > 0 && (
         <Card className="bg-green-600/10 backdrop-blur-xl border border-green-500/30">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-green-300">
@@ -84,10 +84,12 @@ export default function JobDetails({ job, isLoading }: JobDetailsProps) {
               </div>
               <div>
                 <p className="font-medium text-green-300">
-                  Excellent match for your profile!
+                  {job.profileMatch >= 80 ? 'Excellent match for your profile!' : 
+                   job.profileMatch >= 60 ? 'Good match for your profile!' : 
+                   'Moderate match for your profile'}
                 </p>
                 <p className="text-sm text-green-400">
-                  Your skills align well with this position
+                  Your skills align{job.profileMatch >= 80 ? ' well' : ''} with this position
                 </p>
               </div>
             </div>
@@ -105,94 +107,109 @@ export default function JobDetails({ job, isLoading }: JobDetailsProps) {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <p className="text-sm font-medium text-white/60">Start Date</p>
-              <p className="font-medium text-white">{job.startDate}</p>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-white/60">Work Mode</p>
-              <p className="font-medium text-white">{job.workMode}</p>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-white/60">Experience</p>
-              <p className="font-medium text-white">{job.experience}</p>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-white/60">Salary</p>
-              <p className="font-medium text-white">{job.salary}</p>
-            </div>
+            {job.startDate && (
+              <div>
+                <p className="text-sm font-medium text-white/60">Start Date</p>
+                <p className="font-medium text-white">{job.startDate}</p>
+              </div>
+            )}
+            {(job.workMode || job.locationType) && (
+              <div>
+                <p className="text-sm font-medium text-white/60">Work Mode</p>
+                <p className="font-medium text-white">{job.workMode || job.locationType}</p>
+              </div>
+            )}
+            {(job.experience || job.seniority) && (
+              <div>
+                <p className="text-sm font-medium text-white/60">Experience</p>
+                <p className="font-medium text-white">{job.experience || job.seniority}</p>
+              </div>
+            )}
+            {job.salary && (
+              <div>
+                <p className="text-sm font-medium text-white/60">Salary</p>
+                <p className="font-medium text-white">{job.salary}</p>
+              </div>
+            )}
+            {job.employmentType && (
+              <div>
+                <p className="text-sm font-medium text-white/60">Employment Type</p>
+                <p className="font-medium text-white">{job.employmentType}</p>
+              </div>
+            )}
+            {job.openings && (
+              <div>
+                <p className="text-sm font-medium text-white/60">Openings</p>
+                <p className="font-medium text-white">{job.openings} position{job.openings > 1 ? 's' : ''}</p>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
 
       {/* Job Description */}
-      <Card className="bg-white/5 backdrop-blur-xl border border-white/10">
-        <CardHeader>
-          <CardTitle className="text-white">Job Description</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-white/70 leading-relaxed">
-            {job.description}
-          </p>
-        </CardContent>
-      </Card>
+      {job.description && (
+        <Card className="bg-white/5 backdrop-blur-xl border border-white/10">
+          <CardHeader>
+            <CardTitle className="text-white">Job Description</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-white/70 leading-relaxed whitespace-pre-line">
+              {job.description}
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Requirements */}
-      {job.requirements && job.requirements.length > 0 && (
+      {(job.requirementsList?.length || job.requirements) && (
         <Card className="bg-white/5 backdrop-blur-xl border border-white/10">
           <CardHeader>
             <CardTitle className="text-white">Requirements</CardTitle>
           </CardHeader>
           <CardContent>
-            <ul className="space-y-2">
-              {job.requirements.map((requirement : string, index : number) => (
-                <li key={index} className="flex items-start gap-2">
-                  <CheckCircle className="h-4 w-4 text-green-400 mt-0.5 flex-shrink-0" />
-                  <span className="text-sm text-white/70">{requirement}</span>
-                </li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Responsibilities */}
-      {job.responsibilities && job.responsibilities.length > 0 && (
-        <Card className="bg-white/5 backdrop-blur-xl border border-white/10">
-          <CardHeader>
-            <CardTitle className="text-white">Key Responsibilities</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ul className="space-y-2">
-              {job.responsibilities.map((responsibility : string, index : number) => (
-                <li key={index} className="flex items-start gap-2">
-                  <CheckCircle className="h-4 w-4 text-blue-400 mt-0.5 flex-shrink-0" />
-                  <span className="text-sm text-white/70">{responsibility}</span>
-                </li>
-              ))}
-            </ul>
+            {job.requirementsList?.length ? (
+              <ul className="space-y-2">
+                {job.requirementsList.map((requirement: string, index: number) => (
+                  <li key={index} className="flex items-start gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-400 mt-0.5 flex-shrink-0" />
+                    <span className="text-sm text-white/70">{requirement}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-white/70 leading-relaxed whitespace-pre-line">
+                {job.requirements}
+              </p>
+            )}
           </CardContent>
         </Card>
       )}
 
       {/* Benefits */}
-      {job.benefits && job.benefits.length > 0 && (
+      {(job.benefitsList?.length || job.benefits) && (
         <Card className="bg-white/5 backdrop-blur-xl border border-white/10">
           <CardHeader>
             <CardTitle className="text-white">Benefits & Perks</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-wrap gap-2">
-              {job.benefits.map((benefit : string, index : number) => (
-                <Badge 
-                  key={index} 
-                  variant="secondary" 
-                  className="bg-violet-600/20 text-violet-300 border border-violet-500/30 text-xs"
-                >
-                  {benefit}
-                </Badge>
-              ))}
-            </div>
+            {job.benefitsList?.length ? (
+              <div className="flex flex-wrap gap-2">
+                {job.benefitsList.map((benefit: string, index: number) => (
+                  <Badge 
+                    key={index} 
+                    variant="secondary" 
+                    className="bg-violet-600/20 text-violet-300 border border-violet-500/30 text-xs"
+                  >
+                    {benefit}
+                  </Badge>
+                ))}
+              </div>
+            ) : (
+              <p className="text-white/70 leading-relaxed whitespace-pre-line">
+                {job.benefits}
+              </p>
+            )}
           </CardContent>
         </Card>
       )}
@@ -208,7 +225,7 @@ export default function JobDetails({ job, isLoading }: JobDetailsProps) {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {job.selectionRounds.map((round : string, index : number) => (
+              {job.selectionRounds.map((round: string, index: number) => (
                 <div key={index} className="flex items-center gap-3">
                   <div className="h-8 w-8 rounded-full bg-violet-600/20 flex items-center justify-center border border-violet-500/30">
                     <span className="text-sm font-medium text-violet-300">
@@ -216,6 +233,48 @@ export default function JobDetails({ job, isLoading }: JobDetailsProps) {
                     </span>
                   </div>
                   <span className="text-sm font-medium text-white">{round}</span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Assessment Information */}
+      {job.assessments && job.assessments.length > 0 && (
+        <Card className="bg-white/5 backdrop-blur-xl border border-white/10">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-white">
+              <Clock className="h-5 w-5" />
+              Assessment Details
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {job.assessments.map((assessment, _index) => (
+                <div key={assessment._id} className="p-4 bg-white/5 rounded-lg">
+                  <h4 className="font-semibold text-white mb-2">{assessment.title}</h4>
+                  {assessment.description && (
+                    <p className="text-sm text-white/70 mb-3">{assessment.description}</p>
+                  )}
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <p className="text-white/60">Status</p>
+                      <p className="text-white capitalize">{assessment.status}</p>
+                    </div>
+                    <div>
+                      <p className="text-white/60">Total Candidates</p>
+                      <p className="text-white">{assessment.totalCandidates || 0}</p>
+                    </div>
+                    <div>
+                      <p className="text-white/60">Completed</p>
+                      <p className="text-white">{assessment.completedCandidates || 0}</p>
+                    </div>
+                    <div>
+                      <p className="text-white/60">Passed</p>
+                      <p className="text-white">{assessment.passingCandidates || 0}</p>
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>

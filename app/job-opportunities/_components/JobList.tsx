@@ -4,10 +4,11 @@ import React from 'react';
 import { JobOpportunity } from '../types';
 import JobCard, { JobCardSkeleton } from './JobCard';
 
+
 interface JobListProps {
   jobs: JobOpportunity[];
   isLoading: boolean;
-  onViewDetails: (id: number) => void;
+  onViewDetails: (id: string) => void;
 }
 
 const JobList: React.FC<JobListProps> = ({ jobs, isLoading, onViewDetails }) => {
@@ -34,7 +35,7 @@ const JobList: React.FC<JobListProps> = ({ jobs, isLoading, onViewDetails }) => 
     <div className="space-y-4">
       {jobs.map((job) => (
         <JobCard
-          key={job.id}
+          key={job._id}
           job={job}
           onViewDetails={onViewDetails}
         />

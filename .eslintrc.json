@@ -4,7 +4,7 @@
   "plugins": ["@typescript-eslint", "unused-imports"],
   "rules": {
     "no-unused-vars": "off", 
-    "@typescript-eslint/no-unused-vars": ["error"],
+  "@typescript-eslint/no-unused-vars": ["error", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }],
 
     "unused-imports/no-unused-imports": "error",
     "unused-imports/no-unused-vars": [

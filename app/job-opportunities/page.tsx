@@ -17,7 +17,7 @@ export default function JobOpportunitiesPage() {
     updateLocation 
   } = useJobFilters();
 
-  const handleViewDetails = (id: number) => {
+  const handleViewDetails = (id: string) => {
     router.push(`/job-opportunities/${id}`);
   };
 
