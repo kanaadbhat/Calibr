@@ -1,12 +1,11 @@
-"use client";
-import { useEffect } from "react";
-import { assignRole } from "../login/actions";
+import { getServerSession } from "next-auth";
+import { redirect } from "next/navigation";
+import SignupPage from "./_components/Signup";
 
-export default function SignupRedirectHandler() {
-  useEffect(() => {
-    // After redirect, user is authenticated
-    assignRole("candidate").catch(console.error);
-  }, []);
-
-  return <p>Completing signup...</p>;
+export default async function LoginPage() {
+  const session = await getServerSession();
+  if (session) {
+    redirect("/");
+  }
+  return <SignupPage />;
 }
