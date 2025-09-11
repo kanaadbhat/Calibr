@@ -51,6 +51,6 @@ const candidateSchema : Schema<Candidate>  = new Schema({
     }
 });
 
-const candidate = (mongoose.models.candidate as mongoose.Model<Candidate>) || mongoose.model<Candidate>('candidate', candidateSchema);
+const candidate = (mongoose.models.candidates as mongoose.Model<Candidate>) || mongoose.model<Candidate>('candidates', candidateSchema);
 
 export default candidate; 
