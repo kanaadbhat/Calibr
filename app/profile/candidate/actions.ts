@@ -10,6 +10,13 @@ import mongoose from "mongoose";
 import axios from "axios";
 import { extractJsonFromResponse } from "@/ai-engine/ai-call/aiCall";
 import { resumePrompt } from "@/ai-engine/prompts/prompt";
+import { v2 as cloudinary } from "cloudinary";
+
+cloudinary.config({
+  cloud_name: process.env.NEXT_CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.NEXT_CLOUDINARY_API_KEY,
+  api_secret: process.env.NEXT_CLOUDINARY_API_SECRET, // Click 'View API Keys' above to copy your API secret
+});
 
 const apiKey = process.env.NEXT_GEMINI_API;
 
@@ -190,7 +197,6 @@ function calculateCompletion(data: any): number {
   return Math.round((fields.filter(Boolean).length / 11) * 100);
 }
 
-// Solution 2: If you want to keep the API approach
 // Solution 2: If you want to keep the API approach
 export async function parseAndUpdateResume(file: File) {
   try {
@@ -380,10 +386,51 @@ export async function parseAndUpdateResume(file: File) {
       };
     }
 
+    // UPLOAD TO CLOUDINARY
+    let cloudinaryUrl = "";
+    try {
+      const bytes = await file.arrayBuffer();
+      const buffer = Buffer.from(bytes);
+
+      const uploadResult: any = await new Promise((resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream(
+          {
+            resource_type: "raw", // important for PDFs/DOCs
+            folder: "resumes", // optional: keep resumes in their own folder
+            public_id: candidateId.toString(),
+            overwrite: true, // overwrite if the candidate re-uploads
+          },
+          (error, result) => {
+            if (error) reject(error);
+            else resolve(result);
+          }
+        );
+        uploadStream.end(buffer);
+      });
+
+      console.log("Resume uploaded to Cloudinary:", uploadResult.secure_url);
+      cloudinaryUrl = uploadResult.secure_url;
+    } catch (uploadErr) {
+      console.error("Resume upload to Cloudinary failed:", uploadErr);
+    }
+
     // ---- Save to DB ----
     await Profile.findOneAndUpdate(
       { candidate: candidateId },
-      { $set: { ...parsedData, candidate: candidateId } },
+      {
+        $set: {
+          ...parsedData,
+          candidate: candidateId,
+        },
+        $push: {
+          resume: {
+            url: cloudinaryUrl,
+            fileName: file.name,
+            fileSize: file.size,
+            mimeType: file.type,
+          },
+        },
+      },
       { upsert: true, new: true }
     );
 
