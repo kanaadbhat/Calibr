@@ -20,7 +20,6 @@ export interface JobOpportunity {
   startDate?: string;
   autoScreen?: boolean;
   isPublic?: boolean;
-  candidateIds: string[];
   createdAt: Date;
   updatedAt: Date;
   

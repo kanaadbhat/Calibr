@@ -4,7 +4,6 @@ import React from "react";
 import { JobOpportunity } from "../../types";
 import { useResumes } from "../../hooks";
 import { applyToJob } from "../../actions";
-import { userStore } from "@/context/userContext";
 import {
   Sheet,
   SheetContent,
@@ -37,7 +36,7 @@ export default function JobApply({ job, isLoading }: JobApplyProps) {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   const { resumes, isLoading: resumesLoading } = useResumes();
-  const { user, isAuth } = userStore();
+ // const { user, isAuth } = userStore();
   const canConfirm = selectedResume && readTerms && confirmSend;
 
   if (isLoading) {
@@ -57,15 +56,14 @@ export default function JobApply({ job, isLoading }: JobApplyProps) {
   };
 
   const handleConfirmApply = async () => {
-    if (!isAuth || !user?.id || !job) {
-      alert('Please login as a candidate to apply for jobs');
-      return;
-    }
-
+    // if (!isAuth || !user?.id || !job) {
+    //   alert('Please login as a candidate to apply for jobs');
+    //   return;
+    // }
     setIsSubmitting(true);
     
     try {
-      await applyToJob(job._id, user.id, selectedResume);
+      await applyToJob(job._id);
       
       setOpen(false);
       // Reset form

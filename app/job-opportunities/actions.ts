@@ -4,16 +4,19 @@ import { connectToDatabase } from '@/utils/connectDb';
 import JobOpportunityModel from '@/models/jobOpportunity.model';
 import AssessmentModel from '@/models/assesment.model';
 import type { JobOpportunity } from './types.d.ts';
+import Candidate from '@/models/candidate.model';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/lib/auth';
 
 export async function getJobOpportunities(): Promise<JobOpportunity[]> {
   try {
     await connectToDatabase();
-    
+      
     // Fetch all public job opportunities with their assessments
     const jobs = await JobOpportunityModel.find({ isPublic: true })
       .sort({ createdAt: -1 })
       .lean();
-    
+     console.log("Fetched jobs:", jobs.length);
     // Get assessments for each job
     const jobsWithAssessments = await Promise.all(
       jobs.map(async (job) => {
@@ -147,7 +150,7 @@ export async function getJobOpportunityById(id: string): Promise<JobOpportunity 
       selectionRounds,
       // Split requirements and benefits if they contain line breaks or bullets
       requirementsList: job.requirements ? job.requirements.split('\n').filter(req => req.trim()) : undefined,
-      benefitsList: job.benefits ? job.benefits.split('\n').filter(benefit => benefit.trim()) : undefined
+      benefitsList: job.benefits ? job.benefits.split('\n').filter(benefit => benefit.trim()) : undefined,
     };
     
     return jobDetails;
@@ -186,24 +189,31 @@ export async function getResumes() {
   ];
 }
 
-export async function applyToJob(jobId: string, candidateId: string, _resumeId: string) {
+export async function applyToJob(jobId: string) {
+   await connectToDatabase();
   try {
-    await connectToDatabase();
-    
+    const session = await getServerSession(authOptions);
+    const candidateId = session?.user._id;
+    if (!candidateId) {
+      throw new Error('User not authenticated');
+    }
     // Check if candidate has already applied
     const job = await JobOpportunityModel.findById(jobId);
     if (!job) {
       throw new Error('Job not found');
     }
-    
-    if (job.candidateIds.includes(candidateId)) {
+    const iscandidateexist = await Candidate.findById(candidateId);
+    if (!iscandidateexist) {
+      throw new Error('Candidate not found');
+    }
+    if (job.candidates.includes(candidateId)) {
       throw new Error('You have already applied to this job');
     }
-    
-    // Add candidate ID to the job's candidateIds array
+
+    // Add candidate ID to the job's candidates array
     await JobOpportunityModel.findByIdAndUpdate(
       jobId,
-      { $push: { candidateIds: candidateId } },
+      { $push: { candidates: candidateId } },
       { new: true }
     );
     

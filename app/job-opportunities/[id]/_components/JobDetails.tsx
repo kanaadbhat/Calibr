@@ -251,7 +251,7 @@ export default function JobDetails({ job, isLoading }: JobDetailsProps) {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {job.assessments.map((assessment, _index) => (
+              {job.assessments.map((assessment) => (
                 <div key={assessment._id} className="p-4 bg-white/5 rounded-lg">
                   <h4 className="font-semibold text-white mb-2">{assessment.title}</h4>
                   {assessment.description && (

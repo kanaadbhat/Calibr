@@ -43,7 +43,7 @@ export function useProfileData(candidateId: string) {
 
   useEffect(() => {
     loadProfile();
-  }, [candidateId]);
+  }, [candidateId,loadProfile]);
 
   return {
     profileData,
