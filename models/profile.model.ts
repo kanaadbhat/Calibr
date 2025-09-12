@@ -47,23 +47,22 @@ const CandidateProfileSchema: Schema = new Schema(
       index: true,
     },
 
-    name:{
+    name: {
       type: String,
       required: true,
       trim: true,
-      maxlength: 100
+      maxlength: 100,
     },
     tagline: { type: String, trim: true, maxlength: 500 },
 
     summary: { type: String, trim: true, maxlength: 1000 },
 
     workDetails: { type: String, trim: true, maxlength: 2000 },
-    
+
     profileImage: { type: String, trim: true },
 
     education: [
       {
-        
         year: { type: String, required: true, trim: true },
         degree: { type: String, required: true, trim: true },
         institution: { type: String, required: true, trim: true },
@@ -82,7 +81,7 @@ const CandidateProfileSchema: Schema = new Schema(
         name: { type: String, required: true, trim: true },
         description: { type: String, required: true, trim: true },
         link: { type: String, trim: true },
-        _id:false,
+        _id: false,
       },
     ],
 
@@ -91,7 +90,7 @@ const CandidateProfileSchema: Schema = new Schema(
         name: { type: String, required: true, trim: true },
         issuer: { type: String, required: true, trim: true },
         link: { type: String, trim: true },
-        _id:false,
+        _id: false,
       },
     ],
 
@@ -106,16 +105,20 @@ const CandidateProfileSchema: Schema = new Schema(
       },
     },
 
-    resume: {
-      url: { type: String, trim: true },
-      fileName: { type: String, trim: true },
-      fileSize: { type: Number, min: 0 },
-      mimeType: { type: String, trim: true },
-    },
+    resume: [
+      {
+        url: { type: String, trim: true },
+        fileName: { type: String, trim: true },
+        fileSize: { type: Number, min: 0 },
+        mimeType: { type: String, trim: true },
+      },
+    ],
   },
   { timestamps: true }
 );
 
-const Profile = (mongoose.models.candidateprofile as mongoose.Model<CandidateProfile>) || mongoose.model<CandidateProfile>('candidateprofile', CandidateProfileSchema);
+const Profile =
+  (mongoose.models.candidateprofile as mongoose.Model<CandidateProfile>) ||
+  mongoose.model<CandidateProfile>("candidateprofile", CandidateProfileSchema);
 
 export default Profile;
