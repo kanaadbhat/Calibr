@@ -10,7 +10,7 @@ import { JobOpportunity } from '../types';
 
 interface JobCardProps {
   job: JobOpportunity;
-  onViewDetails: (id: number) => void;
+  onViewDetails: (id: string) => void;
 }
 
 const JobCard: React.FC<JobCardProps> = ({ job, onViewDetails }) => {
@@ -31,7 +31,7 @@ const JobCard: React.FC<JobCardProps> = ({ job, onViewDetails }) => {
           <Avatar className="w-16 h-16 border-2 border-white/20">
             <AvatarImage src={job.logo} alt={job.company} />
             <AvatarFallback className="bg-violet-600 text-white font-bold text-lg">
-              {job.company.charAt(0)}
+              {job.company?.charAt(0) || job.department.charAt(0)}
             </AvatarFallback>
           </Avatar>
 
@@ -60,7 +60,7 @@ const JobCard: React.FC<JobCardProps> = ({ job, onViewDetails }) => {
 
                 {/* Action Button */}
                 <Button
-                  onClick={() => onViewDetails(job.id)}
+                  onClick={() => onViewDetails(job._id)}
                   className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white border-0"
                   size="sm"
                 >
@@ -71,7 +71,7 @@ const JobCard: React.FC<JobCardProps> = ({ job, onViewDetails }) => {
               {/* Time Posted Badge */}
               <Badge
                 variant="outline"
-                className={`ml-4 ${getTimeColor(job.timePosted)} border`}
+                className={`ml-4 ${getTimeColor(job.timePosted || '')} border`}
               >
                 Applications opened {job.timePosted}
               </Badge>

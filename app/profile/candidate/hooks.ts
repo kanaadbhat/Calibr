@@ -45,10 +45,8 @@ export function useProfileData(candidateId: string) {
   };
 
   useEffect(() => {
-    if (candidateId) {
-      loadProfile();
-    }
-  }, [candidateId]);
+    loadProfile();
+  }, [candidateId,loadProfile]);
 
   return {
     profileData,
