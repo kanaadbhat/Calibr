@@ -15,9 +15,10 @@ export function useProfileData(candidateId: string) {
     skills: "",
     projects: [],
     certificates: [],
-    socialLinks: { linkedin: "", github: "" }
+    socialLinks: { linkedin: "", github: "" },
+    resume: [],
   });
-  
+
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [completionPercentage, setCompletionPercentage] = useState(0);
@@ -56,6 +57,6 @@ export function useProfileData(candidateId: string) {
     isLoading,
     error,
     completionPercentage,
-    refetch: loadProfile
+    refetch: loadProfile,
   };
 }

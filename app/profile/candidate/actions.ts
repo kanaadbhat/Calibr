@@ -117,7 +117,7 @@ export async function fetchCandidateProfile(
     }
 
     const name = `${candidateInfo.firstName} ${candidateInfo.lastName}`;
-    const profile = await Profile.findOne({ candidate: candidateId });
+    const profile = await Profile.findOne({ candidate: candidateId }).lean();
 
     const data: any = {
       name,
@@ -151,6 +151,7 @@ export async function fetchCandidateProfile(
         linkedin: profile?.socialLinks?.linkedin || "",
         github: profile?.socialLinks?.github || "",
       },
+      resume: profile?.resume || [],
     };
 
     return {

@@ -599,6 +599,35 @@ export default function CandidateProfilePage() {
                   <p className="text-white/80 leading-relaxed">
                     {profileData.summary}
                   </p>
+
+                  {/* Resumes List */}
+                  <div className="mt-6">
+                    <h4 className="text-lg font-semibold text-white mb-3">
+                      Uploaded Resumes
+                    </h4>
+                    {profileData.resume?.length > 0 ? (
+                      <ul className="space-y-3">
+                        {profileData.resume.map((res: any, index: number) => (
+                          <li
+                            key={index}
+                            className="flex items-center justify-between bg-white/10 rounded-lg p-3">
+                            <a
+                              href={res.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-white/90 hover:underline">
+                              {res.fileName || `Resume ${index + 1}`}
+                            </a>
+                            <button className="text-red-400 hover:text-red-600 text-sm font-medium">
+                              Delete
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-white/60">No resumes uploaded yet.</p>
+                    )}
+                  </div>
                 </div>
               </div>
 
