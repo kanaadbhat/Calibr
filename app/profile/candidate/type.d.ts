@@ -1,4 +1,3 @@
-
 export interface ProfileData {
   name: string;
   tagline: string;
@@ -6,12 +5,17 @@ export interface ProfileData {
   workDetails: string;
   profileImage?: string;
   education: Education[];
-  skills: string; 
+  skills: string;
   projects: Project[];
   certificates: Certificate[];
   socialLinks: SocialLinks;
+  resume: {
+    url: string;
+    fileName: string;
+    fileSize: number;
+    mimeType: string;
+  }[];
 }
-
 
 export interface Education {
   year: string;
@@ -35,7 +39,6 @@ export interface SocialLinks {
   linkedin: string;
   github: string;
 }
-
 
 export interface ProfileResponse {
   success: boolean;
