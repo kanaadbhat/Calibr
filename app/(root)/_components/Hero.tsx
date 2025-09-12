@@ -117,7 +117,7 @@ function Hero({
                 },
             });
         });
-    }, [stats]);
+    }, []);
 
     return (
         <div className="relative min-h-screen w-full flex items-center justify-center overflow-hidden bg-gradient-to-br from-[#0A0A18] via-[#0D0D20] to-[#0A0A18]">
