@@ -57,17 +57,17 @@ export default function JobActions({ job, isLoading }: JobActionsProps) {
 
   const handleSaveJob = () => {
     // Future: Implement save job functionality
-    console.log('Save job:', job.id);
+    console.log('Save job:', job._id);
   };
 
   const handleShareJob = () => {
     // Future: Implement share functionality
-    console.log('Share job:', job.id);
+    console.log('Share job:', job._id);
   };
 
   const handleContactRecruiter = () => {
     // Future: Implement contact recruiter functionality
-    console.log('Contact recruiter for job:', job.id);
+    console.log('Contact recruiter for job:', job._id);
   };
 
   return (
@@ -118,7 +118,7 @@ export default function JobActions({ job, isLoading }: JobActionsProps) {
               <Building className="h-4 w-4 text-white/60" />
               <div>
                 <p className="text-sm font-medium text-white">Company</p>
-                <p className="text-sm text-white/70">{job.company}</p>
+                <p className="text-sm text-white/70">{job.company || job.department}</p>
               </div>
             </div>
             
@@ -130,28 +130,52 @@ export default function JobActions({ job, isLoading }: JobActionsProps) {
               </div>
             </div>
             
-            <div className="flex items-center gap-3">
-              <DollarSign className="h-4 w-4 text-white/60" />
-              <div>
-                <p className="text-sm font-medium text-white">Salary</p>
-                <p className="text-sm text-white/70">{job.salary}</p>
+            {job.salary && (
+              <div className="flex items-center gap-3">
+                <DollarSign className="h-4 w-4 text-white/60" />
+                <div>
+                  <p className="text-sm font-medium text-white">Salary</p>
+                  <p className="text-sm text-white/70">{job.salary}</p>
+                </div>
               </div>
-            </div>
+            )}
             
-            <div className="flex items-center gap-3">
-              <Clock className="h-4 w-4 text-white/60" />
-              <div>
-                <p className="text-sm font-medium text-white">Posted</p>
-                <p className="text-sm text-white/70">{job.postedDate || job.timePosted}</p>
+            {job.timePosted && (
+              <div className="flex items-center gap-3">
+                <Clock className="h-4 w-4 text-white/60" />
+                <div>
+                  <p className="text-sm font-medium text-white">Posted</p>
+                  <p className="text-sm text-white/70">{job.timePosted}</p>
+                </div>
               </div>
-            </div>
+            )}
             
-            {job.applicants && (
+            {job.applicants && job.applicants > 0 && (
               <div className="flex items-center gap-3">
                 <Users className="h-4 w-4 text-white/60" />
                 <div>
                   <p className="text-sm font-medium text-white">Applicants</p>
                   <p className="text-sm text-white/70">{job.applicants} applied</p>
+                </div>
+              </div>
+            )}
+            
+            {(job.employmentType || job.type) && (
+              <div className="flex items-center gap-3">
+                <span className="h-4 w-4 text-white/60">💼</span>
+                <div>
+                  <p className="text-sm font-medium text-white">Employment Type</p>
+                  <p className="text-sm text-white/70">{job.employmentType || job.type}</p>
+                </div>
+              </div>
+            )}
+            
+            {job.openings && job.openings > 0 && (
+              <div className="flex items-center gap-3">
+                <Users className="h-4 w-4 text-white/60" />
+                <div>
+                  <p className="text-sm font-medium text-white">Openings</p>
+                  <p className="text-sm text-white/70">{job.openings} position{job.openings > 1 ? 's' : ''}</p>
                 </div>
               </div>
             )}
@@ -180,12 +204,12 @@ export default function JobActions({ job, isLoading }: JobActionsProps) {
       {/* Company Info Card */}
       <Card className="bg-white/5 backdrop-blur-xl border border-white/10">
         <CardHeader>
-          <CardTitle className="text-lg text-white">About {job.company}</CardTitle>
+          <CardTitle className="text-lg text-white">About {job.company || job.department}</CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-white/70 leading-relaxed">
-            {job.company} is a leading technology company focused on innovation and excellence. 
-            Join our team and be part of building the future of technology.
+            {job.company || job.department} is focused on innovation and excellence. 
+            Join our team and be part of building the future.
           </p>
           <Button 
             variant="outline" 

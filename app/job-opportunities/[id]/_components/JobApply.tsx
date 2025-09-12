@@ -3,6 +3,7 @@
 import React from "react";
 import { JobOpportunity } from "../../types";
 import { useResumes } from "../../hooks";
+import { applyToJob } from "../../actions";
 import {
   Sheet,
   SheetContent,
@@ -32,8 +33,10 @@ export default function JobApply({ job, isLoading }: JobApplyProps) {
   const [selectedResume, setSelectedResume] = React.useState<string>("");
   const [readTerms, setReadTerms] = React.useState(false);
   const [confirmSend, setConfirmSend] = React.useState(false);
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   const { resumes, isLoading: resumesLoading } = useResumes();
+ // const { user, isAuth } = userStore();
   const canConfirm = selectedResume && readTerms && confirmSend;
 
   if (isLoading) {
@@ -52,16 +55,29 @@ export default function JobApply({ job, isLoading }: JobApplyProps) {
     setOpen(true);
   };
 
-  const handleConfirmApply = () => {
-    // Future: Implement actual application submission
-    console.log('Applying to job:', job.id, 'with resume:', selectedResume);
-    setOpen(false);
-    // Reset form
-    setSelectedResume("");
-    setReadTerms(false);
-    setConfirmSend(false);
-    // You could show a success message here
-    alert(`Successfully applied to ${job.company}!`);
+  const handleConfirmApply = async () => {
+    // if (!isAuth || !user?.id || !job) {
+    //   alert('Please login as a candidate to apply for jobs');
+    //   return;
+    // }
+    setIsSubmitting(true);
+    
+    try {
+      await applyToJob(job._id);
+      
+      setOpen(false);
+      // Reset form
+      setSelectedResume("");
+      setReadTerms(false);
+      setConfirmSend(false);
+      
+      alert('Application confirmed! Your application has been submitted successfully.');
+    } catch (error) {
+      console.error('Error applying to job:', error);
+      alert(error instanceof Error ? error.message : 'Failed to submit application. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleCancel = () => {
@@ -89,7 +105,7 @@ export default function JobApply({ job, isLoading }: JobApplyProps) {
         >
           <SheetHeader className="pb-6">
             <SheetTitle className="text-2xl font-bold text-white mb-4">
-              Apply to {job.company}
+              Apply to {job.company || job.department}
             </SheetTitle>
             {/* Job Information */}
             <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-lg p-6 space-y-4">
@@ -97,7 +113,7 @@ export default function JobApply({ job, isLoading }: JobApplyProps) {
                 <Building className="h-5 w-5 text-violet-400" />
                 <div>
                   <p className="text-xs text-white/60">Company</p>
-                  <p className="text-sm font-medium text-white">{job.company}</p>
+                  <p className="text-sm font-medium text-white">{job.company || job.department}</p>
                 </div>
               </div>
               <div className="flex items-center gap-4">
@@ -107,13 +123,15 @@ export default function JobApply({ job, isLoading }: JobApplyProps) {
                   <p className="text-sm font-medium text-white">{job.title}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-4">
-                <DollarSign className="h-5 w-5 text-violet-400" />
-                <div>
-                  <p className="text-xs text-white/60">Salary</p>
-                  <p className="text-sm font-medium text-white">{job.salary}</p>
+              {job.salary && (
+                <div className="flex items-center gap-4">
+                  <DollarSign className="h-5 w-5 text-violet-400" />
+                  <div>
+                    <p className="text-xs text-white/60">Salary</p>
+                    <p className="text-sm font-medium text-white">{job.salary}</p>
+                  </div>
                 </div>
-              </div>
+              )}
               <div className="flex items-center gap-4">
                 <MapPin className="h-5 w-5 text-violet-400" />
                 <div>
@@ -203,7 +221,7 @@ export default function JobApply({ job, isLoading }: JobApplyProps) {
                 />
                 <Label htmlFor="confirmSend" className="text-sm text-white cursor-pointer">
                   By clicking Confirm, your profile and resume will be sent to{' '}
-                  <span className="font-semibold text-violet-300">{job.company}</span>
+                  <span className="font-semibold text-violet-300">{job.company || job.department}</span>
                 </Label>
               </div>
             </div>
@@ -220,10 +238,10 @@ export default function JobApply({ job, isLoading }: JobApplyProps) {
               </Button>
               <Button
                 onClick={handleConfirmApply}
-                disabled={!canConfirm}
+                disabled={!canConfirm || isSubmitting}
                 className="flex-1 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 disabled:from-gray-600 disabled:to-gray-700 disabled:cursor-not-allowed text-white border-0"
               >
-                Confirm Apply
+                {isSubmitting ? 'Submitting...' : 'Confirm Apply'}
               </Button>
             </div>
           </SheetFooter>
