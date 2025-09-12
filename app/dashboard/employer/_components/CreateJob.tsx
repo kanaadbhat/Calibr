@@ -107,6 +107,7 @@ export default function CreateJobPage() {
       startDate: (data.get("startDate") as string) || undefined,
       autoScreen: data.get("autoScreen") === "on",
       isPublic: data.get("isPublic") === "on",
+      candidates: [], 
     };
 
     console.log("[v0] Create Job payload:", payload);

@@ -102,7 +102,7 @@ export const AptitudeSchema: Schema = new Schema({
 
 // Pre-save middleware to generate question IDs if not provided
 
-const AptitudeModel = (mongoose.models.aptitude as mongoose.Model<Aptitude>) || 
-                     mongoose.model<Aptitude>('aptitude', AptitudeSchema);
+const AptitudeModel = (mongoose.models.aptitudes as mongoose.Model<Aptitude>) || 
+                     mongoose.model<Aptitude>('aptitudes', AptitudeSchema);
 
 export default AptitudeModel;

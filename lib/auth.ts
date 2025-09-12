@@ -41,6 +41,7 @@ export const authOptions : NextAuthOptions = {
         }
         }
         else if(credentials?.role === "employer"){
+        await connectToDatabase();
         try {
             const { email, password } = credentials;
 
