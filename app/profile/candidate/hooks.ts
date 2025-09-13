@@ -1,4 +1,5 @@
 "use client";
+import React from "react";
 
 import { useState, useEffect } from "react";
 import { fetchCandidateProfile } from "./actions";
@@ -23,7 +24,7 @@ export function useProfileData(candidateId: string) {
   const [error, setError] = useState<string | null>(null);
   const [completionPercentage, setCompletionPercentage] = useState(0);
 
-  const loadProfile = async () => {
+  const loadProfile = React.useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
@@ -43,13 +44,11 @@ export function useProfileData(candidateId: string) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [candidateId]);
 
   useEffect(() => {
-    if (candidateId) {
-      loadProfile();
-    }
-  }, [candidateId]);
+    loadProfile();
+  }, [loadProfile]);
 
   return {
     profileData,
