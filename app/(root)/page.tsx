@@ -1,8 +1,10 @@
 "use client";
 
-import { useSession } from "next-auth/react";
 import { Hero } from "./_components/Hero";
 import dynamic from "next/dynamic";
+import { useSearchParams } from "next/navigation";
+import { useEffect } from "react";
+import { toast } from "sonner";
 
 const HowItWorks = dynamic(() => import("./_components/HowItWorks"), {
   loading: () => <div className="h-screen flex items-center justify-center">Loading...</div>,
@@ -21,8 +23,28 @@ const CallToAction = dynamic(() => import("./_components/CallToAction"), {
 });
 
 export default function Home() {
-  const { data } = useSession();
-  console.log(data);
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const toastMessage = searchParams.get("toast");
+    if (toastMessage) {
+      // map toast keys to messages
+      switch (toastMessage) {
+        case "login_required":
+          toast.error("Please log in to continue");
+          break;
+        case "candidate_cannot_access":
+          toast.error("Candidates cannot access this page");
+          break;
+        case "employer_cannot_access":
+          toast.error("Employers cannot access this page");
+          break;
+        default:
+          toast.error(toastMessage.replaceAll("_", " "));
+      }
+    }
+  }, [searchParams]);
+
 
   return (
     <div>

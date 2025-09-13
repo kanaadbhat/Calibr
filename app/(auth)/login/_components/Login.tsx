@@ -5,10 +5,10 @@ import { Label } from "@/components/ui/label";
 import { signIn } from "next-auth/react";
 import Image from "next/image";
 import Link from "next/link";
-import React, { FormEvent, useState } from "react";
+import React, { FormEvent, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Building2, Users, Check } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 export default function Page() {
   const router = useRouter();
@@ -20,6 +20,18 @@ export default function Page() {
 
   const [isLoading, setIsLoading] = useState(false);
   const [selectedRole, setSelectedRole] = useState<"employer" | "candidate" | "">("");
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const toastMsg = searchParams.get("toast");
+    if (toastMsg === "login_required") {
+      toast.error("You don't have permission to access this page.");
+    } else if (toastMsg === "candidate_cannot_access") {
+      toast.error("Candidates cannot access this page.");
+    } else if (toastMsg === "employer_cannot_access") {
+      toast.error("Employers cannot access this page.");
+    }
+  }, [searchParams]);
 
   const handleInputChange = (e: FormEvent<HTMLInputElement>) => {
     const { name, value } = e.currentTarget;
@@ -54,18 +66,24 @@ export default function Page() {
             redirect: false,
           })
           if(res?.error){
-            toast.error(res?.error)
+            console.error("Login error:", res.error); // Add logging
+            toast.error(res.error)
           }
-          else{
+          else if(res?.ok){
             toast.success("Login successful")
-            router.push(`/`)
+            // Add a small delay to ensure toast is visible
+            setTimeout(() => {
+              router.push(`/`)
+            }, 1000);
           }
     } catch (err) {
-      toast.error(err as string);
+      console.error("Login exception:", err); // Add logging
+      toast.error(typeof err === 'string' ? err : 'An error occurred during login');
     } finally {
       setIsLoading(false);
     }
   };
+  
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-[#0A0A18] to-[#0D0D20]">
