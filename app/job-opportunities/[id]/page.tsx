@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import { useJobOpportunity } from '../hooks';
 import { JobActions, JobDetails, JobHeader } from './_components';
+import RoleWrapper from '@/lib/RoleWrapper';
 
 
 export default function JobDetailPage() {
@@ -41,6 +42,7 @@ export default function JobDetailPage() {
   }
 
   return (
+    <RoleWrapper role={["candidate" , "employer"]}>
     <div className="min-h-screen bg-gradient-to-br from-[#0A0A18] to-[#0D0D20] pt-22 pb-16">
       <div className="container mx-auto px-6">
         {/* Back Button */}
@@ -74,5 +76,6 @@ export default function JobDetailPage() {
         </div>
       </div>
     </div>
+    </RoleWrapper>
   );
 }
