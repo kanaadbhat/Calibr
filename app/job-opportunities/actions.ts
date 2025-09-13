@@ -206,7 +206,7 @@ export async function applyToJob(jobId: string) {
     if (!iscandidateexist) {
       throw new Error('Candidate not found');
     }
-    if (job.candidates.includes(candidateId)) {
+    if (Array.isArray(job.candidates) && job.candidates.includes(candidateId)) {
       throw new Error('You have already applied to this job');
     }
 
