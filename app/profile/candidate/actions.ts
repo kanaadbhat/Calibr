@@ -10,15 +10,19 @@ import mongoose from "mongoose";
 import axios from "axios";
 import { extractJsonFromResponse } from "@/ai-engine/ai-call/aiCall";
 import { resumePrompt } from "@/ai-engine/prompts/prompt";
-import { v2 as cloudinary } from "cloudinary";
+import { S3Client, PutObjectCommand, ListObjectsV2Command } from "@aws-sdk/client-s3";
 
-cloudinary.config({
-  cloud_name: process.env.NEXT_CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.NEXT_CLOUDINARY_API_KEY,
-  api_secret: process.env.NEXT_CLOUDINARY_API_SECRET, // Click 'View API Keys' above to copy your API secret
+// Configure S3 client
+const s3Client = new S3Client({
+  region: process.env.AWS_REGION!,
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+  },
 });
 
 const apiKey = process.env.NEXT_GEMINI_API;
+const S3_BUCKET_NAME = process.env.AWS_S3_BUCKET_NAME;
 
 export default async function updateCandidateProfile(
   profileData: ProfileData
@@ -348,57 +352,163 @@ function parseGeminiResponse(data: any): any {
   }
 }
 
-// Helper function to upload resume to Cloudinary
-async function uploadResumeToCloudinary(file: File, candidateId: string): Promise<string> {
+// Helper function to upload resume to S3
+async function uploadResumeToS3(file: File, candidateId: string): Promise<string> {
   try {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
-
-    const uploadResult: any = await new Promise((resolve, reject) => {
-      const uploadStream = cloudinary.uploader.upload_stream(
-        {
-          resource_type: "raw",
-          folder: "resumes",
-          public_id: candidateId.toString(),
-          overwrite: true,
-        },
-        (error, result) => {
-          if (error) reject(error);
-          else resolve(result);
-        }
-      );
-      uploadStream.end(buffer);
+    
+    // Sanitize filename for consistent S3 key
+    const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+    
+    // Create consistent S3 key for same file names (enables S3 versioning)
+    // Format: resumes/{candidateId}/{sanitizedFileName}
+    const s3Key = `resumes/${candidateId}/${sanitizedFileName}`;
+    
+    const uploadCommand = new PutObjectCommand({
+      Bucket: S3_BUCKET_NAME,
+      Key: s3Key,
+      Body: buffer,
+      ContentType: file.type,
+      Metadata: {
+        originalName: file.name,
+        candidateId: candidateId.toString(),
+        uploadedAt: new Date().toISOString(),
+        resumeType: "general", // Can be extended later for specific resume types
+      },
     });
 
-    console.log("Resume uploaded to Cloudinary:", uploadResult.secure_url);
-    return uploadResult.secure_url;
+    await s3Client.send(uploadCommand);
+    
+    // Construct S3 URL (public URL format) - S3 versioning handles multiple uploads
+    const s3Url = `https://${S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${s3Key}`;
+    
+    console.log("Resume uploaded to S3:", s3Url);
+    return s3Url;
   } catch (uploadErr) {
-    console.error("Resume upload to Cloudinary failed:", uploadErr);
+    console.error("Resume upload to S3 failed:", uploadErr);
     return ""; // Return empty string if upload fails
   }
 }
 
 // Helper function to update profile in database
-async function updateProfileInDatabase(candidateId: string, parsedData: any, file: File, cloudinaryUrl: string): Promise<void> {
+async function updateProfileInDatabase(candidateId: string, parsedData: any, file: File, s3Url: string): Promise<void> {
+  // First, check if a resume with the same filename already exists
+  const existingProfile = await Profile.findOne({ candidate: candidateId });
+  
+  let updateOperation: any = {
+    $set: {
+      ...parsedData,
+      candidate: candidateId,
+    },
+  };
+
+  // Check if resume with same filename already exists
+  // Handle both array and single object cases
+  let existingResumeIndex = -1;
+  if (existingProfile?.resume) {
+    if (Array.isArray(existingProfile.resume)) {
+      existingResumeIndex = existingProfile.resume.findIndex(
+        (r: any) => r.fileName === file.name
+      );
+    } else if (existingProfile.resume.fileName === file.name) {
+      // If it's a single object, convert to array format
+      existingResumeIndex = 0;
+    }
+  }
+
+  if (existingResumeIndex >= 0) {
+    // Update existing resume entry
+    updateOperation.$set[`resume.${existingResumeIndex}`] = {
+      url: s3Url,
+      fileName: file.name,
+      fileSize: file.size,
+      mimeType: file.type,
+      uploadedAt: new Date(),
+    };
+    console.log(`Updated existing resume: ${file.name}`);
+  } else {
+    // Add new resume entry
+    updateOperation.$push = {
+      resume: {
+        url: s3Url,
+        fileName: file.name,
+        fileSize: file.size,
+        mimeType: file.type,
+        uploadedAt: new Date(),
+      },
+    };
+    console.log(`Added new resume: ${file.name}`);
+  }
+
   await Profile.findOneAndUpdate(
     { candidate: candidateId },
-    {
-      $set: {
-        ...parsedData,
-        candidate: candidateId,
-      },
-      $push: {
-        resume: {
-          url: cloudinaryUrl,
-          fileName: file.name,
-          fileSize: file.size,
-          mimeType: file.type,
-        },
-      },
-    },
+    updateOperation,
     { upsert: true, new: true }
   );
+  
   console.log("Profile updated successfully");
+}
+
+// Helper function to get all resumes for a candidate from S3
+export async function getCandidateResumes(candidateId: string): Promise<{
+  success: boolean;
+  resumes?: Array<{
+    url: string;
+    fileName: string;
+    lastModified: Date;
+    size: number;
+    key: string;
+  }>;
+  message: string;
+  error?: string;
+}> {
+  try {
+    const listCommand = new ListObjectsV2Command({
+      Bucket: S3_BUCKET_NAME,
+      Prefix: `resumes/${candidateId}/`,
+    });
+
+    const response = await s3Client.send(listCommand);
+    
+    if (!response.Contents || response.Contents.length === 0) {
+      return {
+        success: true,
+        resumes: [],
+        message: "No resumes found for this candidate",
+      };
+    }
+
+    const resumes = response.Contents.map((object) => {
+      // Extract filename from S3 key (no timestamp prefix now)
+      const keyParts = object.Key!.split('/');
+      const fileName = keyParts[keyParts.length - 1];
+      
+      return {
+        url: `https://${S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${object.Key}`,
+        fileName: fileName,
+        lastModified: object.LastModified!,
+        size: object.Size!,
+        key: object.Key!,
+      };
+    });
+
+    // Sort by last modified date (newest first)
+    resumes.sort((a, b) => b.lastModified.getTime() - a.lastModified.getTime());
+
+    return {
+      success: true,
+      resumes,
+      message: `Found ${resumes.length} resume(s)`,
+    };
+  } catch (error) {
+    console.error("Error fetching candidate resumes:", error);
+    return {
+      success: false,
+      message: "Failed to fetch resumes",
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
 }
 
 // Main function - refactored to use helper functions
@@ -428,11 +538,11 @@ export async function parseAndUpdateResume(file: File) {
     // Step 5: Parse Gemini response
     const parsedData = parseGeminiResponse(geminiResponse);
 
-    // Step 6: Upload resume to Cloudinary
-    const cloudinaryUrl = await uploadResumeToCloudinary(file, candidateId);
+    // Step 6: Upload resume to S3
+    const s3Url = await uploadResumeToS3(file, candidateId);
 
     // Step 7: Update profile in database
-    await updateProfileInDatabase(candidateId, parsedData, file, cloudinaryUrl);
+    await updateProfileInDatabase(candidateId, parsedData, file, s3Url);
 
     return { success: true, message: "Resume parsed & profile updated" };
   } catch (err: any) {
