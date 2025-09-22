@@ -3,39 +3,9 @@ import mongoose, { Schema, Document } from "mongoose";
 export interface CandidateProfile extends Document {
   candidate: mongoose.Types.ObjectId;
   name: string;
-  tagline?: string;
-  summary?: string;
-  workDetails?: string;
   profileImage?: string;
-  education: {
-    _id: mongoose.Types.ObjectId;
-    year: string;
-    degree: string;
-    institution: string;
-  }[];
-  skills: string;
-  projects: {
-    _id: mongoose.Types.ObjectId;
-    name: string;
-    description: string;
-    link?: string;
-  };
-  certificates: {
-    _id: mongoose.Types.ObjectId;
-    name: string;
-    issuer: string;
-    link?: string;
-  }[];
-  socialLinks: {
-    linkedin?: string;
-    github?: string;
-  };
-  resume?: {
-    url: string;
-    fileName?: string;
-    fileSize?: number;
-    mimeType?: string;
-  };
+  resumes: mongoose.Types.ObjectId[]; // References to Resume documents
+  activeResume?: mongoose.Types.ObjectId; // Currently active resume ID
 }
 
 const CandidateProfileSchema: Schema = new Schema(
@@ -53,66 +23,20 @@ const CandidateProfileSchema: Schema = new Schema(
       trim: true,
       maxlength: 100,
     },
-    tagline: { type: String, trim: true, maxlength: 500 },
-
-    summary: { type: String, trim: true, maxlength: 1000 },
-
-    workDetails: { type: String, trim: true, maxlength: 2000 },
 
     profileImage: { type: String, trim: true },
 
-    education: [
+    resumes: [
       {
-        year: { type: String, required: true, trim: true },
-        degree: { type: String, required: true, trim: true },
-        institution: { type: String, required: true, trim: true },
-        _id: false,
+        type: Schema.Types.ObjectId,
+        ref: "Resume",
       },
     ],
 
-    skills: {
-      type: String,
-      default: "",
-      index: true,
+    activeResume: {
+      type: Schema.Types.ObjectId,
+      ref: "Resume",
     },
-
-    projects: [
-      {
-        name: { type: String, required: true, trim: true },
-        description: { type: String, required: true, trim: true },
-        link: { type: String, trim: true },
-        _id: false,
-      },
-    ],
-
-    certificates: [
-      {
-        name: { type: String, required: true, trim: true },
-        issuer: { type: String, required: true, trim: true },
-        link: { type: String, trim: true },
-        _id: false,
-      },
-    ],
-
-    socialLinks: {
-      linkedin: {
-        type: String,
-        trim: true,
-      },
-      github: {
-        type: String,
-        trim: true,
-      },
-    },
-
-    resume: [
-      {
-        url: { type: String, trim: true },
-        fileName: { type: String, trim: true },
-        fileSize: { type: Number, min: 0 },
-        mimeType: { type: String, trim: true },
-      },
-    ],
   },
   { timestamps: true }
 );

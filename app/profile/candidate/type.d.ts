@@ -10,6 +10,7 @@ export interface ProfileData {
   certificates: Certificate[];
   socialLinks: SocialLinks;
   resume: {
+    id: string;
     url: string;
     fileName: string;
     fileSize: number;

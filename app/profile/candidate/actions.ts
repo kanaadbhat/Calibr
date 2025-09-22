@@ -2,6 +2,7 @@
 
 import { connectToDatabase } from "@/utils/connectDb";
 import Profile from "@/models/profile.model";
+import ResumeModel, { Resume } from "@/models/resume.model";
 import candidate from "@/models/candidate.model";
 import { ProfileData, ProfileResponse } from "./type";
 import { getServerSession } from "next-auth";
@@ -10,7 +11,11 @@ import mongoose from "mongoose";
 import axios from "axios";
 import { extractJsonFromResponse } from "@/ai-engine/ai-call/aiCall";
 import { resumePrompt } from "@/ai-engine/prompts/prompt";
-import { S3Client, PutObjectCommand, ListObjectsV2Command } from "@aws-sdk/client-s3";
+import {
+  S3Client,
+  PutObjectCommand,
+  DeleteObjectCommand,
+} from "@aws-sdk/client-s3";
 
 // Configure S3 client
 const s3Client = new S3Client({
@@ -41,34 +46,95 @@ export default async function updateCandidateProfile(
 
     await connectToDatabase();
 
-    // Fetch candidate name
+    // Get or create profile with candidate name
     const candidateDoc = await candidate
       .findById(candidateId)
       .select("firstName lastName");
 
-    if (!candidateDoc) {
-      return {
-        success: false,
-        message: "Candidate not found",
-        error: "Unable to find candidate information",
-      };
-    }
-
-    const name = `${candidateDoc.firstName} ${candidateDoc.lastName}`;
-    const data = { ...profileData, candidate: candidateId, name };
+    const candidateName = candidateDoc 
+      ? `${candidateDoc.firstName} ${candidateDoc.lastName}`
+      : profileData.name;
 
     let profile = await Profile.findOne({ candidate: candidateId });
-
     if (!profile) {
-      await Profile.create(data);
-      return { success: true, message: "Profile created successfully" };
-    } else {
+      // Create basic profile if it doesn't exist
+      profile = await Profile.create({
+        candidate: candidateId,
+        name: candidateName,
+        profileImage: profileData.profileImage,
+        resumes: [],
+      });
+      console.log("Created new profile:", profile._id);
+    }
+
+    // Update profile image if provided
+    if (profileData.profileImage !== undefined) {
       await Profile.findOneAndUpdate(
         { candidate: candidateId },
-        { $set: data },
+        { $set: { profileImage: profileData.profileImage } },
         { new: true }
       );
+    }
+
+    // Update active resume's parsed data if there's an active resume
+    if (profile.activeResume) {
+      const updateData = {
+        "parsedData.tagline": profileData.tagline || "",
+        "parsedData.summary": profileData.summary || "",
+        "parsedData.workDetails": profileData.workDetails || "",
+        "parsedData.education": profileData.education || [],
+        "parsedData.skills": profileData.skills || "",
+        "parsedData.projects": profileData.projects || [],
+        "parsedData.certificates": profileData.certificates || [],
+        "parsedData.socialLinks": profileData.socialLinks || { linkedin: "", github: "" },
+        lastUpdated: new Date(),
+      };
+
+      await ResumeModel.findByIdAndUpdate(
+        profile.activeResume,
+        { $set: updateData },
+        { new: true }
+      );
+
       return { success: true, message: "Profile updated successfully" };
+    } else {
+      // If no active resume exists, create a default one
+      const defaultResume = new ResumeModel({
+        candidateId,
+        fileName: "manual-profile",
+        originalFileName: "Manual Profile Entry",
+        s3Url: "", // No file uploaded
+        s3Key: "",
+        fileSize: 0,
+        mimeType: "application/json",
+        parsedData: {
+          tagline: profileData.tagline || "",
+          summary: profileData.summary || "",
+          workDetails: profileData.workDetails || "",
+          education: profileData.education || [],
+          skills: profileData.skills || "",
+          projects: profileData.projects || [],
+          certificates: profileData.certificates || [],
+          socialLinks: profileData.socialLinks || { linkedin: "", github: "" },
+        },
+        isParsed: true,
+        version: 1,
+        isActive: true,
+      });
+
+      await defaultResume.save();
+
+      // Update profile to reference this resume
+      await Profile.findOneAndUpdate(
+        { candidate: candidateId },
+        {
+          $addToSet: { resumes: defaultResume._id },
+          activeResume: defaultResume._id,
+        },
+        { new: true }
+      );
+
+      return { success: true, message: "Profile created successfully" };
     }
   } catch (err) {
     console.error("Error updating profile:", err);
@@ -123,49 +189,58 @@ export async function fetchCandidateProfile(
     const name = `${candidateInfo.firstName} ${candidateInfo.lastName}`;
     const profile = await Profile.findOne({ candidate: candidateId }).lean();
 
+    // Fetch resume data from Resume collection
+    const resumes = await ResumeModel.find({
+      candidateId: candidateId,
+      isActive: true
+    })
+    .select('fileName s3Url fileSize mimeType uploadedAt')
+    .sort({ uploadedAt: -1 });
+
+    // Fetch active resume data for profile content
+    let activeResumeData = null;
+    if (profile?.activeResume) {
+      activeResumeData = await ResumeModel.findById(profile.activeResume)
+        .select('parsedData isParsed')
+        .lean();
+    }
+
+    // Use active resume data if available, otherwise use defaults
+    const parsedData = activeResumeData?.parsedData || {};
+
     const data: any = {
       name,
-      tagline: profile?.tagline || "",
-      summary: profile?.summary || "",
-      workDetails: profile?.workDetails || "",
+      tagline: parsedData.tagline || "",
+      summary: parsedData.summary || "",
+      workDetails: parsedData.workDetails || "",
       profileImage: profile?.profileImage || "",
-      education:
-        profile?.education?.map((edu: any) => ({
-          year: edu.year,
-          degree: edu.degree,
-          institution: edu.institution,
-        })) || [],
-      skills: profile?.skills || "",
-      projects: Array.isArray(profile?.projects)
-        ? profile.projects.map((project: any) => ({
-            name: project.name,
-            description: project.description,
-            link: project.link || "",
-          }))
-        : profile?.projects
-        ? [profile.projects]
-        : [],
-      certificates:
-        profile?.certificates?.map((cert: any) => ({
-          name: cert.name,
-          issuer: cert.issuer,
-          link: cert.link || "",
-        })) || [],
+      education: parsedData.education?.map((edu: any) => ({
+        year: edu.year || "",
+        degree: edu.degree || "",
+        institution: edu.institution || "",
+      })) || [],
+      skills: parsedData.skills || "",
+      projects: parsedData.projects?.map((project: any) => ({
+        name: project.name || "",
+        description: project.description || "",
+        link: project.link || "",
+      })) || [],
+      certificates: parsedData.certificates?.map((cert: any) => ({
+        name: cert.name || "",
+        issuer: cert.issuer || "",
+        link: cert.link || "",
+      })) || [],
       socialLinks: {
-        linkedin: profile?.socialLinks?.linkedin || "",
-        github: profile?.socialLinks?.github || "",
+        linkedin: parsedData.socialLinks?.linkedin || "",
+        github: parsedData.socialLinks?.github || "",
       },
-      resume: Array.isArray(profile?.resume)
-        ? profile.resume.map((r: any) => ({
-            ...r,
-            _id: r._id?.toString?.() ?? undefined,
-          }))
-        : profile?.resume
-        ? [{
-            ...profile.resume,
-            _id: (profile.resume as any)?._id?.toString?.() ?? undefined,
-          }]
-        : [],
+      resume: resumes.map((resume: Resume) => ({
+        id: (resume._id as string).toString(),
+        url: resume.s3Url,
+        fileName: resume.fileName,
+        fileSize: resume.fileSize,
+        mimeType: resume.mimeType,
+      })),
     };
 
     return {
@@ -391,87 +466,35 @@ async function uploadResumeToS3(file: File, candidateId: string): Promise<string
   }
 }
 
-// Helper function to update profile in database
-async function updateProfileInDatabase(candidateId: string, parsedData: any, file: File, s3Url: string): Promise<void> {
-  // First, check if a resume with the same filename already exists
-  const existingProfile = await Profile.findOne({ candidate: candidateId });
-  
-  let updateOperation: any = {
-    $set: {
-      ...parsedData,
-      candidate: candidateId,
-    },
-  };
 
-  // Check if resume with same filename already exists
-  // Handle both array and single object cases
-  let existingResumeIndex = -1;
-  if (existingProfile?.resume) {
-    if (Array.isArray(existingProfile.resume)) {
-      existingResumeIndex = existingProfile.resume.findIndex(
-        (r: any) => r.fileName === file.name
-      );
-    } else if (existingProfile.resume.fileName === file.name) {
-      // If it's a single object, convert to array format
-      existingResumeIndex = 0;
-    }
-  }
 
-  if (existingResumeIndex >= 0) {
-    // Update existing resume entry
-    updateOperation.$set[`resume.${existingResumeIndex}`] = {
-      url: s3Url,
-      fileName: file.name,
-      fileSize: file.size,
-      mimeType: file.type,
-      uploadedAt: new Date(),
-    };
-    console.log(`Updated existing resume: ${file.name}`);
-  } else {
-    // Add new resume entry
-    updateOperation.$push = {
-      resume: {
-        url: s3Url,
-        fileName: file.name,
-        fileSize: file.size,
-        mimeType: file.type,
-        uploadedAt: new Date(),
-      },
-    };
-    console.log(`Added new resume: ${file.name}`);
-  }
-
-  await Profile.findOneAndUpdate(
-    { candidate: candidateId },
-    updateOperation,
-    { upsert: true, new: true }
-  );
-  
-  console.log("Profile updated successfully");
-}
-
-// Helper function to get all resumes for a candidate from S3
+// Get all resumes for a candidate from Resume model
 export async function getCandidateResumes(candidateId: string): Promise<{
   success: boolean;
   resumes?: Array<{
+    id: string;
     url: string;
     fileName: string;
     lastModified: Date;
     size: number;
     key: string;
+    isParsed: boolean;
+    version: number;
   }>;
   message: string;
   error?: string;
 }> {
   try {
-    const listCommand = new ListObjectsV2Command({
-      Bucket: S3_BUCKET_NAME,
-      Prefix: `resumes/${candidateId}/`,
-    });
-
-    const response = await s3Client.send(listCommand);
+    await connectToDatabase();
     
-    if (!response.Contents || response.Contents.length === 0) {
+    const resumes = await ResumeModel.find({
+      candidateId: candidateId,
+      isActive: true
+    })
+    .sort({ uploadedAt: -1 }) // Newest first
+    .select('fileName s3Url s3Key fileSize uploadedAt isParsed version');
+
+    if (!resumes || resumes.length === 0) {
       return {
         success: true,
         resumes: [],
@@ -479,27 +502,21 @@ export async function getCandidateResumes(candidateId: string): Promise<{
       };
     }
 
-    const resumes = response.Contents.map((object) => {
-      // Extract filename from S3 key (no timestamp prefix now)
-      const keyParts = object.Key!.split('/');
-      const fileName = keyParts[keyParts.length - 1];
-      
-      return {
-        url: `https://${S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${object.Key}`,
-        fileName: fileName,
-        lastModified: object.LastModified!,
-        size: object.Size!,
-        key: object.Key!,
-      };
-    });
-
-    // Sort by last modified date (newest first)
-    resumes.sort((a, b) => b.lastModified.getTime() - a.lastModified.getTime());
+    const resumeList = resumes.map((resume: Resume) => ({
+      id: (resume._id as string).toString(),
+      url: resume.s3Url,
+      fileName: resume.fileName,
+      lastModified: resume.uploadedAt,
+      size: resume.fileSize,
+      key: resume.s3Key,
+      isParsed: resume.isParsed,
+      version: resume.version,
+    }));
 
     return {
       success: true,
-      resumes,
-      message: `Found ${resumes.length} resume(s)`,
+      resumes: resumeList,
+      message: `Found ${resumeList.length} resume(s)`,
     };
   } catch (error) {
     console.error("Error fetching candidate resumes:", error);
@@ -511,10 +528,14 @@ export async function getCandidateResumes(candidateId: string): Promise<{
   }
 }
 
-// Main function - refactored to use helper functions
-export async function parseAndUpdateResume(file: File) {
+// Upload resume and automatically parse it
+export async function uploadResumeOnly(file: File): Promise<{
+  success: boolean;
+  message: string;
+  error?: string;
+  resumeUrl?: string;
+}> {
   try {
-    // Step 1: Authentication and database setup
     const session = await getServerSession(authOptions);
     const candidateId = session?.user._id;
     if (!candidateId) {
@@ -526,56 +547,584 @@ export async function parseAndUpdateResume(file: File) {
     }
     await connectToDatabase();
 
-    // Step 2: Extract text from file
-    const { text: resumeText, useDirectUpload } = await extractTextFromFile(file);
-
-    // Step 3: Prepare Gemini API payload
-    const payload = await prepareGeminiPayload(file, resumeText, useDirectUpload);
-
-    // Step 4: Call Gemini API
-    const geminiResponse = await callGeminiAPI(payload);
-
-    // Step 5: Parse Gemini response
-    const parsedData = parseGeminiResponse(geminiResponse);
-
-    // Step 6: Upload resume to S3
+    // Step 1: Upload to S3 first
     const s3Url = await uploadResumeToS3(file, candidateId);
-
-    // Step 7: Update profile in database
-    await updateProfileInDatabase(candidateId, parsedData, file, s3Url);
-
-    return { success: true, message: "Resume parsed & profile updated" };
-  } catch (err: any) {
-    console.error("Resume parsing error:", err);
-
-    // Provide more specific error messages
-    if (err.code === "ECONNABORTED") {
+    if (!s3Url) {
       return {
         success: false,
-        message:
-          "Request timeout. The file might be too large or the server is busy.",
-        error: err.message,
-      };
-    } else if (err.response?.status === 413) {
-      return {
-        success: false,
-        message: "File too large. Please try a smaller file.",
-        error: err.message,
-      };
-    } else if (err.response?.status >= 400 && err.response?.status < 500) {
-      return {
-        success: false,
-        message:
-          "Invalid request. Please check your file format and try again.",
-        error: err.message,
-      };
-    } else {
-      return {
-        success: false,
-        message:
-          "Error parsing resume. Please try again or use a different file format.",
-        error: err.message,
+        message: "Failed to upload resume",
+        error: "S3 upload failed",
       };
     }
+
+    // Step 2: Parse with AI
+    let parsedData = null;
+    let isParsed = false;
+    let parseError = null;
+    
+    try {
+      console.log("Starting resume parsing...");
+      const { text: resumeText, useDirectUpload } = await extractTextFromFile(file);
+      const payload = await prepareGeminiPayload(file, resumeText, useDirectUpload);
+      const geminiResponse = await callGeminiAPI(payload);
+      parsedData = parseGeminiResponse(geminiResponse);
+      isParsed = true;
+      console.log("Resume parsed successfully");
+    } catch (error) {
+      console.warn("Resume parsing failed:", error);
+      parseError = error instanceof Error ? error.message : "Unknown parsing error";
+      // Create empty data structure
+      parsedData = {
+        tagline: "",
+        summary: "",
+        workDetails: "",
+        education: [],
+        skills: "",
+        projects: [],
+        certificates: [],
+        socialLinks: { linkedin: "", github: "" },
+      };
+    }
+
+    // Step 3: Create sanitized S3 key
+    const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+    const s3Key = `resumes/${candidateId}/${sanitizedFileName}`;
+
+    // Step 4: Handle existing resume with same filename
+    const existingResume = await ResumeModel.findOne({
+      candidateId: candidateId,
+      fileName: file.name,
+      isActive: true
+    });
+
+    let resumeDoc;
+    
+    if (existingResume) {
+      // Mark old version as inactive
+      await ResumeModel.updateOne(
+        { _id: existingResume._id },
+        { isActive: false }
+      );
+      
+      // Create new version
+      const nextVersion = existingResume.version + 1;
+      resumeDoc = new ResumeModel({
+        candidateId,
+        fileName: file.name,
+        originalFileName: file.name,
+        s3Url,
+        s3Key,
+        fileSize: file.size,
+        mimeType: file.type,
+        parsedData,
+        isParsed,
+        parseError,
+        version: nextVersion,
+        isActive: true,
+      });
+    } else {
+      // Create first version
+      resumeDoc = new ResumeModel({
+        candidateId,
+        fileName: file.name,
+        originalFileName: file.name,
+        s3Url,
+        s3Key,
+        fileSize: file.size,
+        mimeType: file.type,
+        parsedData,
+        isParsed,
+        parseError,
+        version: 1,
+        isActive: true,
+      });
+    }
+
+    await resumeDoc.save();
+    console.log("Resume document saved successfully with ID:", resumeDoc._id);
+
+    // Step 5: Update profile to include resume reference
+    const updatedProfile = await Profile.findOneAndUpdate(
+      { candidate: candidateId },
+      {
+        $addToSet: { resumes: resumeDoc._id },
+        activeResume: resumeDoc._id, // Set as active resume
+      },
+      { upsert: true, new: true }
+    );
+
+    console.log("Profile updated successfully:", {
+      profileId: updatedProfile?._id,
+      resumesCount: updatedProfile?.resumes?.length,
+      activeResume: updatedProfile?.activeResume
+    });
+
+    const message = isParsed 
+      ? "Resume uploaded and parsed successfully" 
+      : "Resume uploaded successfully (parsing failed, you can edit manually)";
+
+    return {
+      success: true,
+      message,
+      resumeUrl: s3Url,
+    };
+  } catch (error) {
+    console.error("Error uploading resume:", error);
+    return {
+      success: false,
+      message: "Failed to upload resume",
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
+}
+
+// Delete resume from S3 and database
+export async function deleteResume(resumeId: string): Promise<{
+  success: boolean;
+  message: string;
+  error?: string;
+}> {
+  try {
+    const session = await getServerSession(authOptions);
+    const candidateId = session?.user._id;
+    if (!candidateId) {
+      return {
+        success: false,
+        message: "Unauthorized",
+        error: "User session not found",
+      };
+    }
+    await connectToDatabase();
+
+    // Find the resume document
+    const resume = await ResumeModel.findOne({
+      _id: resumeId,
+      candidateId: candidateId
+    });
+
+    if (!resume) {
+      return {
+        success: false,
+        message: "Resume not found or does not belong to this candidate",
+        error: "Invalid resume ID",
+      };
+    }
+
+    // Delete from S3
+    const deleteCommand = new DeleteObjectCommand({
+      Bucket: S3_BUCKET_NAME,
+      Key: resume.s3Key,
+    });
+
+    await s3Client.send(deleteCommand);
+
+    // Mark resume as inactive instead of deleting (for audit trail)
+    await ResumeModel.findByIdAndUpdate(resumeId, {
+      isActive: false,
+      deletedAt: new Date()
+    });
+
+    // Remove from profile's resume references
+    await Profile.findOneAndUpdate(
+      { candidate: candidateId },
+      {
+        $pull: { resumes: resumeId },
+        // If this was the active resume, unset it
+        ...(await Profile.findOne({ candidate: candidateId, activeResume: resumeId }) 
+           ? { $unset: { activeResume: "" } } 
+           : {})
+      }
+    );
+
+    return {
+      success: true,
+      message: "Resume deleted successfully",
+    };
+  } catch (error) {
+    console.error("Error deleting resume:", error);
+    return {
+      success: false,
+      message: "Failed to delete resume",
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
+}
+
+
+
+// Get resume profile data (now using Resume model)
+export async function getResumeProfile(resumeId: string): Promise<{
+  success: boolean;
+  message: string;
+  error?: string;
+  profileData?: any;
+}> {
+  try {
+    const session = await getServerSession(authOptions);
+    const candidateId = session?.user._id;
+    if (!candidateId) {
+      return {
+        success: false,
+        message: "Unauthorized",
+        error: "User session not found",
+      };
+    }
+    await connectToDatabase();
+
+    const resume = await ResumeModel.findOne({
+      _id: resumeId,
+      candidateId: candidateId,
+      isActive: true
+    });
+
+    if (!resume) {
+      return {
+        success: false,
+        message: "Resume not found",
+        error: "Resume not found or does not belong to this candidate",
+      };
+    }
+
+    // If resume hasn't been parsed, return empty data structure
+    if (!resume.isParsed || !resume.parsedData) {
+      const emptyData = {
+        tagline: "",
+        summary: "",
+        workDetails: "",
+        education: [],
+        skills: "",
+        projects: [],
+        certificates: [],
+        socialLinks: { linkedin: "", github: "" },
+      };
+
+      return {
+        success: true,
+        message: "Resume not parsed yet (ready for manual input)",
+        profileData: emptyData,
+      };
+    }
+
+    return {
+      success: true,
+      message: "Resume profile retrieved successfully",
+      profileData: resume.parsedData,
+    };
+  } catch (error) {
+    console.error("Error getting resume profile:", error);
+    return {
+      success: false,
+      message: "Failed to get resume profile",
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
+}
+
+// Update resume profile data (now using Resume model)
+export async function updateResumeProfile(resumeId: string, profileData: any): Promise<{
+  success: boolean;
+  message: string;
+  error?: string;
+}> {
+  try {
+    const session = await getServerSession(authOptions);
+    const candidateId = session?.user._id;
+    if (!candidateId) {
+      return {
+        success: false,
+        message: "Unauthorized",
+        error: "User session not found",
+      };
+    }
+    await connectToDatabase();
+
+    const resume = await ResumeModel.findOneAndUpdate(
+      {
+        _id: resumeId,
+        candidateId: candidateId,
+        isActive: true
+      },
+      {
+        parsedData: profileData,
+        isParsed: true,
+        parseError: null,
+        updatedAt: new Date(),
+      },
+      { new: true }
+    );
+
+    if (!resume) {
+      return {
+        success: false,
+        message: "Resume not found",
+        error: "Resume not found or does not belong to this candidate",
+      };
+    }
+
+    return {
+      success: true,
+      message: "Resume profile updated successfully",
+    };
+  } catch (error) {
+    console.error("Error updating resume profile:", error);
+    return {
+      success: false,
+      message: "Failed to update resume profile",
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
+}
+
+// Apply resume profile to main profile (now using Resume model)
+export async function applyResumeToProfile(resumeId: string): Promise<{
+  success: boolean;
+  message: string;
+  error?: string;
+}> {
+  try {
+    const session = await getServerSession(authOptions);
+    const candidateId = session?.user._id;
+    if (!candidateId) {
+      return {
+        success: false,
+        message: "Unauthorized",
+        error: "User session not found",
+      };
+    }
+    await connectToDatabase();
+
+    const resume = await ResumeModel.findOne({
+      _id: resumeId,
+      candidateId: candidateId,
+      isActive: true
+    });
+
+    if (!resume) {
+      return {
+        success: false,
+        message: "Resume not found",
+        error: "Resume not found or does not belong to this candidate",
+      };
+    }
+
+    if (!resume.isParsed || !resume.parsedData) {
+      return {
+        success: false,
+        message: "Resume has not been parsed yet",
+        error: "No parsed data available to apply",
+      };
+    }
+
+    // Set this resume as the active resume (data will be fetched from Resume model)
+    await Profile.findOneAndUpdate(
+      { candidate: candidateId },
+      {
+        $set: {
+          activeResume: resumeId,
+        },
+        $addToSet: { resumes: resumeId },
+      },
+      { upsert: true }
+    );
+
+    return {
+      success: true,
+      message: "Resume profile applied successfully",
+    };
+  } catch (error) {
+    console.error("Error applying resume profile:", error);
+    return {
+      success: false,
+      message: "Failed to apply resume profile",
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
+}
+
+
+
+// Get parsed data for a specific resume
+export async function getResumeParsedData(resumeId: string): Promise<{
+  success: boolean;
+  data?: any;
+  message: string;
+  error?: string;
+}> {
+  try {
+    await connectToDatabase();
+    
+    const resume = await ResumeModel.findById(resumeId).select('parsedData isParsed parseError fileName');
+    
+    if (!resume) {
+      return {
+        success: false,
+        message: "Resume not found",
+        error: "Resume document does not exist",
+      };
+    }
+
+    if (!resume.isParsed) {
+      return {
+        success: false,
+        message: "Resume has not been parsed yet",
+        error: resume.parseError || "Parsing failed",
+      };
+    }
+
+    return {
+      success: true,
+      data: resume.parsedData,
+      message: "Resume data retrieved successfully",
+    };
+  } catch (error) {
+    console.error("Error fetching resume parsed data:", error);
+    return {
+      success: false,
+      message: "Failed to fetch resume data",
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
+}
+
+// Update parsed data for a resume
+export async function updateResumeParsedData(resumeId: string, parsedData: any): Promise<{
+  success: boolean;
+  message: string;
+  error?: string;
+}> {
+  try {
+    await connectToDatabase();
+    
+    const result = await ResumeModel.findByIdAndUpdate(
+      resumeId,
+      {
+        parsedData,
+        isParsed: true,
+        parseError: null,
+        updatedAt: new Date(),
+      },
+      { new: true }
+    );
+
+    if (!result) {
+      return {
+        success: false,
+        message: "Resume not found",
+        error: "Resume document does not exist",
+      };
+    }
+
+    return {
+      success: true,
+      message: "Resume data updated successfully",
+    };
+  } catch (error) {
+    console.error("Error updating resume parsed data:", error);
+    return {
+      success: false,
+      message: "Failed to update resume data",
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
+}
+
+// Get active resume for a candidate
+export async function getActiveResume(candidateId: string): Promise<{
+  success: boolean;
+  resume?: any;
+  message: string;
+  error?: string;
+}> {
+  try {
+    await connectToDatabase();
+    
+    // First check if profile has an active resume set
+    const profile = await Profile.findOne({ candidate: candidateId }).populate('activeResume');
+    
+    if (profile?.activeResume) {
+      return {
+        success: true,
+        resume: profile.activeResume,
+        message: "Active resume found",
+      };
+    }
+
+    // If no active resume set, get the most recent one
+    const latestResume = await ResumeModel.findOne({
+      candidateId: candidateId,
+      isActive: true
+    }).sort({ uploadedAt: -1 });
+
+    if (latestResume) {
+      // Set this as the active resume
+      await Profile.findOneAndUpdate(
+        { candidate: candidateId },
+        { activeResume: latestResume._id },
+        { upsert: true }
+      );
+
+      return {
+        success: true,
+        resume: latestResume,
+        message: "Latest resume set as active",
+      };
+    }
+
+    return {
+      success: false,
+      message: "No resumes found for this candidate",
+    };
+  } catch (error) {
+    console.error("Error fetching active resume:", error);
+    return {
+      success: false,
+      message: "Failed to fetch active resume",
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
+}
+
+// Set active resume for a candidate
+export async function setActiveResume(candidateId: string, resumeId: string): Promise<{
+  success: boolean;
+  message: string;
+  error?: string;
+}> {
+  try {
+    await connectToDatabase();
+    
+    // Verify the resume exists and belongs to the candidate
+    const resume = await ResumeModel.findOne({
+      _id: resumeId,
+      candidateId: candidateId,
+      isActive: true
+    });
+
+    if (!resume) {
+      return {
+        success: false,
+        message: "Resume not found or does not belong to this candidate",
+        error: "Invalid resume ID",
+      };
+    }
+
+    // Update the profile to set the active resume
+    await Profile.findOneAndUpdate(
+      { candidate: candidateId },
+      { activeResume: resumeId },
+      { upsert: true }
+    );
+
+    return {
+      success: true,
+      message: "Active resume updated successfully",
+    };
+  } catch (error) {
+    console.error("Error setting active resume:", error);
+    return {
+      success: false,
+      message: "Failed to set active resume",
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
   }
 }
