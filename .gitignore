@@ -40,5 +40,12 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+**/aptitude_questions.json
+
+
 # clerk configuration (can include secrets)
 /.clerk/
+
+
+backend-services/
+**/aptitude_questions.json
