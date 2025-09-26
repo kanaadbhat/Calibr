@@ -7,6 +7,7 @@ import type { JobOpportunity } from './types.d.ts';
 import Candidate from '@/models/candidate.model';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
+import mongoose from 'mongoose';
 
 export async function getJobOpportunities(): Promise<JobOpportunity[]> {
   try {
@@ -40,7 +41,7 @@ export async function getJobOpportunities(): Promise<JobOpportunity[]> {
           timePosted: getTimeAgo((job as any).createdAt || new Date()),
           salary: job.salaryMin && job.salaryMax ? `$${job.salaryMin}k - $${job.salaryMax}k` : undefined,
           type: job.employmentType,
-          applicants: assessments.reduce((total, assessment) => total + (assessment.totalCandidates || 0), 0)
+          applicants: job.applications?.length || 0
         };
         
         return formattedJob;
@@ -146,7 +147,7 @@ export async function getJobOpportunityById(id: string): Promise<JobOpportunity 
       salary: job.salaryMin && job.salaryMax ? `$${job.salaryMin}k - $${job.salaryMax}k` : undefined,
       type: job.employmentType,
       profileMatch: Math.floor(Math.random() * 20) + 80, // Mock profile match 80-100%
-      applicants: assessments.reduce((total, assessment) => total + (assessment.totalCandidates || 0), 0),
+      applicants: job.applications?.length || 0,
       selectionRounds,
       // Split requirements and benefits if they contain line breaks or bullets
       requirementsList: job.requirements ? job.requirements.split('\n').filter(req => req.trim()) : undefined,
@@ -161,66 +162,167 @@ export async function getJobOpportunityById(id: string): Promise<JobOpportunity 
 }
 
 export async function getResumes() {
-  // Future: Replace with actual API call to get user's resumes
-  await new Promise(resolve => setTimeout(resolve, 500)); // Simulate API delay
-  
-  return [
-    {
-      id: '1',
-      name: 'College Resume',
-      fileName: 'college_resume.pdf',
-      uploadedAt: '2024-08-15',
-      size: '245 KB'
-    },
-    {
-      id: '2', 
-      name: 'Overleaf Resume',
-      fileName: 'overleaf_resume.pdf',
-      uploadedAt: '2024-08-20',
-      size: '312 KB'
-    },
-    {
-      id: '3',
-      name: 'Professional Resume',
-      fileName: 'professional_resume.pdf',
-      uploadedAt: '2024-08-25',
-      size: '198 KB'
+  try {
+    await connectToDatabase();
+    
+    // Get the current authenticated user
+    const session = await getServerSession(authOptions);
+    const candidateId = session?.user._id;
+    
+    if (!candidateId) {
+      throw new Error('User not authenticated');
     }
-  ];
+
+    // Import Resume model dynamically to avoid path resolution issues
+    const Resume = (await import('@/models/resume.model')).default;
+    
+    // Fetch all resumes for the candidate, sorted by most recent first
+    const resumes = await Resume.find({ candidateId })
+      .sort({ uploadedAt: -1 })
+      .lean();
+    
+    // Format resumes for frontend consumption
+    return resumes.map((resume: any) => ({
+      id: resume._id.toString(),
+      name: resume.fileName.replace(/\.[^/.]+$/, ""), 
+      fileName: resume.originalFileName,
+      uploadedAt: new Date(resume.uploadedAt).toISOString().split('T')[0],
+      size: formatFileSize(resume.fileSize),
+      url: resume.s3Url,
+      version: resume.version,
+      mimeType: resume.mimeType
+    }));
+    
+  } catch (error) {
+    console.error('Error fetching resumes:', error);
+    return [];
+  }
 }
 
-export async function applyToJob(jobId: string) {
-   await connectToDatabase();
+// Helper function to format file size
+function formatFileSize(bytes: number): string {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+export async function getCandidateApplications() {
+  try {
+    await connectToDatabase();
+    
+    // Get the current authenticated user
+    const session = await getServerSession(authOptions);
+    const candidateId = session?.user._id;
+    
+    if (!candidateId) {
+      throw new Error('User not authenticated');
+    }
+
+    // Import Application model
+    const Application = (await import('@/models/application.model')).default;
+    
+    // Fetch all applications for the candidate
+    const applications = await Application.find({ candidateId })
+      .populate('jobId', 'title department location employmentType salaryMin salaryMax')
+      .populate('resumeId', 'fileName originalFileName')
+      .sort({ applicationDate: -1 })
+      .lean();
+    
+    return applications.map((app: any) => ({
+      id: app._id.toString(),
+      jobTitle: app.jobId?.title || 'Unknown Job',
+      company: app.jobId?.department || 'Unknown Company',
+      location: app.jobId?.location || 'Unknown Location',
+      salary: app.jobId?.salaryMin && app.jobId?.salaryMax 
+        ? `$${app.jobId.salaryMin}k - $${app.jobId.salaryMax}k` 
+        : 'Not specified',
+      employmentType: app.jobId?.employmentType || 'Unknown',
+      applicationDate: new Date(app.applicationDate).toLocaleDateString(),
+      status: app.status,
+      resumeName: app.resumeId?.originalFileName || 'No resume attached',
+      notes: app.notes
+    }));
+    
+  } catch (error) {
+    console.error('Error fetching candidate applications:', error);
+    return [];
+  }
+}
+
+export async function applyToJob(jobId: string, resumeId?: string) {
+  await connectToDatabase();
   try {
     const session = await getServerSession(authOptions);
     const candidateId = session?.user._id;
     if (!candidateId) {
       throw new Error('User not authenticated');
     }
-    // Check if candidate has already applied
+    
+    // Check if candidate exists
+    const candidateExists = await Candidate.findById(candidateId);
+    if (!candidateExists) {
+      throw new Error('Candidate not found');
+    }
+    
+    // Check if job exists
     const job = await JobOpportunityModel.findById(jobId);
     if (!job) {
       throw new Error('Job not found');
     }
-    const iscandidateexist = await Candidate.findById(candidateId);
-    if (!iscandidateexist) {
-      throw new Error('Candidate not found');
-    }
-    if (job.candidates.includes(candidateId)) {
+
+    // Import Application model
+    const Application = (await import('@/models/application.model')).default;
+    
+    // Check if candidate has already applied to this job
+    const existingApplication = await Application.findOne({ 
+      candidateId: candidateId,
+      jobId: jobId 
+    });
+    
+    if (existingApplication) {
       throw new Error('You have already applied to this job');
     }
 
-    // Add candidate ID to the job's candidates array
+    // Validate resume if provided
+    let resumeObjectId = null;
+    if (resumeId) {
+      const Resume = (await import('@/models/resume.model')).default;
+      const resume = await Resume.findOne({ 
+        _id: resumeId, 
+        candidateId: candidateId 
+      });
+      
+      if (!resume) {
+        throw new Error('Selected resume not found or does not belong to you');
+      }
+      resumeObjectId = new mongoose.Types.ObjectId(resumeId);
+    }
+
+    // Create new application
+    const newApplication = new Application({
+      candidateId: new mongoose.Types.ObjectId(candidateId),
+      jobId: new mongoose.Types.ObjectId(jobId),
+      resumeId: resumeObjectId,
+      applicationDate: new Date(),
+      status: 'applied'
+    });
+
+    const savedApplication = await newApplication.save();
+
+    // Add application ID to the job's applications array
     await JobOpportunityModel.findByIdAndUpdate(
       jobId,
-      { $push: { candidates: candidateId } },
+      { $push: { applications: savedApplication._id } },
       { new: true }
     );
     
-    // TODO: Store application details (resume, date, etc.) in a separate Application model
-    // For now, we're just tracking that the candidate applied
-    
-    return { success: true, message: 'Application submitted successfully!' };
+    return { 
+      success: true, 
+      message: 'Application submitted successfully!',
+      applicationId: (savedApplication._id as mongoose.Types.ObjectId).toString()
+    };
   } catch (error) {
     console.error('Error applying to job:', error);
     throw new Error(error instanceof Error ? error.message : 'Failed to submit application');
