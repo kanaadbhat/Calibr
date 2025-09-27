@@ -1,7 +1,7 @@
 'use server'
 import { connectToDatabase } from '@/utils/connectDb'
 import Aptitude from '@/models/aptitude.model'
-import questionsData from './aptitude_questions_31k.json'
+import questionsData from './aptitude_questions.json'
 
 export async function fetchTestSession(aptitudeId?: string) {
   try {

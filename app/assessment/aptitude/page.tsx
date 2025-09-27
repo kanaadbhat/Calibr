@@ -55,7 +55,7 @@ export default function AptitudeExamPage() {
   // };
 
   
-  const aptitudeId = '68bddf75f175b972b73cc232'
+  const aptitudeId = '68be69bba3ed8246f3a0fc3c'
   const { questions, loading } = useTestQuestions(aptitudeId)
 
   useEffect(() => {
