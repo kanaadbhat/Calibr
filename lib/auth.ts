@@ -1,9 +1,8 @@
 import CredentialsProvider from "next-auth/providers/credentials";
 import  { NextAuthOptions } from "next-auth";
 import { connectToDatabase } from "@/utils/connectDb";
-import candidate from "@/models/candidate.model";
 import bcrypt from "bcryptjs"
-import employer from "@/models/employer.model";
+
 export const authOptions : NextAuthOptions = {
   providers: [
     CredentialsProvider({
@@ -22,6 +21,9 @@ export const authOptions : NextAuthOptions = {
             if (!email || !password) {
                 throw new Error("Email and Password Required");
             }
+
+            // Dynamic import - only loads on server-side when needed
+            const { default: candidate } = await import("@/models/candidate.model");
 
             let user : any = await candidate.findOne({ email }).select("+password");
             if (!user) {
@@ -48,6 +50,9 @@ export const authOptions : NextAuthOptions = {
             if (!email || !password) {
                 throw new Error("Email and Password Required");
             }
+
+            // Dynamic import - only loads on server-side when needed
+            const { default: employer } = await import("@/models/employer.model");
 
             let user : any = await employer.findOne({ email }).select("+password");
             if (!user) {

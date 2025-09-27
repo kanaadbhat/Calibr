@@ -22,6 +22,7 @@ import {
   MapPin,
   DollarSign,
 } from "lucide-react";
+import { toast } from "sonner";
 
 interface JobApplyProps {
   job?: JobOpportunity | null;
@@ -36,8 +37,7 @@ export default function JobApply({ job, isLoading }: JobApplyProps) {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   const { resumes, isLoading: resumesLoading } = useResumes();
- // const { user, isAuth } = userStore();
-  const canConfirm = selectedResume && readTerms && confirmSend;
+  const canConfirm = (resumes.length === 0 || selectedResume) && readTerms && confirmSend;
 
   if (isLoading) {
     return (
@@ -56,14 +56,11 @@ export default function JobApply({ job, isLoading }: JobApplyProps) {
   };
 
   const handleConfirmApply = async () => {
-    // if (!isAuth || !user?.id || !job) {
-    //   alert('Please login as a candidate to apply for jobs');
-    //   return;
-    // }
     setIsSubmitting(true);
     
     try {
-      await applyToJob(job._id);
+      // Pass the selected resume ID to the applyToJob function
+      await applyToJob(job._id, selectedResume || undefined);
       
       setOpen(false);
       // Reset form
@@ -71,10 +68,20 @@ export default function JobApply({ job, isLoading }: JobApplyProps) {
       setReadTerms(false);
       setConfirmSend(false);
       
-      alert('Application confirmed! Your application has been submitted successfully.');
+      const message = selectedResume 
+        ? 'Your application with selected resume has been submitted successfully!'
+        : 'Your application has been submitted successfully! Consider uploading a resume to strengthen future applications.';
+      
+      toast.success("Application Confirmed!", {
+        description: message,
+        duration: 5000
+      });
     } catch (error) {
       console.error('Error applying to job:', error);
-      alert(error instanceof Error ? error.message : 'Failed to submit application. Please try again.');
+      toast.error("Application Failed", {
+        description: error instanceof Error ? error.message : 'Failed to submit application. Please try again.',
+        duration: 5000
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -144,45 +151,84 @@ export default function JobApply({ job, isLoading }: JobApplyProps) {
 
           <div className="space-y-8 mt-6">
             {/* Resume Selection */}
-            <div className="w-full flex justify-center">
-              <div className="w-[75%] mx-auto">
-                <h3 className="text-lg font-semibold text-white mb-4 text-center">
-                  Select Resume
-                </h3>
-                {resumesLoading ? (
-                  <div className="space-y-4">
-                    {[...Array(3)].map((_, i) => (
-                      <div key={i} className="flex items-center gap-4">
-                        <Skeleton className="w-12 h-12 rounded-lg" />
-                        <div className="flex-1">
-                          <Skeleton className="h-4 w-32 mb-1" />
-                          <Skeleton className="h-3 w-20" />
-                        </div>
+            <div className="w-full">
+              <h3 className="text-lg font-semibold text-white mb-4 text-center">
+                Select Resume
+              </h3>
+              {resumesLoading ? (
+                <div className="space-y-4">
+                  {[...Array(3)].map((_, i) => (
+                    <div key={i} className="flex items-center gap-4">
+                      <Skeleton className="w-12 h-12 rounded-lg" />
+                      <div className="flex-1">
+                        <Skeleton className="h-4 w-32 mb-1" />
+                        <Skeleton className="h-3 w-20" />
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <RadioGroup
-                    value={selectedResume}
-                    onValueChange={setSelectedResume}
-                    className="space-y-4"
-                  >
-                    {resumes.map((resume) => (
-                      <div key={resume.id} className="flex items-center gap-4 p-3 rounded-lg bg-white/5 hover:bg-white/10 transition-colors">
-                        <RadioGroupItem 
-                          value={resume.id} 
-                          id={resume.id}
-                          className="border-white/20 text-violet-400" />
-                        <FileUser className="w-8 h-8 text-violet-400" />
-                        <div className="flex flex-col justify-center ml-2">
-                          <span className="font-medium text-white text-sm">{resume.name}</span>
-                          <span className="text-xs text-white/50">{resume.size}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : resumes.length === 0 ? (
+                <div className="text-center py-8">
+                  <FileUser className="w-16 h-16 text-white/30 mx-auto mb-4" />
+                  <p className="text-white/60 text-sm mb-2">No resumes found</p>
+                  <p className="text-white/40 text-xs">Please upload a resume in your profile to apply for jobs</p>
+                </div>
+              ) : (
+                <RadioGroup
+                  value={selectedResume}
+                  onValueChange={setSelectedResume}
+                  className="space-y-4"
+                >
+                  {resumes.map((resume) => (
+                    <div key={resume.id} className="flex items-center gap-4 p-4 rounded-lg bg-white/5 hover:bg-white/10 transition-colors border border-white/10">
+                      <RadioGroupItem 
+                        value={resume.id} 
+                        id={resume.id}
+                        className="border-white/20 text-violet-400" 
+                      />
+                      <div className="flex items-center gap-3 flex-1">
+                        <div className="flex-shrink-0">
+                          <FileUser className="w-10 h-10 text-violet-400" />
                         </div>
+                        <div className="flex flex-col justify-center min-w-0 flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-medium text-white text-sm truncate">{resume.name}</span>
+                          </div>
+                          <div className="flex items-center gap-3 text-xs text-white/60">
+                            <span>{resume.size}</span>
+                            <span>•</span>
+                            <span>{resume.fileName}</span>
+                            <span>•</span>
+                            <span>Uploaded {resume.uploadedAt}</span>
+                          </div>
+                          {resume.version > 1 && (
+                            <div className="mt-1">
+                              <span className="text-xs text-violet-400">Version {resume.version}</span>
+                            </div>
+                          )}
+                        </div>
+                        {resume.url && (
+                          <div className="flex-shrink-0">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                window.open(resume.url, '_blank');
+                              }}
+                              className="text-violet-400 hover:text-violet-300 hover:bg-violet-500/10 h-8 w-8 p-0"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                              </svg>
+                            </Button>
+                          </div>
+                        )}
                       </div>
-                    ))}
-                  </RadioGroup>
-                )}
-              </div>
+                    </div>
+                  ))}
+                </RadioGroup>
+              )}
             </div>
 
             {/* Terms and Conditions */}

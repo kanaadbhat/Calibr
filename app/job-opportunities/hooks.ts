@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import { useSession } from 'next-auth/react';
 import type { JobOpportunity, JobFilters } from './types.d.ts';
 import { getJobOpportunities, getTechStackOptions, getJobOpportunityById, getResumes } from './actions';
 
@@ -126,12 +127,18 @@ export const useResumes = () => {
   const [resumes, setResumes] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { data: session } = useSession();
 
   const loadResumes = async () => {
+    if (!session?.user?._id) {
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
     try {
-      const result = await getResumes();
+      const result = await getResumes(session.user._id);
       setResumes(result);
     } catch (err) {
       setError('Failed to load resumes');
@@ -143,7 +150,7 @@ export const useResumes = () => {
 
   useEffect(() => {
     loadResumes();
-  }, []);
+  }, [session?.user?._id]); // Re-run when session changes
 
   return { resumes, isLoading, error, reload: loadResumes };
 };
