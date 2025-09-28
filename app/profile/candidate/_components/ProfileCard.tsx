@@ -7,14 +7,19 @@ import ProfileInfoEditor from "./ProfileInfoEditor";
 interface ProfileCardProps {
   profileData: any;
   setProfileData: (data: any) => void;
+  candidateId: string;
 }
 
-export default function ProfileCard({ profileData, setProfileData }: ProfileCardProps) {
+export default function ProfileCard({ profileData, setProfileData, candidateId }: ProfileCardProps) {
   return (
     <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6">
       <div className="flex flex-col items-center text-center space-y-4">
         {/* Profile Avatar */}
-        <ProfileAvatar profileData={profileData} setProfileData={setProfileData} />
+        <ProfileAvatar 
+          profileData={profileData} 
+          setProfileData={setProfileData} 
+          candidateId={candidateId}
+        />
 
         {/* Name */}
         <div>

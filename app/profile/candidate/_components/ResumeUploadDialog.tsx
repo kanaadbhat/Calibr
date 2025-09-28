@@ -5,7 +5,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Upload } from "lucide-react";
-import { uploadResumeOnly } from "../actions";
+import { uploadFile, validateFile, UploadConfig } from '@/lib/s3Upload';
+import { parseAndSaveResume } from "../actions";
+import { useSession } from "next-auth/react";
 
 interface ResumeUploadDialogProps {
   candidateId: string;
@@ -17,6 +19,22 @@ interface ResumeUploadDialogProps {
 export default function ResumeUploadDialog({
   onResumeUploaded,
 }: Omit<ResumeUploadDialogProps, 'candidateId'>) {
+  const { data: session } = useSession();
+  
+  // Resume upload configuration
+  const resumeConfig: UploadConfig = {
+    folderPrefix: 'resumes',
+    allowedFileTypes: ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain'],
+    maxFileSize: 5 * 1024 * 1024, // 5MB
+    cleanupPrevious: false,
+    generateUniqueFilename: false, // Keep original filename
+    userId: session?.user?._id || '',
+    userRole: 'candidate',
+    metadata: {
+      uploadType: 'resume'
+    }
+  };
+
   const [isOpen, setIsOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
 
@@ -30,24 +48,57 @@ export default function ResumeUploadDialog({
     const file = event.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("File size should be less than 5MB");
+    // Validate the file using the new utility function
+    const validation = validateFile(file, resumeConfig);
+    if (!validation.valid) {
+      toast.error(validation.error);
+      return;
+    }
+
+    if (!session?.user?._id) {
+      toast.error("Please log in to upload resumes");
       return;
     }
 
     setIsUploading(true);
+    
+    // Create loading toast with ID to dismiss later
+    const loadingToastId = toast.loading("Uploading resume to S3...");
+    
     try {
-      const result = await uploadResumeOnly(file);
-      if (result.success) {
-        toast.success(result.message);
-        onResumeUploaded?.();
-        setIsOpen(false); // Close dialog after successful upload
-      } else {
-        toast.error(result.error || "Failed to upload resume");
+      // Step 1: Upload to S3 using the unified API
+      const uploadResult = await uploadFile(file, resumeConfig);
+
+      if (!uploadResult.success) {
+        throw new Error(uploadResult.error || 'S3 upload failed');
       }
-    } catch (error) {
+
+      // Update loading message
+      toast.dismiss(loadingToastId);
+      const parsingToastId = toast.loading("Parsing resume with AI...");
+
+      // Step 2: Parse and save to database
+      const parseResult = await parseAndSaveResume(
+        uploadResult.fileUrl!,
+        uploadResult.fileName!,
+        uploadResult.fileSize!,
+        uploadResult.s3Key!
+      );
+
+      toast.dismiss(parsingToastId);
+
+      if (parseResult.success) {
+        toast.success(parseResult.message);
+        onResumeUploaded?.();
+        setIsOpen(false); // Close dialog only on success
+      } else {
+        toast.error(parseResult.error || "Failed to process resume");
+        // Keep dialog open so user can see the error and try again
+      }
+    } catch (error: any) {
       console.error("Error uploading resume:", error);
-      toast.error("An error occurred while uploading");
+      toast.dismiss(loadingToastId);
+      toast.error(error.message || "An error occurred while uploading");
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) {
@@ -55,8 +106,6 @@ export default function ResumeUploadDialog({
       }
     }
   };
-
-
 
   return (
     <Dialog open={isOpen} onOpenChange={handleDialogOpen}>

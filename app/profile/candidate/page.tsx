@@ -52,6 +52,7 @@ export default function CandidateProfilePage() {
                 <ProfileCard 
                   profileData={profileData} 
                   setProfileData={setProfileData} 
+                  candidateId={data?.user._id as string}
                 />
                 <ProfileSummary summary={profileData.summary} />
                 <ResumeManagerSection

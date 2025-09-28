@@ -40,7 +40,7 @@ export default function ResumeList({ resumes }: ResumeListProps) {
                   size="sm"
                   variant="outline"
                   onClick={async () => {
-                    if (confirm(`Are you sure you want to delete ${res.fileName}?`)) {
+                    if (confirm(`Are you sure you want to delete "${res.fileName}" and ALL its versions? This action cannot be undone.`)) {
                       try {
                         const { deleteResume } = await import("../actions");
                         const result = await deleteResume(res.id);
@@ -57,7 +57,7 @@ export default function ResumeList({ resumes }: ResumeListProps) {
                   }}
                   className="border-red-600/20 text-red-400 hover:bg-red-600/10"
                 >
-                  Delete
+                  Delete All
                 </Button>
               </div>
             </li>

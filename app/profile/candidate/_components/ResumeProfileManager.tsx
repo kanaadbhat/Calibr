@@ -5,10 +5,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Settings, FileText } from "lucide-react";
+import { Settings, FileText, Loader2 } from "lucide-react";
 import { 
   getCandidateResumes, 
-  applyResumeToProfile 
+  applyResumeToProfile,
+  parseResumeFromS3
 } from "../actions";
 
 interface ResumeProfileManagerProps {
@@ -32,6 +33,8 @@ export default function ResumeProfileManager({ candidateId, onProfileUpdated }: 
   const [resumes, setResumes] = useState<Resume[]>([]);
   const [selectedResume, setSelectedResume] = useState<string>("");
   const [selectedResumeId, setSelectedResumeId] = useState<string>("");
+  const [isApplying, setIsApplying] = useState(false);
+  const [isParsing, setIsParsing] = useState(false);
 
   const loadResumes = async () => {
     if (!candidateId) return;
@@ -60,18 +63,76 @@ export default function ResumeProfileManager({ candidateId, onProfileUpdated }: 
       return;
     }
 
+    setIsApplying(true);
+    
     try {
+      // Find the selected resume
+      const selectedResumeData = resumes.find(r => r.id === selectedResumeId);
+      
+      if (!selectedResumeData) {
+        toast.error("Selected resume not found");
+        return;
+      }
+
+      // Check if resume is not parsed
+      if (!selectedResumeData.isParsed) {
+        setIsParsing(true);
+        toast.info("Resume is not parsed. Parsing from S3 file...");
+        
+        // Parse the resume from S3 first
+        const parseResult = await parseResumeFromS3(selectedResumeId);
+        
+        if (!parseResult.success) {
+          // Show detailed error message
+          const errorMessage = parseResult.error || parseResult.message || "Failed to parse resume";
+          toast.error(errorMessage, {
+            duration: 5000, // Show longer for detailed errors
+          });
+          return;
+        }
+        
+        toast.success("Resume parsed successfully!");
+        setIsParsing(false);
+        
+        // Update the resume in our local state
+        setResumes(prev => prev.map(r => 
+          r.id === selectedResumeId 
+            ? { ...r, isParsed: true }
+            : r
+        ));
+      }
+
+      // Now apply to profile
       const result = await applyResumeToProfile(selectedResumeId);
       if (result.success) {
         toast.success(result.message);
         setIsOpen(false);
         onProfileUpdated?.();
       } else {
-        toast.error(result.error || "Failed to apply profile");
+        const errorMessage = result.error || result.message || "Failed to apply profile";
+        toast.error(errorMessage, {
+          duration: 4000,
+        });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error applying profile:", error);
-      toast.error("An error occurred while applying profile");
+      
+      // Show more specific error messages
+      let errorMessage = "An unexpected error occurred";
+      if (error.message?.includes('fetch')) {
+        errorMessage = "Network error: Unable to connect to server";
+      } else if (error.message?.includes('timeout')) {
+        errorMessage = "Request timeout: Operation took too long";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      toast.error(errorMessage, {
+        duration: 4000,
+      });
+    } finally {
+      setIsApplying(false);
+      setIsParsing(false);
     }
   };
 
@@ -132,6 +193,12 @@ export default function ResumeProfileManager({ candidateId, onProfileUpdated }: 
                             }`}>
                               {resume.isParsed ? "Parsed" : "Not Parsed"}
                             </span>
+                            {isParsing && selectedResumeId === resume.id && (
+                              <div className="flex items-center space-x-1">
+                                <Loader2 className="w-3 h-3 animate-spin text-blue-400" />
+                                <span className="text-blue-400">Parsing...</span>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -153,9 +220,17 @@ export default function ResumeProfileManager({ candidateId, onProfileUpdated }: 
               </div>
               <Button
                 onClick={handleApplyToProfile}
-                className="bg-green-600 hover:bg-green-700"
+                disabled={isApplying}
+                className="bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Apply to Profile
+                {isApplying ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    {isParsing ? "Parsing Resume..." : "Applying..."}
+                  </>
+                ) : (
+                  "Apply to Profile"
+                )}
               </Button>
             </div>
           )}

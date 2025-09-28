@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef,} from "react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -14,28 +14,43 @@ import {
 import { Camera, UploadCloud, X } from "lucide-react";
 import { toast } from "sonner";
 import updateCandidateProfile from "../actions";
+import { uploadFile, validateFile, UploadConfig } from "@/lib/s3Upload";
 
 interface ProfileAvatarProps {
   profileData: any;
   setProfileData: (data: any) => void;
+  candidateId: string;
 }
 
-export default function ProfileAvatar({ profileData, setProfileData }: ProfileAvatarProps) {
+export default function ProfileAvatar({ profileData, setProfileData, candidateId }: ProfileAvatarProps) {
+  // Profile image upload configuration
+  const profileImageConfig: UploadConfig = {
+    folderPrefix: 'profile-images',
+    allowedFileTypes: ['image/*'],
+    maxFileSize: 5 * 1024 * 1024, // 5MB
+    cleanupPrevious: true,
+    generateUniqueFilename: true,
+    userId: candidateId,
+    userRole: 'candidate',
+    metadata: {
+      uploadType: 'profile-image'
+    }
+  };
+
   const [isImageUploadDialogOpen, setIsImageUploadDialogOpen] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | undefined>(undefined);
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [imageLoadError, setImageLoadError] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error("Image size should be less than 5MB");
-        return;
-      }
-
-      if (!file.type.startsWith("image/")) {
-        toast.error("Please upload an image file");
+      // Validate the file using the new utility function
+      const validation = validateFile(file, profileImageConfig);
+      if (!validation.valid) {
+        toast.error(validation.error);
         return;
       }
 
@@ -56,13 +71,10 @@ export default function ProfileAvatar({ profileData, setProfileData }: ProfileAv
     if (files.length > 0) {
       const file = files[0];
 
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error("Image size should be less than 5MB");
-        return;
-      }
-
-      if (!file.type.startsWith("image/")) {
-        toast.error("Please upload an image file");
+      // Validate the file using the new utility function
+      const validation = validateFile(file, profileImageConfig);
+      if (!validation.valid) {
+        toast.error(validation.error);
         return;
       }
 
@@ -86,29 +98,46 @@ export default function ProfileAvatar({ profileData, setProfileData }: ProfileAv
       return;
     }
 
-    try {
-      toast.loading("Uploading image...");
+    setIsUploading(true);
+    // Create loading toast with ID to dismiss later
+    const loadingToastId = toast.loading("Uploading image to S3...");
 
-      const imageUrl = imagePreview;
+    try {
+      // Upload to S3 using the new utility function
+      const uploadResult = await uploadFile(imageFile, profileImageConfig);
+      
+      if (!uploadResult.success) {
+        throw new Error(uploadResult.error || 'Upload failed');
+      }
+      
       const updatedData = {
         ...profileData,
-        profileImage: imageUrl || undefined,
+        profileImage: uploadResult.fileUrl,
       };
 
+      // Update profile with S3 URL
       const res = await updateCandidateProfile(updatedData);
 
       if (res.success) {
-        setProfileData(updatedData);
+        // Dismiss loading toast and show success
+        toast.dismiss(loadingToastId);
         toast.success("Profile image updated successfully");
+        
+        setProfileData(updatedData);
+        setImageLoadError(false); // Reset error state
         setIsImageUploadDialogOpen(false);
         setImagePreview(undefined);
         setImageFile(null);
       } else {
+        toast.dismiss(loadingToastId);
         toast.error(res.error || "Failed to update profile image");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error uploading image:", error);
-      toast.error("An error occurred while uploading the image");
+      toast.dismiss(loadingToastId);
+      toast.error(error.message || "Failed to upload image to S3");
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -119,16 +148,27 @@ export default function ProfileAvatar({ profileData, setProfileData }: ProfileAv
   return (
     <div className="relative">
       <Avatar className="w-32 h-32">
-        {profileData.profileImage ? (
-          <AvatarImage src={profileData.profileImage} />
-        ) : (
-          <AvatarFallback className="bg-violet-600 text-white text-4xl">
-            {profileData.name
-              .split(" ")
-              .map((n: string) => n[0])
-              .join("")}
-          </AvatarFallback>
-        )}
+        {profileData.profileImage && !imageLoadError ? (
+          <AvatarImage 
+            src={profileData.profileImage} 
+            alt={`${profileData.name}'s profile`}
+            className="object-cover"
+            onLoad={() => {
+              console.log('Profile image loaded successfully:', profileData.profileImage);
+              setImageLoadError(false);
+            }}
+            onError={() => {
+              console.error('Failed to load profile image:', profileData.profileImage);
+              setImageLoadError(true);
+            }}
+          />
+        ) : null}
+        <AvatarFallback className="bg-violet-600 text-white text-4xl">
+          {profileData.name
+            .split(" ")
+            .map((n: string) => n[0])
+            .join("")}
+        </AvatarFallback>
       </Avatar>
       <Dialog open={isImageUploadDialogOpen} onOpenChange={setIsImageUploadDialogOpen}>
         <DialogTrigger asChild>
@@ -204,10 +244,10 @@ export default function ProfileAvatar({ profileData, setProfileData }: ProfileAv
               </Button>
               <Button
                 onClick={handleImageUpload}
-                disabled={!imageFile}
+                disabled={!imageFile || isUploading}
                 className="bg-white text-[#0A0A18] hover:bg-white/90 border-none disabled:bg-white/50 disabled:text-[#0A0A18]/50"
               >
-                Upload Image
+                {isUploading ? "Uploading..." : "Upload Image"}
               </Button>
             </div>
           </div>
