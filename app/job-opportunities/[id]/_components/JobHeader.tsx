@@ -67,7 +67,7 @@ export default function JobHeader({ job, isLoading }: JobHeaderProps) {
           {/* Company Logo Section - 25% width */}
           <div className="w-1/4">
             <Avatar className="w-32 h-32 mx-auto border-2 border-white/20">
-              <AvatarImage src={job.logo} alt={job.company || job.department} />
+              <AvatarImage src={job.logo || undefined} alt={job.company || job.department} />
               <AvatarFallback className="bg-violet-600 text-white font-bold text-4xl">
                 {(job.company || job.department || 'CO').substring(0, 2).toUpperCase()}
               </AvatarFallback>

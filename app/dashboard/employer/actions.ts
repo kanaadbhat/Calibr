@@ -13,7 +13,7 @@ import { connectToDatabase } from '@/utils/connectDb';
 import { Document } from 'mongoose';
 
 // Create a clean type for job creation
-export type JobCreationData = Omit<JobOpportunity, keyof Document | 'createdAt' | 'updatedAt'>;
+export type JobCreationData = Omit<JobOpportunity, keyof Document | 'createdAt' | 'updatedAt' | 'applications'>;
 
  const dashboardData: DashboardData = {
   stats: [

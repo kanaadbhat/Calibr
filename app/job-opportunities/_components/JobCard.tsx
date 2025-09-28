@@ -29,7 +29,7 @@ const JobCard: React.FC<JobCardProps> = ({ job, onViewDetails }) => {
         <div className="flex items-start gap-4">
           {/* Company Logo */}
           <Avatar className="w-16 h-16 border-2 border-white/20">
-            <AvatarImage src={job.logo} alt={job.company} />
+            <AvatarImage src={job.logo || undefined} alt={job.company} />
             <AvatarFallback className="bg-violet-600 text-white font-bold text-lg">
               {job.company?.charAt(0) || job.department.charAt(0)}
             </AvatarFallback>

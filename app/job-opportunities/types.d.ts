@@ -20,8 +20,9 @@ export interface JobOpportunity {
   startDate?: string;
   autoScreen?: boolean;
   isPublic?: boolean;
-  createdAt: Date;
-  updatedAt: Date;
+  applications?: string[]; // Array of application IDs as strings
+  createdAt: string; // Serialized as ISO string
+  updatedAt: string; // Serialized as ISO string
   
   // Assessment related data (populated from Assessment schema)
   assessments?: {
@@ -38,11 +39,21 @@ export interface JobOpportunity {
     totalCandidates: number;
     completedCandidates: number;
     passingCandidates: number;
+    overallPassingCriteria?: {
+      minimumRoundsToPass: number;
+      overallMinimumScore?: number;
+      weightagePerRound: {
+        aptitude?: number;
+        coding?: number;
+        technicalInterview?: number;
+        hrInterview?: number;
+      };
+    };
   }[];
   
   // Frontend display properties
   company?: string;
-  logo?: string;
+  logo?: string | null;
   timePosted?: string;
   salary?: string;
   type?: string;
