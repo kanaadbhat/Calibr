@@ -5,34 +5,134 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-// import { Separator } from "@/components/ui/separator";
 import { Clock, Flag, ChevronLeft, ChevronRight, Send } from 'lucide-react';
-import { fetchTestSession } from './actions';
 import { useTestQuestions } from './hooks';
+import type { 
+  ProcessedQuestion, 
+  Section, 
+  QuestionStatus, 
+  QuestionStats,
+  SectionName 
+} from './types';
 
-type Question = {
-  id: number;
-  text: string;
-  options: string[];
-  correctAnswer?: number;
+// ===== UTILITY FUNCTIONS(isko utils.ts me dalns h ) =====
+const formatTime = (seconds: number): string => {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const secs = seconds % 60;
+  
+  if (hours > 0) {
+    return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  }
+  return `${minutes}:${secs.toString().padStart(2, '0')}`;
 };
 
-type Section = {
-  name: string;
-  title: string;
-  questions: Question[];
+const distributeQuestions = (questions: ProcessedQuestion[]): Section[] => {
+  const totalQuestions = questions.length;
+  const questionsPerSection = Math.ceil(totalQuestions / 4);
+  
+  const sectionTitles = [
+    "Logical Reasoning", 
+    "Quantitative Aptitude",
+    "Technical",
+    "Verbal Ability"
+  ];
+  
+  const sections: Section[] = [];
+  
+  for (let i = 0; i < 4; i++) {
+    const startIndex = i * questionsPerSection;
+    const endIndex = Math.min(startIndex + questionsPerSection, totalQuestions);
+    
+    sections.push({
+      name: String.fromCharCode(65 + i), 
+      title: sectionTitles[i],
+      questions: questions.slice(startIndex, endIndex).map((q, idx) => ({
+        id: idx + 1,
+        text: q.text,
+        options: q.options,
+        correctAnswer: q.correctAnswer
+      }))
+    });
+  }
+  
+  return sections;
 };
 
+const getQuestionStatus = (
+  sectionName: string, 
+  questionId: number, 
+  answers: Record<string, number>, 
+  markedForReview: Set<string>
+): QuestionStatus => {
+  const key = `${sectionName}-${questionId}`;
+  if (markedForReview.has(key)) return 'marked';
+  if (answers[key] !== undefined) return 'attempted';
+  return 'unattempted';
+};
+
+const getStatusStyles = (status: QuestionStatus, isActive: boolean = false): string => {
+  if (isActive) {
+    return 'bg-gradient-to-r from-indigo-500 to-rose-500 text-white border-0 shadow-lg';
+  }
+  
+  switch (status) {
+    case 'attempted': 
+      return 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300 hover:bg-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.3)]';
+    case 'marked': 
+      return 'bg-amber-500/20 border-amber-500/50 text-amber-300 hover:bg-amber-500/30 shadow-[0_0_15px_rgba(245,158,11,0.3)]';
+    default: 
+      return 'bg-red-500/20 border-red-500/50 text-red-300 hover:bg-red-500/30 shadow-[0_0_15px_rgba(239,68,68,0.3)]';
+  }
+};
+
+const calculateStats = (
+  sections: Section[], 
+  answers: Record<string, number>, 
+  markedForReview: Set<string>
+): QuestionStats => {
+  const total = sections.reduce((acc, section) => acc + section.questions.length, 0);
+  const attempted = Object.keys(answers).length;
+  const marked = markedForReview.size;
+  
+  return { 
+    total, 
+    attempted, 
+    marked, 
+    unattempted: total - attempted 
+  };
+};
+
+// ===== MAIN COMPONENT =====
 export default function AptitudeExamPage() {
-  const [timeLeft, setTimeLeft] = useState(60 * 30);
-  const [answers, setAnswers] = useState<{ [key: string]: number }>({});
+  // State management
+  const [timeLeft, setTimeLeft] = useState(60 * 30); // 30 minutes default
+  const [answers, setAnswers] = useState<Record<string, number>>({});
   const [markedForReview, setMarkedForReview] = useState<Set<string>>(new Set());
-
   const [hasStarted, setHasStarted] = useState(false);
   const [ended, setEnded] = useState(false);
   const [endReason, setEndReason] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
+  const [activeSection, setActiveSection] = useState<SectionName>('A');
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
 
+  
+  const aptitudeId = '68be69bba3ed8246f3a0fc3c';
+  
+  
+  const { questions, loading, error } = useTestQuestions(aptitudeId);
+
+
+  const sections: Section[] = distributeQuestions(questions);
+  const currentSection = sections.find(s => s.name === activeSection);
+  const hasQuestions = currentSection?.questions && currentSection.questions.length > 0;
+  const currentQuestion = hasQuestions ? currentSection.questions[currentQuestionIndex] : undefined;
+  const questionKey = `${activeSection}-${currentQuestion?.id || 'pending'}`;
+
+ 
+  const stats = calculateStats(sections, answers, markedForReview);
+
+  
   const endExam = useCallback((reason: string) => {
     if (ended) return;
     setEnded(true);
@@ -40,160 +140,7 @@ export default function AptitudeExamPage() {
     if (document.fullscreenElement) {
       document.exitFullscreen().catch(() => {});
     }
-    
   }, [ended]);
-
-  // const startExam = async () => {
-  //   try {
-  //     if (!document.fullscreenElement) {
-  //       await document.documentElement.requestFullscreen();
-  //     }
-  //     setHasStarted(true);
-  //   } catch {
-  //     toast.error('Please allow fullscreen to start the test.');
-  //   }
-  // };
-
-  
-  const aptitudeId = '68bddf75f175b972b73cc232'
-  const { questions, loading } = useTestQuestions(aptitudeId)
-
-  useEffect(() => {
-    setMounted(true);
-    
-    
-    const loadTestQuestions = async () => {
-      try {
-        const result = await fetchTestSession(aptitudeId);
-        if (result && result.success && result.data) {
-          console.log(`✅ Loaded ${result.data.matchingQuestions} questions 
-            successfully`);
-        } else {
-          console.error('❌ Failed to load questions:', result?.error || 'Unknown error');
-         
-        }
-      } catch (error) {
-        console.error('❌ Error loading questions:', error);
-        
-      }
-    };
-    
-    loadTestQuestions();
-    
-    
-    setHasStarted(true);
-
-    
-    const timer = setInterval(() => {
-      setTimeLeft(prev => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          endExam('Time is up!');
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    // Cleanup function
-    return () => clearInterval(timer);
-  }, [endExam]);
-
-  useEffect(() => {
-    if (!hasStarted || ended) return;
-
-    const onVisibility = () => {
-      if (document.visibilityState !== 'visible') {
-        endExam('Test ended: Tab switch or window hidden.');
-      }
-    };
-    // const onFullscreen = () => {
-    //   if (!document.fullscreenElement) {
-    //     endExam('Test ended: Exited fullscreen.');
-    //   }
-    // };
-
-    document.addEventListener('visibilitychange', onVisibility);
-    // document.addEventListener('fullscreenchange', onFullscreen);
-
-    return () => {
-      document.removeEventListener('visibilitychange', onVisibility);
-      // document.removeEventListener('fullscreenchange', onFullscreen);
-    };
-  }, [hasStarted, ended, endExam]);
-
-  const formatTime = (secs: number) => {
-    const hours = Math.floor(secs / 3600);
-    const minutes = Math.floor((secs % 3600) / 60);
-    const seconds = secs % 60;
-    if (hours > 0) {
-      return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-    }
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-  };
-
-  // Dynamic function to distribute questions across 4 sections
-  const distributeQuestions = (questions: any[]) => {
-    const totalQuestions = questions.length;
-    const questionsPerSection = Math.ceil(totalQuestions / 4);
-    
-    const sectionTitles = [
-      "Quantitative Aptitude",
-      "Logical Reasoning", 
-      "Verbal Ability",
-      "General Knowledge"
-    ];
-    
-    const sections: Section[] = [];
-    
-    for (let i = 0; i < 4; i++) {
-      const startIndex = i * questionsPerSection;
-      const endIndex = Math.min(startIndex + questionsPerSection, totalQuestions);
-      
-      sections.push({
-        name: String.fromCharCode(65 + i), // A, B, C, D
-        title: sectionTitles[i],
-        questions: questions.slice(startIndex, endIndex).map((q, idx) => ({
-          id:  idx + 1,
-          text: q.question ?? q.text ?? '',
-          options: q.options ?? [],
-        })),
-      });
-    }
-    
-    return sections;
-  };
-
-  const sections: Section[] = distributeQuestions(questions || []);
-
-  const [activeSection, setActiveSection] = useState("A");
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-
-  const currentSection = sections.find((s) => s.name === activeSection)!;
-  const hasQuestions = currentSection.questions && currentSection.questions.length > 0;
-  const currentQuestion = hasQuestions ? currentSection.questions[currentQuestionIndex] : undefined;
-  const questionKey = `${activeSection}-${currentQuestion ? currentQuestion.id : 'pending'}`;
-
-  const handleNext = () => {
-    if (currentQuestionIndex < currentSection.questions.length - 1) {
-      setCurrentQuestionIndex(currentQuestionIndex + 1);
-    }
-  };
-
-  const handlePrev = () => {
-    if (currentQuestionIndex > 0) {
-      setCurrentQuestionIndex(currentQuestionIndex - 1);
-    }
-  };
-
-  const handleJumpTo = (index: number) => {
-    setCurrentQuestionIndex(index);
-  };
-
-  const handleSectionChange = (sectionName: string) => {
-    setActiveSection(sectionName);
-    setCurrentQuestionIndex(0);
-  };
 
   const handleAnswerChange = (value: string) => {
     setAnswers(prev => ({
@@ -214,68 +161,84 @@ export default function AptitudeExamPage() {
     });
   };
 
-  const getQuestionStatus = (sectionName: string, questionId: number) => {
-    const key = `${sectionName}-${questionId}`;
-    if (markedForReview.has(key)) return 'marked';
-    if (answers[key] !== undefined) return 'attempted';
-    return 'unattempted';
+  const handleNext = () => {
+    if (currentQuestionIndex < (currentSection?.questions.length || 0) - 1) {
+      setCurrentQuestionIndex(prev => prev + 1);
+    }
   };
 
-  const getStatusStyles = (status: string, isActive: boolean = false) => {
-    if (isActive) {
-      return 'bg-gradient-to-r from-indigo-500 to-rose-500 text-white border-0 shadow-lg';
+  const handlePrev = () => {
+    if (currentQuestionIndex > 0) {
+      setCurrentQuestionIndex(prev => prev - 1);
     }
+  };
+
+  const handleJumpTo = (index: number) => {
+    setCurrentQuestionIndex(index);
+  };
+
+  const handleSectionChange = (sectionName: string) => {
+    setActiveSection(sectionName as SectionName);
+    setCurrentQuestionIndex(0);
+  };
+
+
+  useEffect(() => {
+    setMounted(true);
+    setHasStarted(true);
     
-    switch (status) {
-      case 'attempted': 
-        return 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300 hover:bg-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.3)]';
-      case 'marked': 
-        return 'bg-amber-500/20 border-amber-500/50 text-amber-300 hover:bg-amber-500/30 shadow-[0_0_15px_rgba(245,158,11,0.3)]';
-      default: 
-        return 'bg-red-500/20 border-red-500/50 text-red-300 hover:bg-red-500/30 shadow-[0_0_15px_rgba(239,68,68,0.3)]';
-    }
-  };
+    const timer = setInterval(() => {
+      setTimeLeft(prev => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          endExam('Time is up!');
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
 
-  const getTotalStats = () => {
-    const total = sections.reduce((acc, section) => acc + section.questions.length, 0);
-    const attempted = Object.keys(answers).length;
-    const marked = markedForReview.size;
-    return { total, attempted, marked, unattempted: total - attempted };
-  };
+    return () => clearInterval(timer);
+  }, [endExam]);
 
-  const stats = getTotalStats();
+  
+  useEffect(() => {
+    if (!hasStarted || ended) return;
 
+    const onVisibility = () => {
+      if (document.visibilityState !== 'visible') {
+        endExam('Test ended: Tab switch or window hidden.');
+      }
+    };
+
+    document.addEventListener('visibilitychange', onVisibility);
+
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, [hasStarted, ended, endExam]);
+
+ 
   if (!mounted || loading || !hasQuestions) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#0A0A18] via-[#0D0D20] to-[#0A0A18] flex items-center justify-center text-white/70">
-        Loading questions...
+        {loading ? 'Loading questions...' : 'No questions available'}
+      </div>
+    );
+  }
+
+ 
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-[#0A0A18] via-[#0D0D20] to-[#0A0A18] flex items-center justify-center text-red-400">
+        Error: {error}
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#0A0A18] via-[#0D0D20] to-[#0A0A18]">
-      {/* {!hasStarted && !ended && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80">
-          <Card className="w-full max-w-md bg-white/5 border border-white/10 backdrop-blur-xl">
-            <CardHeader>
-              <CardTitle className="text-white">Enable Fullscreen to Start</CardTitle>
-            </CardHeader>
-            {/* <CardContent> */}
-              {/* <p className="text-white/70 mb-4 text-sm">
-                The aptitude test requires fullscreen. Leaving fullscreen or switching tabs will end the test immediately.
-              </p>
-              <Button
-                className="w-full bg-purple-700 hover:bg-purple-800 text-white"
-                // onClick={startExam}
-              >
-                Enter Fullscreen & Start
-              </Button>
-            </CardContent> */}
-          {/* </Card> */}
-        {/* </div> */}
-      {/* )} }*/ }
-
+      {/* Test Ended Modal */}
       {ended && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80">
           <Card className="w-full max-w-md bg-white/5 border border-white/10 backdrop-blur-xl">
@@ -284,7 +247,7 @@ export default function AptitudeExamPage() {
             </CardHeader>
             <CardContent>
               <p className="text-white/70 mb-4 text-sm">
-                {endReason || 'Test enddue to rule violation.'}
+                {endReason || 'Test ended due to rule violation.'}
               </p>
               <Button
                 className="w-full bg-red-600 hover:bg-red-700 text-white"
@@ -301,6 +264,7 @@ export default function AptitudeExamPage() {
           </Card>
         </div>
       )}
+
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 bg-[#0A0A18]/90 backdrop-blur-xl border-b border-white/10 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -372,9 +336,9 @@ export default function AptitudeExamPage() {
                 
                 <div className="flex items-center justify-between mt-4">
                   <div>
-                    <h2 className="text-lg font-semibold text-white/90">{currentSection.title}</h2>
+                    <h2 className="text-lg font-semibold text-white/90">{currentSection?.title}</h2>
                     <p className="text-sm text-white/60">
-                      Question {currentQuestionIndex + 1} of {currentSection.questions.length}
+                      Question {currentQuestionIndex + 1} of {currentSection?.questions.length}
                     </p>
                   </div>
                   <div className="text-right">
@@ -390,7 +354,7 @@ export default function AptitudeExamPage() {
                 <div className="flex-1">
                   <div className="mb-8">
                     <h3 className="text-xl md:text-2xl font-medium text-white leading-relaxed mb-6">
-                      {currentQuestion!.text}
+                      {currentQuestion?.text}
                     </h3>
                     
                     <RadioGroup 
@@ -398,7 +362,7 @@ export default function AptitudeExamPage() {
                       onValueChange={handleAnswerChange}
                       className="space-y-3"
                     >
-                      {currentQuestion!.options.map((option, idx) => (
+                      {currentQuestion?.options.map((option, idx) => (
                         <div key={idx} className="group">
                           <div className="flex items-center space-x-4 p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all duration-200 cursor-pointer">
                             <RadioGroupItem 
@@ -448,7 +412,7 @@ export default function AptitudeExamPage() {
                   
                   <Button
                     onClick={handleNext}
-                    disabled={currentQuestionIndex === currentSection.questions.length - 1}
+                    disabled={currentQuestionIndex === (currentSection?.questions.length || 0) - 1}
                     className="bg-gradient-to-r from-indigo-500 to-rose-500 hover:from-indigo-600 hover:to-rose-600 text-white disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transition-all duration-200"
                   >
                     Next
@@ -501,13 +465,13 @@ export default function AptitudeExamPage() {
             <Card className="bg-white/5 backdrop-blur-xl border border-white/10">
               <CardHeader className="pb-4">
                 <CardTitle className="text-lg font-semibold text-white">
-                  Section {activeSection} - {currentSection.title}
+                  Section {activeSection} - {currentSection?.title}
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-5 gap-2">
-                  {currentSection.questions.map((q, idx) => {
-                    const status = getQuestionStatus(activeSection, q.id);
+                  {currentSection?.questions.map((q, idx) => {
+                    const status = getQuestionStatus(activeSection, q.id, answers, markedForReview);
                     const isActive = idx === currentQuestionIndex;
                     return (
                       <Button
