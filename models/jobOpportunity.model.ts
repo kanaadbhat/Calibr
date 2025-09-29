@@ -21,7 +21,6 @@ export interface JobOpportunity extends Document {
   startDate?: string;
   autoScreen?: boolean;
   isPublic?: boolean;
-  applications: mongoose.Types.ObjectId[];
 }
 
 
@@ -62,7 +61,6 @@ const JobOpportunitySchema: Schema = new Schema(
     startDate: { type: String, trim: true },
     autoScreen: { type: Boolean, default: false },
     isPublic: { type: Boolean, default: true },
-    applications: [{ type: mongoose.Schema.Types.ObjectId, ref: "application" }],
   },
   { timestamps: true }
 );
@@ -71,6 +69,4 @@ const JobOpportunityModel =
   (mongoose.models.jobopportunity as mongoose.Model<JobOpportunity>) ||
   mongoose.model<JobOpportunity>("jobopportunity", JobOpportunitySchema);
 
-
 export default JobOpportunityModel;
-
