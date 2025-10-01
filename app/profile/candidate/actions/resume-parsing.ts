@@ -5,7 +5,7 @@ import ResumeModel from "@/models/resume.model";
 import { validateSession, validateResume, updateCandidateProfileWithResume, getNextVersionNumber } from "../lib/validation";
 import { geminiClient } from "../lib/gemini-client";
 import { extractTextFromFile, getMimeTypeFromFileName } from "../lib/file-processing";
-import { S3Operations } from "./s3-operations";
+import { S3Operations } from "@/lib/s3Service";
 
 // Parse and save resume after S3 upload (separated from upload logic)
 export async function parseAndSaveResume(s3Url: string, fileName: string, fileSize: number, s3Key: string): Promise<{

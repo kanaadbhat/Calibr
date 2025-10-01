@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Upload } from "lucide-react";
-import { uploadFile, validateFile, UploadConfig } from '@/lib/s3Upload';
+import { uploadFile, validateFile, UploadConfig } from '@/lib/s3Service';
 import { parseAndSaveResume } from "../actions";
 import { useSession } from "next-auth/react";
 

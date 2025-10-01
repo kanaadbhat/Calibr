@@ -4,7 +4,7 @@ import { connectToDatabase } from "@/utils/connectDb";
 import ResumeModel, { Resume } from "@/models/resume.model";
 import Profile from "@/models/profile.model";
 import { validateSession, validateResume, updateCandidateProfileWithResume } from "../lib/validation";
-import { S3Operations } from "./s3-operations";
+import { S3Operations } from "@/lib/s3Service";
 
 // Get all resumes for a candidate from Resume model
 export async function getCandidateResumes(candidateId: string): Promise<{

@@ -14,7 +14,7 @@ import {
 import { Camera, UploadCloud, X } from "lucide-react";
 import { toast } from "sonner";
 import updateCandidateProfile from "../actions";
-import { uploadFile, validateFile, UploadConfig } from "@/lib/s3Upload";
+import { uploadFile, validateFile, UploadConfig } from "@/lib/s3Service";
 
 interface ProfileAvatarProps {
   profileData: any;
