@@ -1,7 +1,18 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 
 interface ResumeListProps {
@@ -9,6 +20,26 @@ interface ResumeListProps {
 }
 
 export default function ResumeList({ resumes }: ResumeListProps) {
+  const [deletingResumeId, setDeletingResumeId] = useState<string | null>(null);
+
+  const handleDeleteResume = async (resumeId: string) => {
+    setDeletingResumeId(resumeId);
+    try {
+      const { deleteResume } = await import("../actions");
+      const result = await deleteResume(resumeId);
+      if (result.success) {
+        toast.success(result.message);
+        window.location.reload();
+      } else {
+        toast.error(result.error || "Failed to delete resume");
+      }
+    } catch {
+      toast.error("An error occurred while deleting");
+    } finally {
+      setDeletingResumeId(null);
+    }
+  };
+
   return (
     <div className="mt-6">
       <h4 className="text-lg font-semibold text-white mb-3">Manage Resumes</h4>
@@ -36,29 +67,38 @@ export default function ResumeList({ resumes }: ResumeListProps) {
                 >
                   View
                 </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={async () => {
-                    if (confirm(`Are you sure you want to delete "${res.fileName}" and ALL its versions? This action cannot be undone.`)) {
-                      try {
-                        const { deleteResume } = await import("../actions");
-                        const result = await deleteResume(res.id);
-                        if (result.success) {
-                          toast.success(result.message);
-                          window.location.reload();
-                        } else {
-                          toast.error(result.error || "Failed to delete resume");
-                        }
-                      } catch {
-                        toast.error("An error occurred while deleting");
-                      }
-                    }
-                  }}
-                  className="border-red-600/20 text-red-400 hover:bg-red-600/10"
-                >
-                  Delete All
-                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={deletingResumeId === res.id}
+                      className="border-red-600/20 text-red-400 hover:bg-red-600/10"
+                    >
+                      {deletingResumeId === res.id ? "Deleting..." : "Delete All"}
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent className="bg-gray-900 border-gray-700">
+                    <AlertDialogHeader>
+                      <AlertDialogTitle className="text-white">Delete Resume</AlertDialogTitle>
+                      <AlertDialogDescription className="text-gray-300">
+                        Are you sure you want to delete &quot;{res.fileName}&quot; and ALL its versions?
+                        This action cannot be undone and will permanently remove all data associated with this resume.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel className="bg-gray-700 border-gray-600 text-white hover:bg-gray-600">
+                        Cancel
+                      </AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => handleDeleteResume(res.id)}
+                        className="bg-red-600 hover:bg-red-700 text-white"
+                      >
+                        Delete
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </div>
             </li>
           ))}

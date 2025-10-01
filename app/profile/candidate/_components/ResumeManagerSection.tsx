@@ -27,7 +27,7 @@ export default function ResumeManagerSection({
       <p className="text-white/70 mb-4">Manage your resume files and profile data</p>
 
       {/* Action Buttons */}
-      <div className="flex flex-wrap gap-3 mb-6">
+      <div className="flex flex-col gap-3 mb-6">
         <ResumeUploadDialog
           onResumeUploaded={() => {
             window.location.reload();

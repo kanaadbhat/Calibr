@@ -148,7 +148,7 @@ export default function ResumeProfileManager({ candidateId, onProfileUpdated }: 
   return (
     <Dialog open={isOpen} onOpenChange={handleDialogOpen}>
       <DialogTrigger asChild>
-        <Button className="bg-green-600 hover:bg-green-700 text-white">
+        <Button className="bg-gradient-to-r from-purple-600/80 to-violet-600/80 hover:from-purple-600 hover:to-violet-600 text-white border border-purple-500/30">
           <Settings className="w-4 h-4 mr-2" />
           Choose Resume for Profile
         </Button>

@@ -110,7 +110,7 @@ export default function ResumeUploadDialog({
   return (
     <Dialog open={isOpen} onOpenChange={handleDialogOpen}>
       <DialogTrigger asChild>
-        <Button className="bg-blue-600 hover:bg-blue-700 text-white">
+        <Button className="bg-gradient-to-r from-purple-600/80 to-violet-600/80 hover:from-purple-600 hover:to-violet-600 text-white border border-purple-500/30">
           <Upload className="w-4 h-4 mr-2" />
           Upload Resume
         </Button>

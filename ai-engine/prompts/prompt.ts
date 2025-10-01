@@ -38,7 +38,16 @@ Extract the following details from the resume and return your response in **only
       "duration": "string"
     }}
   ],
-  "workDetails": "string",
+  "workDetails": [
+    {
+      "company": "string",
+      "position": "string",
+      "duration": "string",
+      "location": "string",
+      "description": "string",
+      "responsibilities": ["string"]
+    }
+  ],
   "technical_skills": {{
     "languages": ["string"],
     "frameworks_libraries": ["string"],
@@ -73,5 +82,5 @@ Important rules:
 - ONLY output valid JSON — no markdown or triple backticks.
 - DO NOT include any explanation before or after the JSON.
 - YOU must return the skills field in the given schema.
-- The workDetails field must contain information about internships and professional experience.
+- The workDetails field must contain an array of work experiences including internships and professional experience with detailed information for each role.
 `;

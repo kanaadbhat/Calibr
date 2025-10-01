@@ -13,7 +13,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { X, Linkedin, Github } from "lucide-react";
+import { X, Linkedin, Github, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import updateCandidateProfile from "../actions";
 
@@ -125,7 +125,8 @@ export default function ManualUpdateForm({
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button className="bg-orange-600 hover:bg-orange-700 text-white">
+        <Button className="bg-gradient-to-r from-purple-600/80 to-violet-600/80 hover:from-purple-600 hover:to-violet-600 text-white border border-purple-500/30 flex items-center gap-2">
+          <Pencil className="w-4 h-4" />
           Manual Update
         </Button>
       </DialogTrigger>
