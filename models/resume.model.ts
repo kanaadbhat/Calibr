@@ -14,7 +14,14 @@ export interface Resume extends Document {
   parsedData: {
     tagline?: string;
     summary?: string;
-    workDetails?: string;
+    workDetails?: {
+      company: string;
+      position: string;
+      duration: string;
+      location: string;
+      description: string;
+      responsibilities: string[];
+    }[];
     education?: {
       year: string;
       degree: string;
@@ -101,7 +108,17 @@ const ResumeSchema: Schema = new Schema(
     parsedData: {
       tagline: { type: String, trim: true, default: "" },
       summary: { type: String, trim: true, default: "" },
-      workDetails: { type: String, trim: true, default: "" },
+      workDetails: [
+        {
+          company: { type: String, trim: true },
+          position: { type: String, trim: true },
+          duration: { type: String, trim: true },
+          location: { type: String, trim: true },
+          description: { type: String, trim: true },
+          responsibilities: [{ type: String, trim: true }],
+          _id: false,
+        },
+      ],
       education: [
         {
           year: { type: String, trim: true },

@@ -11,7 +11,7 @@ export function useProfileData(candidateId: string) {
     name: "",
     tagline: "",
     summary: "",
-    workDetails: "",
+    workDetails: [],
     education: [],
     skills: "",
     projects: [],
@@ -25,6 +25,12 @@ export function useProfileData(candidateId: string) {
   const [completionPercentage, setCompletionPercentage] = useState(0);
 
   const loadProfile = React.useCallback(async () => {
+    // Don't fetch if candidateId is empty or undefined
+    if (!candidateId || candidateId.trim() === "") {
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
     try {
