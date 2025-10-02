@@ -18,8 +18,42 @@ export default function PersonalInfoDisplay({ profileData }: PersonalInfoDisplay
       <div className="space-y-8">
         {/* Work Details */}
         <div>
-          <h4 className="text-lg font-medium text-white mb-3">Work Details</h4>
-          <p className="text-white/80">{profileData.workDetails}</p>
+          <h4 className="text-lg font-medium text-white mb-3">Work Experience</h4>
+          <div className="space-y-4">
+            {Array.isArray(profileData.workDetails) && profileData.workDetails.length > 0 ? (
+              profileData.workDetails.map((work: any, index: number) => (
+                <div key={index} className="border border-white/10 rounded-lg p-4">
+                  <div className="flex items-start justify-between mb-2">
+                    <div>
+                      <h5 className="text-white font-medium">{work.position}</h5>
+                      <p className="text-white/80">{work.company}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm text-white/60">{work.duration}</p>
+                      {work.location && (
+                        <p className="text-sm text-white/60">{work.location}</p>
+                      )}
+                    </div>
+                  </div>
+                  {work.description && (
+                    <p className="text-white/70 text-sm mt-2">{work.description}</p>
+                  )}
+                  {work.responsibilities && work.responsibilities.length > 0 && (
+                    <ul className="mt-2 space-y-1">
+                      {work.responsibilities.map((resp: string, idx: number) => (
+                        <li key={idx} className="text-white/70 text-sm flex items-start">
+                          <span className="mr-2">•</span>
+                          <span>{resp}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              ))
+            ) : (
+              <p className="text-white/60 text-sm">No work experience added yet</p>
+            )}
+          </div>
         </div>
 
         {/* Education */}

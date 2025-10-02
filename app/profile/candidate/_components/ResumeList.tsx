@@ -48,22 +48,25 @@ export default function ResumeList({ resumes }: ResumeListProps) {
           {resumes.map((res: any, index: number) => (
             <li
               key={index}
-              className="flex items-center justify-between bg-white/10 rounded-lg p-3"
+              className="flex flex-col bg-white/10 rounded-lg p-4 gap-3"
             >
+              {/* Filename with icon */}
               <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
+                <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center flex-shrink-0">
                   <span className="text-white text-sm font-medium">📄</span>
                 </div>
-                <span className="text-white font-medium">
+                <span className="text-white font-medium truncate">
                   {res.fileName || "Resume"}
                 </span>
               </div>
-              <div className="flex items-center space-x-2">
+              
+              {/* Action buttons */}
+              <div className="flex items-center gap-2 w-full">
                 <Button
                   size="sm"
                   variant="outline"
                   onClick={() => window.open(res.url, "_blank")}
-                  className="border-white/20 text-black hover:bg-white/10"
+                  className="border-white/20 text-black hover:bg-white/10 flex-1"
                 >
                   View
                 </Button>
@@ -73,7 +76,7 @@ export default function ResumeList({ resumes }: ResumeListProps) {
                       size="sm"
                       variant="outline"
                       disabled={deletingResumeId === res.id}
-                      className="border-red-600/20 text-red-400 hover:bg-red-600/10"
+                      className="border-red-600/20 text-red-400 hover:bg-red-600/10 flex-1"
                     >
                       {deletingResumeId === res.id ? "Deleting..." : "Delete All"}
                     </Button>

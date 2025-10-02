@@ -10,7 +10,7 @@ export function useProfileData(candidateId: string) {
     name: "",
     tagline: "",
     summary: "",
-    workDetails: "",
+    workDetails: [],
     education: [],
     skills: "",
     projects: [],

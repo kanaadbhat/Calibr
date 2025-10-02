@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { X, Linkedin, Github, Pencil } from "lucide-react";
 import { toast } from "sonner";
-import updateCandidateProfile from "../actions";
+import { updateCandidateProfile } from "../actions/profile-actions";
 
 interface ManualUpdateFormProps {
   profileData: any;
@@ -30,6 +30,82 @@ export default function ManualUpdateForm({
   isOpen,
   setIsOpen,
 }: ManualUpdateFormProps) {
+  const updateWorkExperience = (index: number, field: string, value: string | string[]) => {
+    setProfileData((prev: any) => ({
+      ...prev,
+      workDetails: prev.workDetails.map((work: any, i: number) =>
+        i === index ? { ...work, [field]: value } : work
+      ),
+    }));
+  };
+
+  const updateWorkResponsibility = (workIndex: number, respIndex: number, value: string) => {
+    setProfileData((prev: any) => ({
+      ...prev,
+      workDetails: prev.workDetails.map((work: any, i: number) =>
+        i === workIndex
+          ? {
+              ...work,
+              responsibilities: work.responsibilities.map((resp: string, j: number) =>
+                j === respIndex ? value : resp
+              ),
+            }
+          : work
+      ),
+    }));
+  };
+
+  const addWorkResponsibility = (workIndex: number) => {
+    setProfileData((prev: any) => ({
+      ...prev,
+      workDetails: prev.workDetails.map((work: any, i: number) =>
+        i === workIndex
+          ? { ...work, responsibilities: [...work.responsibilities, ""] }
+          : work
+      ),
+    }));
+  };
+
+  const removeWorkResponsibility = (workIndex: number, respIndex: number) => {
+    setProfileData((prev: any) => ({
+      ...prev,
+      workDetails: prev.workDetails.map((work: any, i: number) =>
+        i === workIndex
+          ? {
+              ...work,
+              responsibilities: work.responsibilities.filter(
+                (_: string, j: number) => j !== respIndex
+              ),
+            }
+          : work
+      ),
+    }));
+  };
+
+  const addWorkExperience = () => {
+    setProfileData((prev: any) => ({
+      ...prev,
+      workDetails: [
+        ...prev.workDetails,
+        {
+          company: "",
+          position: "",
+          duration: "",
+          location: "",
+          description: "",
+          responsibilities: [],
+        },
+      ],
+    }));
+  };
+
+  const removeWorkExperience = (index: number) => {
+    setProfileData((prev: any) => ({
+      ...prev,
+      workDetails: prev.workDetails.filter((_: any, i: number) => i !== index),
+    }));
+  };
+
   const updateEducation = (index: number, field: string, value: string) => {
     setProfileData((prev: any) => ({
       ...prev,
@@ -148,22 +224,39 @@ export default function ManualUpdateForm({
                 <span className="w-2 h-2 bg-blue-500 rounded-full mr-3"></span>
                 Basic Information
               </h3>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="space-y-4">
                 <div className="space-y-3">
-                  <Label htmlFor="workDetails" className="text-white font-medium">
-                    Work Experience
+                  <Label htmlFor="tagline" className="text-white font-medium">
+                    Professional Tagline
                   </Label>
-                  <Textarea
-                    id="workDetails"
-                    value={profileData.workDetails}
+                  <Input
+                    id="tagline"
+                    value={profileData.tagline}
                     onChange={(e) =>
                       setProfileData((prev: any) => ({
                         ...prev,
-                        workDetails: e.target.value,
+                        tagline: e.target.value,
                       }))
                     }
-                    className="bg-white/10 border-white/20 text-white placeholder:text-white/50 min-h-[120px] resize-none"
-                    placeholder="Describe your work experience, roles, and achievements..."
+                    className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
+                    placeholder="e.g., Full Stack Developer | React & Node.js Specialist"
+                  />
+                </div>
+                <div className="space-y-3">
+                  <Label htmlFor="summary" className="text-white font-medium">
+                    Professional Summary
+                  </Label>
+                  <Textarea
+                    id="summary"
+                    value={profileData.summary}
+                    onChange={(e) =>
+                      setProfileData((prev: any) => ({
+                        ...prev,
+                        summary: e.target.value,
+                      }))
+                    }
+                    className="bg-white/10 border-white/20 text-white placeholder:text-white/50 min-h-[100px] resize-none"
+                    placeholder="Brief overview of your professional background, expertise, and career objectives..."
                   />
                 </div>
                 <div className="space-y-3">
@@ -183,6 +276,128 @@ export default function ManualUpdateForm({
                     placeholder="List your technical skills, programming languages, frameworks, tools..."
                   />
                 </div>
+              </div>
+            </div>
+
+            {/* Work Experience Section */}
+            <div className="bg-white/5 border border-white/10 rounded-xl p-6">
+              <h3 className="text-lg font-semibold text-white mb-4 flex items-center">
+                <span className="w-2 h-2 bg-indigo-500 rounded-full mr-3"></span>
+                Work Experience
+              </h3>
+              <div className="space-y-4">
+                {profileData.workDetails.map((work: any, index: number) => (
+                  <div
+                    key={index}
+                    className="bg-white/5 border border-white/10 rounded-lg p-4"
+                  >
+                    <div className="flex items-start gap-4">
+                      <div className="flex-1 space-y-3">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <Input
+                            type="text"
+                            value={work.position}
+                            onChange={(e) =>
+                              updateWorkExperience(index, "position", e.target.value)
+                            }
+                            className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
+                            placeholder="Position (e.g., Software Engineer)"
+                          />
+                          <Input
+                            type="text"
+                            value={work.company}
+                            onChange={(e) =>
+                              updateWorkExperience(index, "company", e.target.value)
+                            }
+                            className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
+                            placeholder="Company Name"
+                          />
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <Input
+                            type="text"
+                            value={work.duration}
+                            onChange={(e) =>
+                              updateWorkExperience(index, "duration", e.target.value)
+                            }
+                            className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
+                            placeholder="Duration (e.g., Jan 2023 - Present)"
+                          />
+                          <Input
+                            type="text"
+                            value={work.location}
+                            onChange={(e) =>
+                              updateWorkExperience(index, "location", e.target.value)
+                            }
+                            className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
+                            placeholder="Location (e.g., San Francisco, CA)"
+                          />
+                        </div>
+                        <Textarea
+                          value={work.description}
+                          onChange={(e) =>
+                            updateWorkExperience(index, "description", e.target.value)
+                          }
+                          className="bg-white/10 border-white/20 text-white placeholder:text-white/50 min-h-[80px] resize-none"
+                          placeholder="Brief description of your role and achievements..."
+                        />
+                        
+                        {/* Responsibilities */}
+                        <div className="space-y-2">
+                          <Label className="text-white/80 text-sm">
+                            Key Responsibilities
+                          </Label>
+                          {work.responsibilities && work.responsibilities.length > 0 ? (
+                            work.responsibilities.map((resp: string, respIndex: number) => (
+                              <div key={respIndex} className="flex items-center gap-2">
+                                <Input
+                                  type="text"
+                                  value={resp}
+                                  onChange={(e) =>
+                                    updateWorkResponsibility(index, respIndex, e.target.value)
+                                  }
+                                  className="bg-white/10 border-white/20 text-white placeholder:text-white/50 text-sm"
+                                  placeholder="e.g., Developed and maintained RESTful APIs..."
+                                />
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => removeWorkResponsibility(index, respIndex)}
+                                  className="text-red-400 hover:text-red-300 hover:bg-red-500/10 flex-shrink-0"
+                                >
+                                  <X className="w-3 h-3" />
+                                </Button>
+                              </div>
+                            ))
+                          ) : null}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => addWorkResponsibility(index)}
+                            className="w-full border-white/20 text-white/70 bg-white/5 hover:bg-white/10 hover:text-white hover:border-white/30 text-xs"
+                          >
+                            + Add Responsibility
+                          </Button>
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeWorkExperience(index)}
+                        className="text-red-400 hover:text-red-300 hover:bg-red-500/10 mt-1"
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+                <Button
+                  variant="outline"
+                  onClick={addWorkExperience}
+                  className="w-full border-white/30 text-white bg-white/5 hover:bg-white/10 hover:text-white hover:border-white/40"
+                >
+                  + Add Work Experience
+                </Button>
               </div>
             </div>
 

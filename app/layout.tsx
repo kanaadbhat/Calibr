@@ -20,15 +20,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <AuthProvider>
-      <html lang="en">
-        <body className={outfit.className}>
+    <html lang="en">
+      <body className={outfit.className}>
+        <AuthProvider>
           <Header />
           {children}
           <Toaster />
           <Footer />
-        </body>
-      </html>
-   </AuthProvider>
+        </AuthProvider>
+      </body>
+    </html>
   );
 }

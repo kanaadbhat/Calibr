@@ -2,7 +2,7 @@ export interface ProfileData {
   name: string;
   tagline: string;
   summary?: string;
-  workDetails: string;
+  workDetails: WorkExperience[];
   profileImage?: string;
   education: Education[];
   skills: string;
@@ -16,6 +16,15 @@ export interface ProfileData {
     fileSize: number;
     mimeType: string;
   }[];
+}
+
+export interface WorkExperience {
+  company: string;
+  position: string;
+  duration: string;
+  location: string;
+  description: string;
+  responsibilities: string[];
 }
 
 export interface Education {

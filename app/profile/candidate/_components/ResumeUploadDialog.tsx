@@ -1,155 +1,244 @@
 "use client";
 
 import React, { useState, useRef } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle
+} from "@/components/ui/dialog";
+import { FileText, Upload, X } from "lucide-react";
 import { toast } from "sonner";
-import { Upload } from "lucide-react";
-import { uploadFile, validateFile, UploadConfig } from '@/lib/s3Service';
-import { parseAndSaveResume } from "../actions";
-import { useSession } from "next-auth/react";
+import { uploadResume } from "../actions";
 
 interface ResumeUploadDialogProps {
-  candidateId: string;
-  onResumeUploaded?: () => void;
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  onResumeUploaded: (fileUrl: string, fileName: string) => void;
 }
 
-
-
 export default function ResumeUploadDialog({
+  isOpen,
+  onOpenChange,
   onResumeUploaded,
-}: Omit<ResumeUploadDialogProps, 'candidateId'>) {
-  const { data: session } = useSession();
-  
-  // Resume upload configuration
-  const resumeConfig: UploadConfig = {
-    folderPrefix: 'resumes',
-    allowedFileTypes: ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain'],
-    maxFileSize: 5 * 1024 * 1024, // 5MB
-    cleanupPrevious: false,
-    generateUniqueFilename: false, // Keep original filename
-    userId: session?.user?._id || '',
-    userRole: 'candidate',
-    metadata: {
-      uploadType: 'resume'
-    }
-  };
-
-  const [isOpen, setIsOpen] = useState(false);
+}: ResumeUploadDialogProps) {
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
-
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleDialogOpen = (open: boolean) => {
-    setIsOpen(open);
-  };
+  // Client-side file validation
+  const validateResumeFile = (file: File): { valid: boolean; error?: string } => {
+    const allowedTypes = [
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    ];
+    const maxSize = 10 * 1024 * 1024; // 10MB
 
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    // Validate the file using the new utility function
-    const validation = validateFile(file, resumeConfig);
-    if (!validation.valid) {
-      toast.error(validation.error);
-      return;
+    if (!allowedTypes.includes(file.type)) {
+      return { valid: false, error: 'Please select a valid document file (PDF, DOC, or DOCX)' };
     }
 
-    if (!session?.user?._id) {
-      toast.error("Please log in to upload resumes");
+    if (file.size > maxSize) {
+      return { valid: false, error: 'File size must be less than 10MB' };
+    }
+
+    return { valid: true };
+  };
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      // Validate the file
+      const validation = validateResumeFile(file);
+      if (!validation.valid) {
+        toast.error(validation.error);
+        return;
+      }
+
+      setSelectedFile(file);
+      toast.success(`File selected: ${file.name}`);
+    }
+  };
+
+  const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const files = event.dataTransfer.files;
+    if (files.length > 0) {
+      const file = files[0];
+
+      // Validate the file
+      const validation = validateResumeFile(file);
+      if (!validation.valid) {
+        toast.error(validation.error);
+        return;
+      }
+
+      setSelectedFile(file);
+      toast.success(`File dropped: ${file.name}`);
+    }
+  };
+
+  const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+  };
+
+  const handleUpload = async () => {
+    if (!selectedFile) {
+      toast.error("Please select a file to upload");
       return;
     }
 
     setIsUploading(true);
-    
-    // Create loading toast with ID to dismiss later
-    const loadingToastId = toast.loading("Uploading resume to S3...");
-    
+    const loadingToastId = toast.loading("Uploading resume...");
+
     try {
-      // Step 1: Upload to S3 using the unified API
-      const uploadResult = await uploadFile(file, resumeConfig);
+      console.log("🚀 Starting resume upload from client...");
+      console.log(`📄 File: ${selectedFile.name} (${selectedFile.size} bytes)`);
 
-      if (!uploadResult.success) {
-        throw new Error(uploadResult.error || 'S3 upload failed');
+      // Create FormData for server action
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+
+      // Upload using server action
+      console.log("📤 Calling uploadResume server action...");
+      const uploadResult = await uploadResume(formData);
+      
+      console.log("📨 Upload result received:", uploadResult);
+
+      if (!uploadResult.success || !uploadResult.fileUrl) {
+        throw new Error(uploadResult.error || 'Upload failed');
       }
 
-      // Update loading message
       toast.dismiss(loadingToastId);
-      const parsingToastId = toast.loading("Parsing resume with AI...");
-
-      // Step 2: Parse and save to database
-      const parseResult = await parseAndSaveResume(
-        uploadResult.fileUrl!,
-        uploadResult.fileName!,
-        uploadResult.fileSize!,
-        uploadResult.s3Key!
-      );
-
-      toast.dismiss(parsingToastId);
-
-      if (parseResult.success) {
-        toast.success(parseResult.message);
-        onResumeUploaded?.();
-        setIsOpen(false); // Close dialog only on success
+      
+      // Show different messages based on processing result
+      if (uploadResult.resumeId) {
+        toast.success("Resume uploaded and processed successfully!");
+        console.log(`✅ Resume processed successfully with ID: ${uploadResult.resumeId}`);
+      } else if (uploadResult.error) {
+        toast.warning(`Resume uploaded but processing failed: ${uploadResult.error}`);
+        console.warn(`⚠️ Upload succeeded but processing failed: ${uploadResult.error}`);
       } else {
-        toast.error(parseResult.error || "Failed to process resume");
-        // Keep dialog open so user can see the error and try again
+        toast.success("Resume uploaded successfully!");
+        console.log("✅ Resume uploaded successfully");
       }
+      
+      // Reset state first
+      setSelectedFile(null);
+      
+      // Close dialog without triggering scroll
+      onOpenChange(false);
+      
+      // Notify parent component after a brief delay to prevent scroll
+      setTimeout(() => {
+        onResumeUploaded(uploadResult.fileUrl || '', selectedFile.name);
+      }, 100);
     } catch (error: any) {
-      console.error("Error uploading resume:", error);
+      console.error("💥 Error uploading resume:", error);
       toast.dismiss(loadingToastId);
-      toast.error(error.message || "An error occurred while uploading");
+      toast.error(error.message || "Failed to upload resume");
     } finally {
       setIsUploading(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
     }
   };
 
+  const triggerFileInput = () => {
+    fileInputRef.current?.click();
+  };
+
+  const removeFile = () => {
+    setSelectedFile(null);
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={handleDialogOpen}>
-      <DialogTrigger asChild>
-        <Button className="bg-gradient-to-r from-purple-600/80 to-violet-600/80 hover:from-purple-600 hover:to-violet-600 text-white border border-purple-500/30">
-          <Upload className="w-4 h-4 mr-2" />
-          Upload Resume
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="bg-[#0D0D20] border-white/20 text-white max-w-2xl max-h-[80vh] overflow-y-auto">
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent className="bg-gray-900 border-gray-700 max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-xl font-semibold">Upload Resume</DialogTitle>
-          <p className="text-white/70 text-sm mt-2">
-            Upload your resume file - it will be automatically parsed with AI
-          </p>
+          <DialogTitle className="text-white">Upload Resume</DialogTitle>
+          <DialogDescription className="text-gray-300">
+            Upload your resume to get started. Supported formats: PDF, DOC, DOCX (Max 10MB)
+          </DialogDescription>
         </DialogHeader>
 
-        {/* Upload Section */}
         <div className="space-y-4">
-          <div className="border-2 border-dashed border-white/20 rounded-lg p-6 text-center">
-            <Upload className="w-12 h-12 mx-auto mb-4 text-white/40" />
-            <p className="text-white/80 mb-4">
-              Upload your resume files (PDF, DOC, DOCX, TXT)
-            </p>
-            <Button
-              onClick={() => fileInputRef.current?.click()}
-              disabled={isUploading}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              {isUploading ? "Uploading & Parsing..." : "Choose File"}
-            </Button>
+          {/* File Upload Area */}
+          <div
+            className="border-2 border-dashed border-gray-600 rounded-lg p-6 text-center hover:border-gray-500 transition-colors cursor-pointer"
+            onDrop={handleDrop}
+            onDragOver={handleDragOver}
+            onClick={!selectedFile ? triggerFileInput : undefined}
+          >
             <input
               ref={fileInputRef}
               type="file"
-              accept=".pdf,.doc,.docx,.txt"
-              onChange={handleFileUpload}
+              accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+              onChange={handleFileSelect}
               className="hidden"
             />
-            <p className="text-sm text-white/60 mt-2">
-              Maximum file size: 5MB
-            </p>
+
+            {selectedFile ? (
+              <div className="flex items-center justify-between p-3 bg-gray-800 rounded-lg">
+                <div className="flex items-center space-x-3">
+                  <FileText className="h-8 w-8 text-blue-400" />
+                  <div className="text-left">
+                    <p className="text-sm font-medium text-white truncate max-w-[200px]">
+                      {selectedFile.name}
+                    </p>
+                    <p className="text-xs text-gray-400">
+                      {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    removeFile();
+                  }}
+                  className="text-gray-400 hover:text-white"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <Upload className="mx-auto h-12 w-12 text-gray-400" />
+                <div>
+                  <p className="text-gray-300">
+                    <span className="font-medium">Click to upload</span> or drag and drop
+                  </p>
+                  <p className="text-xs text-gray-500">PDF, DOC, DOCX up to 10MB</p>
+                </div>
+              </div>
+            )}
           </div>
 
-
+          {/* Action Buttons */}
+          <div className="flex justify-end space-x-3">
+            <Button
+              variant="outline"
+              onClick={() => {
+                onOpenChange(false);
+                setSelectedFile(null);
+              }}
+              disabled={isUploading}
+              className="border-red-400/50 text-red-400 bg-red-500/10 hover:bg-red-500/20 hover:text-red-300 hover:border-red-300/60"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleUpload}
+              disabled={!selectedFile || isUploading}
+              className="bg-violet-600 hover:bg-violet-700"
+            >
+              {isUploading ? "Uploading..." : "Upload Resume"}
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

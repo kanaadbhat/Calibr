@@ -2,7 +2,6 @@
 
 import React from "react";
 import ProfileAvatar from "./ProfileAvatar";
-import ProfileInfoEditor from "./ProfileInfoEditor";
 
 interface ProfileCardProps {
   profileData: any;
@@ -28,9 +27,6 @@ export default function ProfileCard({ profileData, setProfileData, candidateId }
           </h2>
           <p className="text-white/70 text-lg">{profileData.tagline}</p>
         </div>
-
-        {/* Edit Button */}
-        <ProfileInfoEditor profileData={profileData} setProfileData={setProfileData} />
       </div>
     </div>
   );

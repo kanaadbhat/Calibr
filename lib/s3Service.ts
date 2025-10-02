@@ -7,16 +7,45 @@ import {
   ListObjectsV2Command,
 } from "@aws-sdk/client-s3";
 
-// Configure S3 client - shared across all operations
-const s3Client = new S3Client({
-  region: process.env.AWS_REGION!,
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
-  },
-});
+// Check if we're on the server side
+const isServer = typeof window === 'undefined';
+
+// Debug environment variables only on server
+if (isServer) {
+  console.log('Environment check:', {
+    AWS_REGION: process.env.AWS_REGION,
+    AWS_ACCESS_KEY_ID: process.env.AWS_ACCESS_KEY_ID ? 'Set' : 'Missing',
+    AWS_SECRET_ACCESS_KEY: process.env.AWS_SECRET_ACCESS_KEY ? 'Set' : 'Missing',
+    AWS_S3_BUCKET_NAME: process.env.AWS_S3_BUCKET_NAME
+  });
+}
+
+// Configure S3 client - shared across all operations (server-side only)
+let s3Client: S3Client;
+
+if (isServer) {
+  s3Client = new S3Client({
+    region: process.env.AWS_REGION || 'us-east-1',
+    credentials: {
+      accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+      secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+    },
+  });
+}
 
 const S3_BUCKET_NAME = process.env.AWS_S3_BUCKET_NAME;
+
+// Validate required environment variables only on server side
+if (isServer && !S3_BUCKET_NAME) {
+  throw new Error('AWS_S3_BUCKET_NAME environment variable is required');
+}
+
+if (isServer) {
+  console.log('S3 Configuration:', {
+    region: process.env.AWS_REGION || 'us-east-1',
+    bucket: S3_BUCKET_NAME
+  });
+}
 
 // ============== TYPES & INTERFACES ==============
 
@@ -58,6 +87,14 @@ export interface S3DownloadResult {
 export class S3Operations {
   // Delete single object from S3
   static async deleteObject(key: string): Promise<void> {
+    if (!isServer) {
+      throw new Error('S3 operations can only be performed on the server side');
+    }
+    
+    if (!S3_BUCKET_NAME) {
+      throw new Error('S3 bucket name is not configured');
+    }
+    
     const deleteCommand = new DeleteObjectCommand({
       Bucket: S3_BUCKET_NAME,
       Key: key,
@@ -160,6 +197,12 @@ export class S3Operations {
     contentType: string, 
     metadata?: Record<string, string>
   ): Promise<string> {
+    if (!S3_BUCKET_NAME) {
+      throw new Error('S3 bucket name is not configured');
+    }
+    
+    console.log('Uploading to S3:', { bucket: S3_BUCKET_NAME, key, contentType });
+    
     const uploadCommand = new PutObjectCommand({
       Bucket: S3_BUCKET_NAME,
       Key: key,
@@ -171,7 +214,7 @@ export class S3Operations {
     await s3Client.send(uploadCommand);
     
     // Return the S3 URL
-    return `https://${S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
+    return `https://${S3_BUCKET_NAME}.s3.${process.env.AWS_REGION || 'us-east-1'}.amazonaws.com/${key}`;
   }
 
   // List objects with a specific prefix
