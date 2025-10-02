@@ -11,7 +11,7 @@ import {
   createSuccessResponse, 
   safeAction,
   formatMongooseError
-} from "../lib/action-helpers";
+} from "@/utils/action-helpers";
 
 export async function updateCandidateProfile(
   profileData: ProfileData

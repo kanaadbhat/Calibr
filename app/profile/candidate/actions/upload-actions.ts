@@ -10,7 +10,7 @@ import {
   logAction,
   logError,
   logSuccess
-} from "../lib/action-helpers";
+} from "@/utils/action-helpers";
 
 // Server action for profile image upload
 export async function uploadProfileImage(formData: FormData): Promise<{

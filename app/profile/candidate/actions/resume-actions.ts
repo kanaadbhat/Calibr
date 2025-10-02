@@ -11,7 +11,7 @@ import {
   safeAction,
   logAction,
   logSuccess
-} from "../lib/action-helpers";
+} from "@/utils/action-helpers";
 
 // Get all resumes for a candidate from Resume model
 export async function getCandidateResumes(candidateId: string): Promise<{

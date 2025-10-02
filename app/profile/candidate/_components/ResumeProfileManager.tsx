@@ -105,8 +105,13 @@ export default function ResumeProfileManager({ candidateId, onProfileUpdated }: 
       // Now apply to profile
       const result = await applyResumeToProfile(selectedResumeId);
       if (result.success) {
+        toast.dismiss();
         toast.success(result.message);
         setIsOpen(false);
+        
+        // Scroll to top before triggering profile update
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        
         onProfileUpdated?.();
       } else {
         const errorMessage = result.error || result.message || "Failed to apply profile";

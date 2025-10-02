@@ -1,35 +1,8 @@
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import ResumeModel from "@/models/resume.model";
 import Profile from "@/models/profile.model";
-import { logAction, logError } from "./action-helpers";
 
-// Helper function for session validation
-export async function validateSession(): Promise<{ success: boolean; candidateId?: string; error?: string }> {
-  logAction("🔐", "Validating session...");
-  const session = await getServerSession(authOptions);
-  const candidateId = session?.user._id;
-  
-  if (!candidateId) {
-    logError("Session validation failed - no user ID");
-    return {
-      success: false,
-      error: "User session not found"
-    };
-  }
-  
-  logAction("✅", "Session validated for user:", candidateId);
-  return { success: true, candidateId };
-}
-
-// Helper function for authentication that can be used in any action
-export async function requireAuth(): Promise<string> {
-  const { success, candidateId, error } = await validateSession();
-  if (!success || !candidateId) {
-    throw new Error(error || "Unauthorized - Please log in");
-  }
-  return candidateId;
-}
+// Re-export auth helpers from utils for backward compatibility
+export { validateSession, requireAuth } from "@/utils/auth-helpers";
 
 // Helper function for resume validation
 export async function validateResume(resumeId: string, candidateId: string): Promise<{ success: boolean; resume?: any; error?: string }> {

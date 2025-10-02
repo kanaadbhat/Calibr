@@ -3,7 +3,7 @@
 import ResumeModel from "@/models/resume.model";
 import { validateResume, updateCandidateProfileWithResume, getNextVersionNumber, requireAuth } from "../lib/validation";
 import { geminiClient } from "../lib/gemini-client";
-import { extractTextFromFile, getMimeTypeFromFileName } from "../lib/file-processing";
+import { extractTextFromFile, getMimeTypeFromFileName } from "@/utils/file-processing";
 import { S3Operations } from "@/lib/s3Service";
 import { 
   withDatabase, 
@@ -14,7 +14,7 @@ import {
   logAction,
   logError,
   logSuccess
-} from "../lib/action-helpers";
+} from "@/utils/action-helpers";
 
 // Parse and save resume after S3 upload (separated from upload logic)
 export async function parseAndSaveResume(s3Url: string, fileName: string, fileSize: number, s3Key: string): Promise<{
