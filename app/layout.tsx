@@ -4,9 +4,10 @@ import { Outfit } from "next/font/google";
 import "./globals.css";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import { Toaster } from "@/components/ui/sonner";
+import { Toaster } from "sonner";
+import AuthProvider from "@/hooks/AuthProvider";
 
-const outfit = Outfit({subsets : ['latin']})
+const outfit = Outfit({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Create Next App",
@@ -20,13 +21,30 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={outfit.className}
-      >
-        <Header/>
-        {children}
-        <Toaster />
-        <Footer/>
+      <body className={outfit.className}>
+        <AuthProvider>
+          <Header />
+          <Toaster 
+            position="bottom-right"
+            toastOptions={{
+              duration: 4000,
+              style: {
+                background: "white",         
+                color: "#7C3AED",         
+                border: "1px solid #E9D5FF", 
+              },
+              classNames: {
+                icon: "text-violet-600",   
+                title: "text-violet-600",   
+                description: "text-violet-600", 
+                closeButton: "text-violet-600 hover:text-violet-800",
+              },
+            }}
+          />
+
+          {children}
+          <Footer />
+        </AuthProvider>
       </body>
     </html>
   );

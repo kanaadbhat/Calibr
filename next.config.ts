@@ -1,7 +1,24 @@
-import type { NextConfig } from "next";
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  headers: async () => ([
+    {
+      source: '/:path*',
+      headers: [
+        {
+          key: 'Permissions-Policy',
+          value: 'camera=(), microphone=()'
+        }
+      ]
+    }
+  ])
+}
+const withBundleAnalyzer = require('@next/bundle-analyzer')({
+  enabled: process.env.ANALYZE === 'true',
+});
 
-const nextConfig: NextConfig = {
-  /* config options here */
-};
+module.exports = withBundleAnalyzer({
+  reactStrictMode: true,
+});
 
-export default nextConfig;
+
+module.exports = nextConfig

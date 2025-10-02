@@ -9,7 +9,8 @@ export interface Candidate extends Document{
     bio : string
     avatar : string
     isVerified : boolean,
-    otp : number
+    otp : number,
+    role : string
 }
 const candidateSchema : Schema<Candidate>  = new Schema({
     email: { 
@@ -21,7 +22,8 @@ const candidateSchema : Schema<Candidate>  = new Schema({
     password: { 
         type: String, 
         required: [true, 'Password is required'],
-        minlength: [6, 'Password must be at least 6 characters'] 
+        minlength: [6, 'Password must be at least 6 characters'],
+        select : false 
     },
     firstName: { 
         type: String, 
@@ -43,12 +45,12 @@ const candidateSchema : Schema<Candidate>  = new Schema({
         type: Boolean, 
         default: false 
     },
-    otp: { 
-        type: Number,
-        required: true 
+    role : {
+        type : String,
+        required : true
     }
 });
 
-const User = (mongoose.models.User as mongoose.Model<Candidate>) || mongoose.model<Candidate>('User', candidateSchema);
+const candidate = (mongoose.models.candidates as mongoose.Model<Candidate>) || mongoose.model<Candidate>('candidates', candidateSchema);
 
-export default User; 
+export default candidate; 
