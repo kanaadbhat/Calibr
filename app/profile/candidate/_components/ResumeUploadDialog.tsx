@@ -54,11 +54,13 @@ export default function ResumeUploadDialog({
       // Validate the file
       const validation = validateResumeFile(file);
       if (!validation.valid) {
+        toast.dismiss();
         toast.error(validation.error);
         return;
       }
 
       setSelectedFile(file);
+      toast.dismiss();
       toast.success(`File selected: ${file.name}`);
     }
   };
@@ -73,11 +75,13 @@ export default function ResumeUploadDialog({
       // Validate the file
       const validation = validateResumeFile(file);
       if (!validation.valid) {
+        toast.dismiss();
         toast.error(validation.error);
         return;
       }
 
       setSelectedFile(file);
+      toast.dismiss();
       toast.success(`File dropped: ${file.name}`);
     }
   };
@@ -88,12 +92,14 @@ export default function ResumeUploadDialog({
 
   const handleUpload = async () => {
     if (!selectedFile) {
+      toast.dismiss();
       toast.error("Please select a file to upload");
       return;
     }
 
     setIsUploading(true);
-    const loadingToastId = toast.loading("Uploading resume...");
+  toast.dismiss();
+  const loadingToastId = toast.loading("Uploading resume...");
 
     try {
       console.log("🚀 Starting resume upload from client...");
@@ -114,7 +120,7 @@ export default function ResumeUploadDialog({
       }
 
       toast.dismiss(loadingToastId);
-      
+      toast.dismiss();
       // Show different messages based on processing result
       if (uploadResult.resumeId) {
         toast.success("Resume uploaded and processed successfully!");
@@ -139,8 +145,9 @@ export default function ResumeUploadDialog({
       }, 100);
     } catch (error: any) {
       console.error("💥 Error uploading resume:", error);
-      toast.dismiss(loadingToastId);
-      toast.error(error.message || "Failed to upload resume");
+  toast.dismiss(loadingToastId);
+  toast.dismiss();
+  toast.error(error.message || "Failed to upload resume");
     } finally {
       setIsUploading(false);
     }
