@@ -14,8 +14,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { X, Linkedin, Github, Pencil } from "lucide-react";
-import { toast } from "sonner";
-import { updateCandidateProfile } from "../actions/profile-actions";
+import { useProfileUpdate } from "../hooks";
 
 interface ManualUpdateFormProps {
   profileData: any;
@@ -30,6 +29,8 @@ export default function ManualUpdateForm({
   isOpen,
   setIsOpen,
 }: ManualUpdateFormProps) {
+  const { updateProfile, isUpdating } = useProfileUpdate();
+
   const updateWorkExperience = (index: number, field: string, value: string | string[]) => {
     setProfileData((prev: any) => ({
       ...prev,
@@ -183,18 +184,9 @@ export default function ManualUpdateForm({
   };
 
   const handleUpdateProfile = async () => {
-    try {
-      const res = await updateCandidateProfile(profileData);
-
-      if (res.success) {
-        toast.success(res.message);
-        setIsOpen(false);
-      } else {
-        toast.error(res.error || "Failed to update profile");
-      }
-    } catch (error) {
-      console.error("Error updating profile:", error);
-      toast.error("An error occurred while updating your profile");
+    const result = await updateProfile(profileData);
+    if (result.success) {
+      setIsOpen(false);
     }
   };
 
@@ -639,9 +631,10 @@ export default function ManualUpdateForm({
             </Button>
             <Button
               onClick={handleUpdateProfile}
-              className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white border-none"
+              disabled={isUpdating}
+              className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white border-none disabled:opacity-50"
             >
-              Save Changes
+              {isUpdating ? "Saving..." : "Save Changes"}
             </Button>
           </div>
         </div>

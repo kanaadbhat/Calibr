@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -13,35 +13,17 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { toast } from "sonner";
+import { useResumeDelete } from "../hooks";
 
 interface ResumeListProps {
   resumes: any[];
 }
 
 export default function ResumeList({ resumes }: ResumeListProps) {
-  const [deletingResumeId, setDeletingResumeId] = useState<string | null>(null);
+  const { deleteResumeFile, isDeleting } = useResumeDelete();
 
   const handleDeleteResume = async (resumeId: string) => {
-    setDeletingResumeId(resumeId);
-    try {
-      const { deleteResume } = await import("../actions");
-      const result = await deleteResume(resumeId);
-      if (result.success) {
-        toast.success(result.message);
-        
-        // Save scroll position to top before reload
-        sessionStorage.setItem('scrollPosition', '0');
-        
-        window.location.reload();
-      } else {
-        toast.error(result.error || "Failed to delete resume");
-      }
-    } catch {
-      toast.error("An error occurred while deleting");
-    } finally {
-      setDeletingResumeId(null);
-    }
+    await deleteResumeFile(resumeId);
   };
 
   return (
@@ -79,10 +61,10 @@ export default function ResumeList({ resumes }: ResumeListProps) {
                     <Button
                       size="sm"
                       variant="outline"
-                      disabled={deletingResumeId === res.id}
+                      disabled={isDeleting}
                       className="border-red-600/20 text-red-400 hover:bg-red-600/10 flex-1"
                     >
-                      {deletingResumeId === res.id ? "Deleting..." : "Delete All"}
+                      {isDeleting ? "Deleting..." : "Delete All"}
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent className="bg-gray-900 border-gray-700">
