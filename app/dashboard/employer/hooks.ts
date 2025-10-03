@@ -1,7 +1,12 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { createAssessment, fetchJobPostingsForAssessment } from './assessment-actions';
+import { 
+  createAssessment, 
+  fetchJobPostingsForAssessment,
+  createJobPosting,
+  type JobCreationData 
+} from './actions';
 import { toast } from 'sonner';
 import mongoose from 'mongoose';
 
@@ -252,4 +257,26 @@ export function useJobPostings() {
     jobs,
     fetchJobs
   };
+}
+
+// Custom hook for creating job postings
+export function useCreateJob() {
+  const [isLoading, setIsLoading] = useState(false);
+
+  const createJob = async (jobData: JobCreationData) => {
+    setIsLoading(true);
+    try {
+      const result = await createJobPosting(jobData);
+      return result;
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : "An unexpected error occurred",
+      };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return { createJob, isLoading };
 }

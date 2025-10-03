@@ -1,5 +1,5 @@
 import React from "react";
-import { Activity } from "../types";
+import { Activity } from "../../types";
 import { CheckCircle, Megaphone, UserPlus } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 

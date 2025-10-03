@@ -13,16 +13,16 @@ import {
 } from "@/components/ui/breadcrumb";
 import { Home } from "lucide-react";
 import Link from "next/link";
-import ActivityItem from "./_components/ActivityItem";
-import JobListItem from "./_components/JobListItem";
-import CodePreview from "./_components/CodePreview";
-import CandidateCard from "./_components/CandidateCard";
-import Column from "./_components/Column";
-import StatCard from "./_components/StatCard";
+import { 
+  ActivityItem, 
+  CodePreview, 
+  CandidateCard, 
+  Column, 
+  StatCard 
+} from "./_components/Dashboard";
+import { JobListItem, CreateJob } from "./_components/CreateJobForm";
 import { Skeleton } from "@/components/ui/skeleton";
-import CreateJobPage from "./_components/CreateJob";
-import AddAssessmentPage from "./_components/addAssesment";
-import CreateAssessmentFlow from "./_components/CreateAssessmentFlow";
+import { AddAssessmentPage, CreateAssessmentFlow } from "./_components/AddAssessmentForm";
 import {
   fetchStats,
   fetchCandidates,
@@ -94,7 +94,7 @@ export default function Page() {
   }, []);
 
   if (currentView === "create-job") {
-    return <CreateJobPage />;
+    return <CreateJob />;
   }
 
   if (currentView === "add-assessment") {
