@@ -10,7 +10,14 @@ import {
   fetchLiveMonitoring,
   fetchJobs,
   fetchActivities,
-  type JobCreationData 
+  fetchJobsWithAssessments,
+  fetchCandidatesForJob,
+  fetchRoundInfo,
+  updateCandidatesForRound,
+  type JobCreationData,
+  type JobWithAssessment,
+  type CandidateApplication,
+  type RoundInfo,
 } from './actions';
 import { toast } from 'sonner';
 import mongoose from 'mongoose';
@@ -352,3 +359,185 @@ export function useDashboardData() {
     refetch: loadData
   };
 }
+
+// ========================================
+// CANDIDATE MANAGEMENT HOOKS
+// ========================================
+
+/**
+ * Hook to fetch jobs with assessments
+ */
+export function useFetchJobsWithAssessments() {
+  const [jobs, setJobs] = useState<JobWithAssessment[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchJobs = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const result = await fetchJobsWithAssessments();
+      
+      if (result.success) {
+        setJobs(result.data || []);
+      } else {
+        setError(result.message);
+        toast.error(result.message);
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to fetch jobs';
+      setError(message);
+      toast.error(message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchJobs();
+  }, [fetchJobs]);
+
+  return {
+    jobs,
+    loading,
+    error,
+    refetch: fetchJobs
+  };
+}
+
+/**
+ * Hook to fetch candidates for a job
+ */
+export function useFetchCandidatesForJob(jobId: string | null) {
+  const [candidates, setCandidates] = useState<CandidateApplication[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchCandidates = useCallback(async () => {
+    if (!jobId) {
+      setCandidates([]);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const result = await fetchCandidatesForJob(jobId);
+      
+      if (result.success) {
+        setCandidates(result.data || []);
+      } else {
+        setError(result.message);
+        toast.error(result.message);
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to fetch candidates';
+      setError(message);
+      toast.error(message);
+    } finally {
+      setLoading(false);
+    }
+  }, [jobId]);
+
+  useEffect(() => {
+    fetchCandidates();
+  }, [fetchCandidates]);
+
+  return {
+    candidates,
+    loading,
+    error,
+    refetch: fetchCandidates
+  };
+}
+
+/**
+ * Hook to fetch round info
+ */
+export function useFetchRoundInfo(
+  roundType: 'aptitude' | 'coding' | 'technicalInterview' | 'hrInterview' | null,
+  roundId: string | null
+) {
+  const [roundInfo, setRoundInfo] = useState<RoundInfo | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchInfo = useCallback(async () => {
+    if (!roundType || !roundId) {
+      setRoundInfo(null);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const result = await fetchRoundInfo(roundType, roundId);
+      
+      if (result.success) {
+        setRoundInfo(result.data || null);
+      } else {
+        setError(result.message);
+        toast.error(result.message);
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to fetch round info';
+      setError(message);
+      toast.error(message);
+    } finally {
+      setLoading(false);
+    }
+  }, [roundType, roundId]);
+
+  useEffect(() => {
+    fetchInfo();
+  }, [fetchInfo]);
+
+  return {
+    roundInfo,
+    loading,
+    error,
+    refetch: fetchInfo
+  };
+}
+
+/**
+ * Hook to update candidates for round
+ */
+export function useUpdateCandidatesForRound() {
+  const [loading, setLoading] = useState(false);
+
+  const updateCandidates = useCallback(async (
+    roundType: 'aptitude' | 'coding' | 'technicalInterview' | 'hrInterview',
+    roundId: string,
+    candidateIds: string[]
+  ) => {
+    setLoading(true);
+    
+    try {
+      const result = await updateCandidatesForRound(roundType, roundId, candidateIds);
+      
+      if (result.success) {
+        toast.success(result.message);
+        return { success: true, data: result.data };
+      } else {
+        toast.error(result.message);
+        return { success: false, message: result.message };
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to update candidates';
+      toast.error(message);
+      return { success: false, message };
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  return {
+    updateCandidates,
+    loading
+  };
+}
+

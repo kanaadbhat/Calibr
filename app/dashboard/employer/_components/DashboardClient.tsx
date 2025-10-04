@@ -22,9 +22,10 @@ import {
 } from "./Dashboard";
 import { JobListItem, CreateJob } from "./CreateJobForm";
 import { AddAssessmentPage, CreateAssessmentFlow } from "./AddAssessmentForm";
+import { ManageCandidates } from "./ManageCandidates";
 import type { DashboardData, Stat } from "../types";
 
-type PageView = "dashboard" | "create-job" | "add-assessment" | "create-assessment";
+type PageView = "dashboard" | "create-job" | "add-assessment" | "create-assessment" | "manage-candidates";
 
 interface DashboardClientProps {
   initialData: DashboardData;
@@ -56,6 +57,10 @@ export function DashboardClient({ initialData }: DashboardClientProps) {
 
   if (currentView === "create-assessment") {
     return <CreateAssessmentFlow onBack={() => setCurrentView("dashboard")} />;
+  }
+
+  if (currentView === "manage-candidates") {
+    return <ManageCandidates />;
   }
 
   return (

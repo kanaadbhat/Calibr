@@ -1,7 +1,3 @@
-/**
- * Central export file for all employer dashboard actions
- * This file re-exports all actions from their respective modules
- */
 
 // Dashboard data actions (stats, activities, candidates, monitoring)
 export {
@@ -45,3 +41,18 @@ export {
 } from './actions/aptitude-actions';
 
 export type { Aptitude } from './actions/aptitude-actions';
+
+// Candidate management actions
+export {
+  fetchJobsWithAssessments,
+  fetchCandidatesForJob,
+  fetchRoundInfo,
+  updateCandidatesForRound,
+} from './actions/manageCandidates-actions';
+
+export type {
+  JobWithAssessment,
+  CandidateApplication,
+  RoundInfo,
+} from './actions/manageCandidates-actions';
+

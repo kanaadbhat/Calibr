@@ -213,9 +213,7 @@ function toPlainAssessment(assessment: any): any {
   return plainAssessment;
 }
 
-// ========================================
 // MAIN CREATE ASSESSMENT FUNCTION
-// ========================================
 
 /**
  * Creates a new assessment with optional aptitude round
