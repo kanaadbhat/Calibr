@@ -1,14 +1,20 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { 
   createAssessment, 
   fetchJobPostingsForAssessment,
   createJobPosting,
+  fetchStats,
+  fetchCandidates,
+  fetchLiveMonitoring,
+  fetchJobs,
+  fetchActivities,
   type JobCreationData 
 } from './actions';
 import { toast } from 'sonner';
 import mongoose from 'mongoose';
+import { DashboardData } from './types';
 
 // Types
 export interface AssessmentFormData {
@@ -237,8 +243,8 @@ export function useJobPostings() {
     try {
       const result = await fetchJobPostingsForAssessment();
       if (result.success) {
-        setJobs(result.data);
-        return { success: true, data: result.data };
+        setJobs(result.data || []);
+        return { success: true, data: result.data || [] };
       } else {
         throw new Error(result.message || 'Failed to fetch jobs');
       }
@@ -279,4 +285,70 @@ export function useCreateJob() {
   };
 
   return { createJob, isLoading };
+}
+
+// Custom hook for fetching dashboard data
+export function useDashboardData() {
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const [statsRes, candidatesRes, monitoringRes, jobsRes, activitiesRes] =
+        await Promise.all([
+          fetchStats(),
+          fetchCandidates(),
+          fetchLiveMonitoring(),
+          fetchJobs(),
+          fetchActivities(),
+        ]);
+
+      // Build DashboardData object
+      const dashboard: DashboardData = {
+        stats: statsRes.success ? (statsRes.data || []) : [],
+        candidatesByStage: candidatesRes.success
+          ? (candidatesRes.data || {
+              applied: [],
+              screening: [],
+              interview: [],
+              offer: [],
+              hired: [],
+            })
+          : {
+              applied: [],
+              screening: [],
+              interview: [],
+              offer: [],
+              hired: [],
+            },
+        codePreview: monitoringRes.success ? (monitoringRes.data || []) : [],
+        jobs: jobsRes.success ? (jobsRes.data || []) : [],
+        activities: activitiesRes.success ? (activitiesRes.data || []) : [],
+      };
+
+      setData(dashboard);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to load dashboard data';
+      console.error("❌ Error loading dashboard:", err);
+      setError(message);
+      toast.error(message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  return {
+    data,
+    loading,
+    error,
+    refetch: loadData
+  };
 }

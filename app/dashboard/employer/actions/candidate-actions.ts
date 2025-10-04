@@ -1,6 +1,7 @@
 "use server";
 
 import type { CandidatesByStage } from '../types';
+import { safeAction, createSuccessResponse, type ActionResponse } from '@/utils/action-helpers';
 
 const mockCandidatesByStage: CandidatesByStage = {
   applied: [
@@ -58,17 +59,8 @@ const mockCandidatesByStage: CandidatesByStage = {
 };
 
 // Fetch Candidates (Pipeline)
-export async function fetchCandidates(): Promise<{
-  success: boolean;
-  data: CandidatesByStage;
-}> {
-  try {
-    return { success: true, data: mockCandidatesByStage };
-  } catch (error) {
-    console.log(error);
-    return {
-      success: false,
-      data: { applied: [], screening: [], interview: [], offer: [], hired: [] },
-    };
-  }
+export async function fetchCandidates(): Promise<ActionResponse<CandidatesByStage>> {
+  return safeAction(async () => {
+    return createSuccessResponse("Candidates fetched successfully", mockCandidatesByStage);
+  }, "Failed to fetch candidates");
 }

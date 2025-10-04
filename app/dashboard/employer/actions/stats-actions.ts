@@ -1,6 +1,7 @@
 "use server";
 
 import type { Stat } from '../types';
+import { safeAction, createSuccessResponse, type ActionResponse } from '@/utils/action-helpers';
 
 const mockStats: Stat[] = [
   { value: "12", label: "Active Job Postings", trend: "▲ 2" },
@@ -15,14 +16,8 @@ const mockStats: Stat[] = [
 ];
 
 // Fetch Stats
-export async function fetchStats(): Promise<{
-  success: boolean;
-  data: Stat[];
-}> {
-  try {
-    return { success: true, data: mockStats };
-  } catch (error) {
-    console.log(error);
-    return { success: false, data: [] };
-  }
+export async function fetchStats(): Promise<ActionResponse<Stat[]>> {
+  return safeAction(async () => {
+    return createSuccessResponse("Stats fetched successfully", mockStats);
+  }, "Failed to fetch stats");
 }

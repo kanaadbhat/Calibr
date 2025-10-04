@@ -2,8 +2,13 @@
 
 import type { Job } from '../types';
 import JobOpportunityModel, { JobOpportunity } from '@/models/jobOpportunity.model';
-import { connectToDatabase } from '@/utils/connectDb';
 import { Document } from 'mongoose';
+import { 
+  safeAction, 
+  createSuccessResponse, 
+  withDatabase, 
+  type ActionResponse 
+} from '@/utils/action-helpers';
 
 // Create a clean type for job creation
 export type JobCreationData = Omit<JobOpportunity, keyof Document | 'createdAt' | 'updatedAt' | 'applications'>;
@@ -26,45 +31,28 @@ const mockJobs: Job[] = [
 ];
 
 // Fetch Jobs
-export async function fetchJobs(): Promise<{ success: boolean; data: Job[] }> {
-  try {
-    return { success: true, data: mockJobs };
-  } catch (error) {
-    console.log(error);
-    return { success: false, data: [] };
-  }
+export async function fetchJobs(): Promise<ActionResponse<Job[]>> {
+  return safeAction(async () => {
+    return createSuccessResponse("Jobs fetched successfully", mockJobs);
+  }, "Failed to fetch jobs");
 }
 
 // Create Job Posting
-export async function createJobPosting(jobData: JobCreationData): Promise<{ 
-  success: boolean; 
-  message: string; 
-  data?: JobOpportunity 
-}> {
-  try {
-    await connectToDatabase();
+export async function createJobPosting(jobData: JobCreationData): Promise<ActionResponse<JobOpportunity>> {
+  return safeAction(async () => {
+    return await withDatabase(async () => {
+      const newJobPosting = new JobOpportunityModel({
+        ...jobData,
+        deadline: jobData.deadline ? new Date(jobData.deadline) : undefined,
+      });
 
-    const newJobPosting = new JobOpportunityModel({
-      ...jobData,
-      deadline: jobData.deadline ? new Date(jobData.deadline) : undefined,
-    });
+      const savedJob = await newJobPosting.save();
+      const jobPlain = JSON.parse(JSON.stringify(savedJob)) as any;
+      delete jobPlain.__v;
+      delete jobPlain.createdAt;
+      delete jobPlain.updatedAt;
 
-    const savedJob = await newJobPosting.save();
-    const jobPlain = JSON.parse(JSON.stringify(savedJob)) as any;
-    delete jobPlain.__v;
-    delete jobPlain.createdAt;
-    delete jobPlain.updatedAt;
-
-    return {
-      success: true,
-      message: "Job posting created successfully!",
-      data: jobPlain,
-    };
-  } catch (error) {
-    console.error("Error creating job posting:", error);
-    return {
-      success: false,
-      message: error instanceof Error ? error.message : "Failed to create job posting",
-    };
-  }
+      return createSuccessResponse("Job posting created successfully!", jobPlain);
+    }, "Failed to connect to database");
+  }, "Failed to create job posting");
 }

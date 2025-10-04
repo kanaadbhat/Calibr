@@ -1,6 +1,7 @@
 "use server";
 
 import type { Activity } from '../types';
+import { safeAction, createSuccessResponse, type ActionResponse } from '@/utils/action-helpers';
 
 const mockActivities: Activity[] = [
   {
@@ -24,14 +25,8 @@ const mockActivities: Activity[] = [
 ];
 
 // Fetch Activities
-export async function fetchActivities(): Promise<{
-  success: boolean;
-  data: Activity[];
-}> {
-  try {
-    return { success: true, data: mockActivities };
-  } catch (error) {
-    console.log(error);
-    return { success: false, data: [] };
-  }
+export async function fetchActivities(): Promise<ActionResponse<Activity[]>> {
+  return safeAction(async () => {
+    return createSuccessResponse("Activities fetched successfully", mockActivities);
+  }, "Failed to fetch activities");
 }

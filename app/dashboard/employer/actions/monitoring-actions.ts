@@ -1,6 +1,7 @@
 "use server";
 
 import type { CodePreview } from '../types';
+import { safeAction, createSuccessResponse, type ActionResponse } from '@/utils/action-helpers';
 
 const mockCodePreview: CodePreview[] = [
   {
@@ -16,14 +17,8 @@ const mockCodePreview: CodePreview[] = [
 ];
 
 // Fetch Live Monitoring (CodePreview)
-export async function fetchLiveMonitoring(): Promise<{
-  success: boolean;
-  data: CodePreview[];
-}> {
-  try {
-    return { success: true, data: mockCodePreview };
-  } catch (error) {
-    console.log(error);
-    return { success: false, data: [] };
-  }
+export async function fetchLiveMonitoring(): Promise<ActionResponse<CodePreview[]>> {
+  return safeAction(async () => {
+    return createSuccessResponse("Live monitoring data fetched successfully", mockCodePreview);
+  }, "Failed to fetch live monitoring data");
 }

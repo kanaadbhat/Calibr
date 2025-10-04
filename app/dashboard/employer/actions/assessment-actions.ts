@@ -3,9 +3,16 @@
 import AssessmentModel, { Assessment } from '@/models/assesment.model';
 import AptitudeModel, { Aptitude } from '@/models/aptitude.model';
 import JobOpportunityModel from '@/models/jobOpportunity.model';
-import { connectToDatabase } from '@/utils/connectDb';
 import { Document } from 'mongoose';
 import mongoose from 'mongoose';
+import { 
+  safeAction, 
+  createSuccessResponse, 
+  createErrorResponse, 
+  withDatabase, 
+  logSuccess,
+  type ActionResponse 
+} from '@/utils/action-helpers';
 
 // Create a clean type for assessment creation
 export type AssessmentCreationData = Omit<Assessment, keyof Document | 'createdAt' | 'updatedAt'>;
@@ -42,56 +49,38 @@ function generateUniqueRandomNumbers(count: number, min: number = 1, max: number
 }
 
 // Fetch job postings for assessment selection
-export async function fetchJobPostingsForAssessment(): Promise<{
-  success: boolean;
-  data: JobForAssessment[];
-  message?: string;
-}> {
-  try {
-    await connectToDatabase();
+export async function fetchJobPostingsForAssessment(): Promise<ActionResponse<JobForAssessment[]>> {
+  return safeAction(async () => {
+    return await withDatabase(async () => {
+      // For now, fetch all jobs. Later add employerId filter
+      const jobs = await JobOpportunityModel.find({})
+        .select('title department position employmentType seniority locationType location openings createdAt')
+        .sort({ createdAt: -1 })
+        .lean();
 
-    // For now, fetch all jobs. Later add employerId filter
-    const jobs = await JobOpportunityModel.find({})
-      .select('title department position employmentType seniority locationType location openings createdAt')
-      .sort({ createdAt: -1 })
-      .lean();
+      const formattedJobs: JobForAssessment[] = jobs.map(job => ({
+        _id: job._id.toString(),
+        title: job.title,
+        department: job.department,
+        position: job.position,
+        employmentType: job.employmentType,
+        seniority: job.seniority,
+        locationType: job.locationType,
+        location: job.location,
+        openings: job.openings,
+        createdAt: (job as any).createdAt?.toISOString() || new Date().toISOString(),
+        status: 'active' // Add status logic if needed
+      }));
 
-    const formattedJobs: JobForAssessment[] = jobs.map(job => ({
-      _id: job._id.toString(),
-      title: job.title,
-      department: job.department,
-      position: job.position,
-      employmentType: job.employmentType,
-      seniority: job.seniority,
-      locationType: job.locationType,
-      location: job.location,
-      openings: job.openings,
-      createdAt: (job as any).createdAt?.toISOString() || new Date().toISOString(),
-      status: 'active' // Add status logic if needed
-    }));
-
-    return {
-      success: true,
-      data: formattedJobs
-    };
-  } catch (error) {
-    console.error("Error fetching job postings for assessment:", error);
-    return {
-      success: false,
-      data: [],
-      message: error instanceof Error ? error.message : "Failed to fetch job postings"
-    };
-  }
+      return createSuccessResponse("Job postings fetched successfully", formattedJobs);
+    }, "Failed to connect to database");
+  }, "Failed to fetch job postings for assessment");
 }
 
 // Create a new assessment
-export async function createAssessment(assessmentData: AssessmentCreationData): Promise<{
-  success: boolean;
-  message: string;
-  data?: Assessment;
-}> {
-  try {
-    await connectToDatabase();
+export async function createAssessment(assessmentData: AssessmentCreationData): Promise<ActionResponse<Assessment>> {
+  return safeAction(async () => {
+    return await withDatabase(async () => {
 
     // Convert string IDs back to ObjectIds for database storage
     const processedData = {
@@ -160,244 +149,149 @@ export async function createAssessment(assessmentData: AssessmentCreationData): 
     delete assessmentPlain.createdAt;
     delete assessmentPlain.updatedAt;
 
-    return {
-      success: true,
-      message: "Assessment created successfully!",
-      data: assessmentPlain,
-    };
-  } catch (error) {
-    console.error("Error creating assessment:", error);
-    return {
-      success: false,
-      message: error instanceof Error ? error.message : "Failed to create assessment",
-    };
-  }
+    logSuccess("Assessment created successfully", assessmentPlain._id);
+    return createSuccessResponse("Assessment created successfully!", assessmentPlain);
+    }, "Failed to connect to database");
+  }, "Failed to create assessment");
 }
 
 // Fetch assessments for a specific job
-export async function fetchAssessmentsForJob(jobId: string): Promise<{
-  success: boolean;
-  data: Assessment[];
-  message?: string;
-}> {
-  try {
-    await connectToDatabase();
+export async function fetchAssessmentsForJob(jobId: string): Promise<ActionResponse<Assessment[]>> {
+  return safeAction(async () => {
+    return await withDatabase(async () => {
+      const assessments = await AssessmentModel.find({ jobOpportunity: jobId })
+        .populate('aptitudeId') // Populate the aptitude data
+        .sort({ createdAt: -1 })
+        .lean();
 
-    const assessments = await AssessmentModel.find({ jobOpportunity: jobId })
-      .populate('aptitudeId') // Populate the aptitude data
-      .sort({ createdAt: -1 })
-      .lean();
-
-    return {
-      success: true,
-      data: assessments.map(assessment => ({
+      const formattedAssessments = assessments.map(assessment => ({
         ...assessment,
         _id: assessment._id.toString()
-      })) as Assessment[]
-    };
-  } catch (error) {
-    console.error("Error fetching assessments for job:", error);
-    return {
-      success: false,
-      data: [],
-      message: error instanceof Error ? error.message : "Failed to fetch assessments"
-    };
-  }
+      })) as Assessment[];
+
+      return createSuccessResponse("Assessments fetched successfully", formattedAssessments);
+    }, "Failed to connect to database");
+  }, "Failed to fetch assessments for job");
 }
 
 // Fetch single assessment with aptitude data
-export async function fetchAssessmentById(assessmentId: string): Promise<{
-  success: boolean;
-  data?: Assessment;
-  message?: string;
-}> {
-  try {
-    await connectToDatabase();
+export async function fetchAssessmentById(assessmentId: string): Promise<ActionResponse<Assessment>> {
+  return safeAction(async () => {
+    return await withDatabase(async () => {
+      const assessment = await AssessmentModel.findById(assessmentId)
+        .populate('aptitudeId')
+        .lean();
 
-    const assessment = await AssessmentModel.findById(assessmentId)
-      .populate('aptitudeId')
-      .lean();
+      if (!assessment) {
+        return createErrorResponse("Assessment not found");
+      }
 
-    if (!assessment) {
-      return {
-        success: false,
-        message: "Assessment not found"
-      };
-    }
-
-    return {
-      success: true,
-      data: {
+      const formattedAssessment = {
         ...assessment,
         _id: assessment._id.toString()
-      } as Assessment
-    };
-  } catch (error) {
-    console.error("Error fetching assessment:", error);
-    return {
-      success: false,
-      message: error instanceof Error ? error.message : "Failed to fetch assessment"
-    };
-  }
+      } as Assessment;
+
+      return createSuccessResponse("Assessment fetched successfully", formattedAssessment);
+    }, "Failed to connect to database");
+  }, "Failed to fetch assessment");
 }
 
 // Update an existing assessment
 export async function updateAssessment(
   assessmentId: string, 
   updateData: Partial<AssessmentCreationData>
-): Promise<{
-  success: boolean;
-  message: string;
-  data?: Assessment;
-}> {
-  try {
-    await connectToDatabase();
+): Promise<ActionResponse<Assessment>> {
+  return safeAction(async () => {
+    return await withDatabase(async () => {
+      const updatedAssessment = await AssessmentModel.findByIdAndUpdate(
+        assessmentId,
+        updateData,
+        { new: true, runValidators: true }
+      );
 
-    const updatedAssessment = await AssessmentModel.findByIdAndUpdate(
-      assessmentId,
-      updateData,
-      { new: true, runValidators: true }
-    );
+      if (!updatedAssessment) {
+        return createErrorResponse("Assessment not found");
+      }
 
-    if (!updatedAssessment) {
-      return {
-        success: false,
-        message: "Assessment not found"
-      };
-    }
+      // Convert to plain object
+      const assessmentPlain = JSON.parse(JSON.stringify(updatedAssessment));
+      delete assessmentPlain.__v;
 
-    // Convert to plain object
-    const assessmentPlain = JSON.parse(JSON.stringify(updatedAssessment));
-    delete assessmentPlain.__v;
-
-    return {
-      success: true,
-      message: "Assessment updated successfully!",
-      data: assessmentPlain,
-    };
-  } catch (error) {
-    console.error("Error updating assessment:", error);
-    return {
-      success: false,
-      message: error instanceof Error ? error.message : "Failed to update assessment",
-    };
-  }
+      logSuccess("Assessment updated", assessmentId);
+      return createSuccessResponse("Assessment updated successfully!", assessmentPlain);
+    }, "Failed to connect to database");
+  }, "Failed to update assessment");
 }
 
 // Fetch single job details for assessment creation
-export async function fetchJobForAssessment(jobId: string): Promise<{
-  success: boolean;
-  data?: JobForAssessment;
-  message?: string;
-}> {
-  try {
-    await connectToDatabase();
+export async function fetchJobForAssessment(jobId: string): Promise<ActionResponse<JobForAssessment>> {
+  return safeAction(async () => {
+    return await withDatabase(async () => {
+      const job = await JobOpportunityModel.findById(jobId)
+        .select('title department position employmentType seniority locationType location openings createdAt')
+        .lean();
 
-    const job = await JobOpportunityModel.findById(jobId)
-      .select('title department position employmentType seniority locationType location openings createdAt')
-      .lean();
+      if (!job) {
+        return createErrorResponse("Job not found");
+      }
 
-    if (!job) {
-      return {
-        success: false,
-        message: "Job not found"
+      const formattedJob: JobForAssessment = {
+        _id: job._id.toString(),
+        title: job.title,
+        department: job.department,
+        position: job.position,
+        employmentType: job.employmentType,
+        seniority: job.seniority,
+        locationType: job.locationType,
+        location: job.location,
+        openings: job.openings,
+        createdAt: (job as any).createdAt?.toISOString() || new Date().toISOString(),
+        status: 'active'
       };
-    }
 
-    const formattedJob: JobForAssessment = {
-      _id: job._id.toString(),
-      title: job.title,
-      department: job.department,
-      position: job.position,
-      employmentType: job.employmentType,
-      seniority: job.seniority,
-      locationType: job.locationType,
-      location: job.location,
-      openings: job.openings,
-      createdAt: (job as any).createdAt?.toISOString() || new Date().toISOString(),
-      status: 'active'
-    };
-
-    return {
-      success: true,
-      data: formattedJob
-    };
-  } catch (error) {
-    console.error("Error fetching job for assessment:", error);
-    return {
-      success: false,
-      message: error instanceof Error ? error.message : "Failed to fetch job details"
-    };
-  }
+      return createSuccessResponse("Job fetched successfully", formattedJob);
+    }, "Failed to connect to database");
+  }, "Failed to fetch job for assessment");
 }
 
 // Create aptitude round separately
-export async function createAptitudeRound(aptitudeData: Omit<Aptitude, keyof Document | 'createdAt' | 'updatedAt'>): Promise<{
-  success: boolean;
-  message: string;
-  data?: Aptitude;
-}> {
-  try {
-    await connectToDatabase();
+export async function createAptitudeRound(aptitudeData: Omit<Aptitude, keyof Document | 'createdAt' | 'updatedAt'>): Promise<ActionResponse<Aptitude>> {
+  return safeAction(async () => {
+    return await withDatabase(async () => {
+      const newAptitude = new AptitudeModel(aptitudeData);
+      const savedAptitude = await newAptitude.save();
 
-    const newAptitude = new AptitudeModel(aptitudeData);
-    const savedAptitude = await newAptitude.save();
+      const aptitudePlain = JSON.parse(JSON.stringify(savedAptitude));
+      delete aptitudePlain.__v;
 
-    const aptitudePlain = JSON.parse(JSON.stringify(savedAptitude));
-    delete aptitudePlain.__v;
-
-    return {
-      success: true,
-      message: "Aptitude round created successfully!",
-      data: aptitudePlain,
-    };
-  } catch (error) {
-    console.error("Error creating aptitude round:", error);
-    return {
-      success: false,
-      message: error instanceof Error ? error.message : "Failed to create aptitude round",
-    };
-  }
+      logSuccess("Aptitude round created", aptitudePlain._id);
+      return createSuccessResponse("Aptitude round created successfully!", aptitudePlain);
+    }, "Failed to connect to database");
+  }, "Failed to create aptitude round");
 }
 
 // Update aptitude round
 export async function updateAptitudeRound(
   aptitudeId: string, 
   updateData: Partial<Omit<Aptitude, keyof Document | 'createdAt' | 'updatedAt'>>
-): Promise<{
-  success: boolean;
-  message: string;
-  data?: Aptitude;
-}> {
-  try {
-    await connectToDatabase();
+): Promise<ActionResponse<Aptitude>> {
+  return safeAction(async () => {
+    return await withDatabase(async () => {
+      const updatedAptitude = await AptitudeModel.findByIdAndUpdate(
+        aptitudeId,
+        updateData,
+        { new: true, runValidators: true }
+      );
 
-    const updatedAptitude = await AptitudeModel.findByIdAndUpdate(
-      aptitudeId,
-      updateData,
-      { new: true, runValidators: true }
-    );
+      if (!updatedAptitude) {
+        return createErrorResponse("Aptitude round not found");
+      }
 
-    if (!updatedAptitude) {
-      return {
-        success: false,
-        message: "Aptitude round not found"
-      };
-    }
+      const aptitudePlain = JSON.parse(JSON.stringify(updatedAptitude));
+      delete aptitudePlain.__v;
 
-    const aptitudePlain = JSON.parse(JSON.stringify(updatedAptitude));
-    delete aptitudePlain.__v;
-
-    return {
-      success: true,
-      message: "Aptitude round updated successfully!",
-      data: aptitudePlain,
-    };
-  } catch (error) {
-    console.error("Error updating aptitude round:", error);
-    return {
-      success: false,
-      message: error instanceof Error ? error.message : "Failed to update aptitude round",
-    };
-  }
+      logSuccess("Aptitude round updated", aptitudeId);
+      return createSuccessResponse("Aptitude round updated successfully!", aptitudePlain);
+    }, "Failed to connect to database");
+  }, "Failed to update aptitude round");
 }
