@@ -13,6 +13,8 @@ import {
   logSuccess,
   type ActionResponse 
 } from '@/utils/action-helpers';
+import { requireAuth } from '@/utils/auth-helpers';
+import { generateAptitudeQuestionIds } from './aptitude-actions';
 
 // Create a clean type for assessment creation
 export type AssessmentCreationData = Omit<Assessment, keyof Document | 'createdAt' | 'updatedAt'>;
@@ -35,30 +37,45 @@ export interface JobForAssessment {
   status: string;
 }
 
-// Utility to generate N unique random numbers between 1 and 31900
-function generateUniqueRandomNumbers(count: number, min: number = 1, max: number = 31900): number[] {
-  if (count > (max - min + 1)) {
-    throw new Error(`Cannot generate ${count} unique numbers in range ${min}-${max}`);
-  }
-  const numbers = new Set<number>();
-  while (numbers.size < count) {
-    const randomNum = Math.floor(Math.random() * (max - min + 1)) + min;
-    numbers.add(randomNum);
-  }
-  return Array.from(numbers);
-}
-
 // Fetch job postings for assessment selection
 export async function fetchJobPostingsForAssessment(): Promise<ActionResponse<JobForAssessment[]>> {
   return safeAction(async () => {
+    // Get authenticated employer ID - throws if not authenticated
+    const employerId = await requireAuth();
+    
     return await withDatabase(async () => {
-      // For now, fetch all jobs. Later add employerId filter
-      const jobs = await JobOpportunityModel.find({})
-        .select('title department position employmentType seniority locationType location openings createdAt')
+      // Fetch only jobs created by this employer
+      // Security: Filter ensures employer can only see their own jobs
+      const jobs = await JobOpportunityModel.find({ 
+        employer: employerId
+      })
+        .select('title department position employmentType seniority locationType location openings createdAt employer')
         .sort({ createdAt: -1 })
         .lean();
 
-      const formattedJobs: JobForAssessment[] = jobs.map(job => ({
+      // Double-check ownership (defense in depth) - filters out any jobs that might not have employer set
+      const verifiedJobs = jobs.filter(job => 
+        (job as any).employer?.toString() === employerId
+      );
+
+      // Get all job IDs that already have assessments
+      const jobIdsWithAssessments = await AssessmentModel.find({
+        employer: employerId,
+        jobOpportunity: { $exists: true, $ne: null }
+      })
+        .select('jobOpportunity')
+        .lean();
+
+      const jobIdsWithAssessmentsSet = new Set(
+        jobIdsWithAssessments.map((assessment: any) => assessment.jobOpportunity?.toString())
+      );
+
+      // Filter out jobs that already have assessments
+      const jobsWithoutAssessments = verifiedJobs.filter(job => 
+        !jobIdsWithAssessmentsSet.has(job._id.toString())
+      );
+
+      const formattedJobs: JobForAssessment[] = jobsWithoutAssessments.map(job => ({
         _id: job._id.toString(),
         title: job.title,
         department: job.department,
@@ -72,85 +89,181 @@ export async function fetchJobPostingsForAssessment(): Promise<ActionResponse<Jo
         status: 'active' // Add status logic if needed
       }));
 
-      return createSuccessResponse("Job postings fetched successfully", formattedJobs);
+      logSuccess("fetchJobPostingsForAssessment", `Fetched ${formattedJobs.length} jobs without assessments for employer ${employerId}`);
+      return createSuccessResponse("Jobs fetched", formattedJobs);
     }, "Failed to connect to database");
   }, "Failed to fetch job postings for assessment");
 }
 
-// Create a new assessment
+// ========================================
+// HELPER FUNCTIONS FOR ASSESSMENT CREATION
+// ========================================
+
+function convertIdsToObjectIds(assessmentData: AssessmentCreationData, employerId: string): any {
+  return {
+    ...assessmentData,
+    jobOpportunity: assessmentData.jobOpportunity 
+      ? new mongoose.Types.ObjectId(assessmentData.jobOpportunity as unknown as string) 
+      : undefined,
+    // SECURITY: Always use authenticated employerId, never trust client input
+    employer: new mongoose.Types.ObjectId(employerId)
+  };
+}
+
+/**
+ * Verifies that a job belongs to the authenticated employer
+ * Single responsibility: Job ownership verification
+ * @throws Error if job doesn't exist or doesn't belong to employer
+ */
+async function verifyJobOwnership(jobId: mongoose.Types.ObjectId, employerId: string): Promise<void> {
+  const job = await JobOpportunityModel.findById(jobId).select('employer').lean();
+  
+  if (!job) {
+    throw new Error('Job opportunity not found');
+  }
+  
+  if ((job as any).employer?.toString() !== employerId) {
+    throw new Error('Unauthorized - Job opportunity does not belong to this employer');
+  }
+}
+
+/**
+ * Prepares aptitude data for creation with default values
+ * Single responsibility: Aptitude data preparation
+ */
+function prepareAptitudeData(aptitudeData: any): any {
+  return {
+    ...aptitudeData,
+    candidateIds: aptitudeData.candidateIds || [],
+    expiredQuestionIds: aptitudeData.expiredQuestionIds || [],
+  };
+}
+
+/**
+ * Creates an aptitude round and returns its ID
+ * Single responsibility: Aptitude round creation
+ */
+async function createAptitudeRoundForAssessment(aptitudeData: any): Promise<mongoose.Types.ObjectId> {
+  // Prepare aptitude data with defaults
+  const preparedData = prepareAptitudeData(aptitudeData);
+  
+  // Generate question IDs
+  preparedData.questionIds = await generateAptitudeQuestionIds(preparedData.totalQuestions);
+  
+  // Note: assessmentId will be set to null initially and updated after assessment creation
+  preparedData.assessmentId = null;
+  
+  // Create and save aptitude document
+  const newAptitude = new AptitudeModel(preparedData);
+  const savedAptitude = await newAptitude.save();
+  
+  return savedAptitude._id as mongoose.Types.ObjectId;
+}
+
+/**
+ * Cleans assessment data by removing embedded objects and disabled rounds
+ * Single responsibility: Data sanitization
+ */
+function sanitizeAssessmentData(assessmentData: any): any {
+  const cleanData = { ...assessmentData };
+  
+  // Remove embedded aptitude object (we store only the reference ID)
+  if (cleanData.aptitude) {
+    delete cleanData.aptitude;
+  }
+  
+  // Remove aptitudeId if aptitude round is not enabled
+  if (assessmentData.toConductRounds && !assessmentData.toConductRounds.aptitude) {
+    delete cleanData.aptitudeId;
+  }
+  
+  return cleanData;
+}
+
+/**
+ * Links the aptitude round to the assessment by updating the assessmentId
+ * Single responsibility: Aptitude-Assessment relationship
+ */
+async function linkAptitudeToAssessment(
+  aptitudeId: mongoose.Types.ObjectId, 
+  assessmentId: mongoose.Types.ObjectId
+): Promise<void> {
+  await AptitudeModel.findByIdAndUpdate(
+    aptitudeId, 
+    { assessmentId },
+    { runValidators: true }
+  );
+}
+
+/**
+ * Converts Mongoose document to plain object, removing internal fields
+ * Single responsibility: Document serialization
+ */
+function toPlainAssessment(assessment: any): any {
+  // Use toObject() method instead of JSON stringify for better performance
+  const plainAssessment = assessment.toObject 
+    ? assessment.toObject() 
+    : JSON.parse(JSON.stringify(assessment));
+  
+  // Remove internal Mongoose fields
+  delete plainAssessment.__v;
+  delete plainAssessment.createdAt;
+  delete plainAssessment.updatedAt;
+  
+  return plainAssessment;
+}
+
+// ========================================
+// MAIN CREATE ASSESSMENT FUNCTION
+// ========================================
+
+/**
+ * Creates a new assessment with optional aptitude round
+ * Orchestrates the assessment creation workflow
+ */
 export async function createAssessment(assessmentData: AssessmentCreationData): Promise<ActionResponse<Assessment>> {
   return safeAction(async () => {
+    // Step 1: Authenticate and get employer ID
+    const employerId = await requireAuth();
+    
     return await withDatabase(async () => {
-
-    // Convert string IDs back to ObjectIds for database storage
-    const processedData = {
-      ...assessmentData,
-      jobOpportunity: assessmentData.jobOpportunity ? new mongoose.Types.ObjectId(assessmentData.jobOpportunity as unknown as string) : undefined,
-      employer: new mongoose.Types.ObjectId(assessmentData.employer as unknown as string)
-    };
-
-    // Create a clean assessment data object
-    const cleanAssessmentData = {
-      ...processedData
-    };
-
-    let aptitudeId: mongoose.Types.ObjectId | undefined;
-
-    // Handle aptitude round creation separately if enabled
-    if (assessmentData.toConductRounds?.aptitude && (assessmentData as any).aptitude) {
-      // Create separate Aptitude document
-      const aptitudeData = {
-        ...(assessmentData as any).aptitude,
-        assessmentId: new mongoose.Types.ObjectId(), // Temporary ID, will be updated after assessment creation
-        candidateIds: (assessmentData as any).aptitude.candidateIds || [],
-        expiredQuestionIds: (assessmentData as any).aptitude.expiredQuestionIds || []
-      };
-      
-      // Generate questionIds here
-      aptitudeData.questionIds = generateUniqueRandomNumbers(aptitudeData.totalQuestions);
-      
-      console.log('Creating aptitude with data:', aptitudeData); // Debug log
-      
-      const newAptitude = new AptitudeModel(aptitudeData);
-      const savedAptitude = await newAptitude.save();
-      aptitudeId = savedAptitude._id as mongoose.Types.ObjectId;
-      
-      console.log('Saved aptitude with questionIds:', savedAptitude.questionIds); // Debug log
-      
-      // Store only the aptitudeId in assessment
-      cleanAssessmentData.aptitudeId = aptitudeId;
-    }
-
-    // Remove the embedded aptitude object from assessment data
-    if ((cleanAssessmentData as any).aptitude) {
-      delete (cleanAssessmentData as any).aptitude;
-    }
-
-    // Remove round configs for rounds not enabled
-    if (assessmentData.toConductRounds) {
-      if (!assessmentData.toConductRounds.aptitude) {
-        delete cleanAssessmentData.aptitudeId;
+      // Step 2: Verify job ownership if jobOpportunity is provided (SECURITY CHECK)
+      if (assessmentData.jobOpportunity) {
+        await verifyJobOwnership(
+          new mongoose.Types.ObjectId(assessmentData.jobOpportunity as unknown as string),
+          employerId
+        );
       }
-    }
-
-    const newAssessment = new AssessmentModel(cleanAssessmentData);
-    const savedAssessment = await newAssessment.save();
-
-    // Update aptitude document with correct assessmentId
-    if (aptitudeId) {
-      await AptitudeModel.findByIdAndUpdate(aptitudeId, {
-        assessmentId: savedAssessment._id
-      });
-    }
-
-    // Convert to plain object using JSON serialization to avoid circular references
-    const assessmentPlain = JSON.parse(JSON.stringify(savedAssessment));
-    delete assessmentPlain.__v;
-    delete assessmentPlain.createdAt;
-    delete assessmentPlain.updatedAt;
-
-    logSuccess("Assessment created successfully", assessmentPlain._id);
-    return createSuccessResponse("Assessment created successfully!", assessmentPlain);
+      
+      // Step 3: Convert string IDs to ObjectIds (use authenticated employerId)
+      const processedData = convertIdsToObjectIds(assessmentData, employerId);
+      
+      // Step 4: Handle aptitude round creation if enabled
+      let aptitudeId: mongoose.Types.ObjectId | undefined;
+      
+      if (assessmentData.toConductRounds?.aptitude && (assessmentData as any).aptitude) {
+        aptitudeId = await createAptitudeRoundForAssessment((assessmentData as any).aptitude);
+        processedData.aptitudeId = aptitudeId;
+      }
+      
+      // Step 5: Sanitize assessment data (remove embedded objects and disabled rounds)
+      const cleanAssessmentData = sanitizeAssessmentData(processedData);
+      
+      // Step 6: Create and save assessment
+      const newAssessment = new AssessmentModel(cleanAssessmentData);
+      const savedAssessment = await newAssessment.save();
+      
+      // Step 7: Link aptitude round to assessment (update assessmentId from null to actual ID)
+      if (aptitudeId) {
+        await linkAptitudeToAssessment(aptitudeId, savedAssessment._id as mongoose.Types.ObjectId);
+      }
+      
+      // Step 8: Convert to plain object and remove internal fields
+      const assessmentPlain = toPlainAssessment(savedAssessment);
+      
+      // Step 9: Log and return success response
+      logSuccess("createAssessment", `Assessment created: ${savedAssessment._id}`);
+      return createSuccessResponse("Assessment created", assessmentPlain);
     }, "Failed to connect to database");
   }, "Failed to create assessment");
 }
@@ -158,8 +271,15 @@ export async function createAssessment(assessmentData: AssessmentCreationData): 
 // Fetch assessments for a specific job
 export async function fetchAssessmentsForJob(jobId: string): Promise<ActionResponse<Assessment[]>> {
   return safeAction(async () => {
+    // Get authenticated employer ID
+    const employerId = await requireAuth();
+    
     return await withDatabase(async () => {
-      const assessments = await AssessmentModel.find({ jobOpportunity: jobId })
+      // Filter by employer to ensure data isolation
+      const assessments = await AssessmentModel.find({ 
+        jobOpportunity: jobId,
+        employer: employerId 
+      })
         .populate('aptitudeId') // Populate the aptitude data
         .sort({ createdAt: -1 })
         .lean();
@@ -169,7 +289,7 @@ export async function fetchAssessmentsForJob(jobId: string): Promise<ActionRespo
         _id: assessment._id.toString()
       })) as Assessment[];
 
-      return createSuccessResponse("Assessments fetched successfully", formattedAssessments);
+      return createSuccessResponse("Assessments fetched", formattedAssessments);
     }, "Failed to connect to database");
   }, "Failed to fetch assessments for job");
 }
@@ -177,6 +297,9 @@ export async function fetchAssessmentsForJob(jobId: string): Promise<ActionRespo
 // Fetch single assessment with aptitude data
 export async function fetchAssessmentById(assessmentId: string): Promise<ActionResponse<Assessment>> {
   return safeAction(async () => {
+    // Get authenticated employer ID
+    const employerId = await requireAuth();
+    
     return await withDatabase(async () => {
       const assessment = await AssessmentModel.findById(assessmentId)
         .populate('aptitudeId')
@@ -186,12 +309,17 @@ export async function fetchAssessmentById(assessmentId: string): Promise<ActionR
         return createErrorResponse("Assessment not found");
       }
 
+      // Verify ownership
+      if ((assessment as any).employer?.toString() !== employerId) {
+        return createErrorResponse("Unauthorized - You don't have access to this assessment");
+      }
+
       const formattedAssessment = {
         ...assessment,
         _id: assessment._id.toString()
       } as Assessment;
 
-      return createSuccessResponse("Assessment fetched successfully", formattedAssessment);
+      return createSuccessResponse("Assessment fetched", formattedAssessment);
     }, "Failed to connect to database");
   }, "Failed to fetch assessment");
 }
@@ -202,7 +330,22 @@ export async function updateAssessment(
   updateData: Partial<AssessmentCreationData>
 ): Promise<ActionResponse<Assessment>> {
   return safeAction(async () => {
+    // Get authenticated employer ID
+    const employerId = await requireAuth();
+    
     return await withDatabase(async () => {
+      // First check if assessment exists and belongs to this employer
+      const existingAssessment = await AssessmentModel.findById(assessmentId).lean();
+      
+      if (!existingAssessment) {
+        return createErrorResponse("Assessment not found");
+      }
+      
+      // Verify ownership before updating
+      if ((existingAssessment as any).employer?.toString() !== employerId) {
+        return createErrorResponse("Unauthorized - You don't have access to this assessment");
+      }
+      
       const updatedAssessment = await AssessmentModel.findByIdAndUpdate(
         assessmentId,
         updateData,
@@ -213,12 +356,11 @@ export async function updateAssessment(
         return createErrorResponse("Assessment not found");
       }
 
-      // Convert to plain object
-      const assessmentPlain = JSON.parse(JSON.stringify(updatedAssessment));
-      delete assessmentPlain.__v;
+      // Convert to plain object using helper (consistent with createAssessment)
+      const assessmentPlain = toPlainAssessment(updatedAssessment);
 
-      logSuccess("Assessment updated", assessmentId);
-      return createSuccessResponse("Assessment updated successfully!", assessmentPlain);
+      logSuccess("updateAssessment", `Assessment updated: ${assessmentId}`);
+      return createSuccessResponse("Assessment updated", assessmentPlain);
     }, "Failed to connect to database");
   }, "Failed to update assessment");
 }
@@ -226,13 +368,21 @@ export async function updateAssessment(
 // Fetch single job details for assessment creation
 export async function fetchJobForAssessment(jobId: string): Promise<ActionResponse<JobForAssessment>> {
   return safeAction(async () => {
+    // Get authenticated employer ID
+    const employerId = await requireAuth();
+    
     return await withDatabase(async () => {
       const job = await JobOpportunityModel.findById(jobId)
-        .select('title department position employmentType seniority locationType location openings createdAt')
+        .select('title department position employmentType seniority locationType location openings createdAt employer')
         .lean();
 
       if (!job) {
         return createErrorResponse("Job not found");
+      }
+
+      // Verify ownership
+      if ((job as any).employer?.toString() !== employerId) {
+        return createErrorResponse("Unauthorized - You don't have access to this job");
       }
 
       const formattedJob: JobForAssessment = {
@@ -249,49 +399,7 @@ export async function fetchJobForAssessment(jobId: string): Promise<ActionRespon
         status: 'active'
       };
 
-      return createSuccessResponse("Job fetched successfully", formattedJob);
+      return createSuccessResponse("Job fetched", formattedJob);
     }, "Failed to connect to database");
   }, "Failed to fetch job for assessment");
-}
-
-// Create aptitude round separately
-export async function createAptitudeRound(aptitudeData: Omit<Aptitude, keyof Document | 'createdAt' | 'updatedAt'>): Promise<ActionResponse<Aptitude>> {
-  return safeAction(async () => {
-    return await withDatabase(async () => {
-      const newAptitude = new AptitudeModel(aptitudeData);
-      const savedAptitude = await newAptitude.save();
-
-      const aptitudePlain = JSON.parse(JSON.stringify(savedAptitude));
-      delete aptitudePlain.__v;
-
-      logSuccess("Aptitude round created", aptitudePlain._id);
-      return createSuccessResponse("Aptitude round created successfully!", aptitudePlain);
-    }, "Failed to connect to database");
-  }, "Failed to create aptitude round");
-}
-
-// Update aptitude round
-export async function updateAptitudeRound(
-  aptitudeId: string, 
-  updateData: Partial<Omit<Aptitude, keyof Document | 'createdAt' | 'updatedAt'>>
-): Promise<ActionResponse<Aptitude>> {
-  return safeAction(async () => {
-    return await withDatabase(async () => {
-      const updatedAptitude = await AptitudeModel.findByIdAndUpdate(
-        aptitudeId,
-        updateData,
-        { new: true, runValidators: true }
-      );
-
-      if (!updatedAptitude) {
-        return createErrorResponse("Aptitude round not found");
-      }
-
-      const aptitudePlain = JSON.parse(JSON.stringify(updatedAptitude));
-      delete aptitudePlain.__v;
-
-      logSuccess("Aptitude round updated", aptitudeId);
-      return createSuccessResponse("Aptitude round updated successfully!", aptitudePlain);
-    }, "Failed to connect to database");
-  }, "Failed to update aptitude round");
 }

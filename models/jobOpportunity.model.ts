@@ -9,6 +9,7 @@ export interface JobOpportunity extends Document {
   locationType: string;
   location: string;
   openings: number;
+  employer: mongoose.Types.ObjectId;
   experience?: string;
   workMode?: string;
   salaryMin?: number;
@@ -50,6 +51,12 @@ const JobOpportunitySchema: Schema = new Schema(
     },
     location: { type: String, required: true, trim: true },
     openings: { type: Number, required: true, min: 1, default: 1 },
+    employer: { 
+      type: mongoose.Schema.Types.ObjectId, 
+      ref: "employer",
+      required: true,
+      index: true
+    },
     experience: { type: String, trim: true },
     workMode: { type: String, trim: true },
     salaryMin: { type: Number, min: 0 },

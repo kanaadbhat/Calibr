@@ -34,7 +34,7 @@ export interface Aptitude extends Document {
   allowReviewBeforeSubmit: boolean;
   negativeMarking: boolean;
   negativeMarkingPercentage?: number;
-  assessmentId: mongoose.Types.ObjectId;
+  assessmentId: mongoose.Types.ObjectId | null; // Can be null initially, updated after assessment creation
   questionIds: number[]; 
   expiredQuestionIds: number[];
   sections: {
@@ -82,8 +82,9 @@ export const AptitudeSchema: Schema = new Schema({
   negativeMarkingPercentage: { type: Number, min: 0, max: 50 },
   assessmentId: {
     type: Schema.Types.ObjectId,
-    required: true,
-    ref: "assessment"
+    required: false, // Allow null initially, will be updated after assessment creation
+    ref: "assessment",
+    default: null
   },
   questionIds: [{ type: Number }], 
   expiredQuestionIds: [{ type: Number }],
