@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { FileText, Upload, X } from "lucide-react";
 import { toast } from "sonner";
-import { uploadResume } from "../actions";
+import { useResumeUpload } from "../hooks";
 
 interface ResumeUploadDialogProps {
   isOpen: boolean;
@@ -25,7 +25,7 @@ export default function ResumeUploadDialog({
   onResumeUploaded,
 }: ResumeUploadDialogProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
+  const { uploadResumeFile, isUploading } = useResumeUpload();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Client-side file validation
@@ -97,41 +97,18 @@ export default function ResumeUploadDialog({
       return;
     }
 
-    setIsUploading(true);
-  toast.dismiss();
-  const loadingToastId = toast.loading("Uploading resume...");
+    console.log("🚀 Starting resume upload from client...");
+    console.log(`📄 File: ${selectedFile.name} (${selectedFile.size} bytes)`);
 
-    try {
-      console.log("🚀 Starting resume upload from client...");
-      console.log(`📄 File: ${selectedFile.name} (${selectedFile.size} bytes)`);
+    // Create FormData for server action
+    const formData = new FormData();
+    formData.append('file', selectedFile);
 
-      // Create FormData for server action
-      const formData = new FormData();
-      formData.append('file', selectedFile);
-
-      // Upload using server action
-      console.log("📤 Calling uploadResume server action...");
-      const uploadResult = await uploadResume(formData);
-      
-      console.log("📨 Upload result received:", uploadResult);
-
-      if (!uploadResult.success || !uploadResult.fileUrl) {
-        throw new Error(uploadResult.error || 'Upload failed');
-      }
-
-      toast.dismiss(loadingToastId);
-      toast.dismiss();
-      // Show different messages based on processing result
-      if (uploadResult.resumeId) {
-        toast.success("Resume uploaded and processed successfully!");
-        console.log(`✅ Resume processed successfully with ID: ${uploadResult.resumeId}`);
-      } else if (uploadResult.error) {
-        toast.warning(`Resume uploaded but processing failed: ${uploadResult.error}`);
-        console.warn(`⚠️ Upload succeeded but processing failed: ${uploadResult.error}`);
-      } else {
-        toast.success("Resume uploaded successfully!");
-        console.log("✅ Resume uploaded successfully");
-      }
+    // Upload using hook
+    const result = await uploadResumeFile(formData);
+    
+    if (result.success && result.data) {
+      const uploadResult = result.data;
       
       // Reset state first
       setSelectedFile(null);
@@ -143,13 +120,6 @@ export default function ResumeUploadDialog({
       setTimeout(() => {
         onResumeUploaded(uploadResult.fileUrl || '', selectedFile.name);
       }, 100);
-    } catch (error: any) {
-      console.error("💥 Error uploading resume:", error);
-  toast.dismiss(loadingToastId);
-  toast.dismiss();
-  toast.error(error.message || "Failed to upload resume");
-    } finally {
-      setIsUploading(false);
     }
   };
 
