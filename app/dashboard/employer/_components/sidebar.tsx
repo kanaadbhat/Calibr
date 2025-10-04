@@ -17,12 +17,14 @@ import {
   ChevronLeft,
   ChevronRight,
   Users,
+  Briefcase,
 } from "lucide-react";
 
 const items = [
   { label: "Dashboard", action: "dashboard", icon: LayoutDashboard, type: "action" },
   { label: "Create Job", action: "create-job", icon: Plus, type: "action" },
   { label: "Add Assessment", action: "add-assessment", icon: FileText, type: "action" },
+  { label: "My Openings", action: "my-openings", icon: Briefcase, type: "action" },
   { label: "Manage Candidates", action: "manage-candidates", icon: Users, type: "action" },
 ];
 

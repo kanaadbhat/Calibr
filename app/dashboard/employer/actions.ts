@@ -56,3 +56,17 @@ export type {
   RoundInfo,
 } from './actions/manageCandidates-actions';
 
+// Job management actions
+export {
+  fetchEmployerJobs,
+  fetchJobDetails,
+  updateJobDetails,
+  updateAssessmentDetails,
+} from './actions/job-management-actions';
+
+export type {
+  JobOpening,
+  JobDetailedInfo,
+  JobUpdateData,
+  AssessmentUpdateData,
+} from './actions/job-management-actions';

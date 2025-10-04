@@ -14,10 +14,18 @@ import {
   fetchCandidatesForJob,
   fetchRoundInfo,
   updateCandidatesForRound,
+  fetchEmployerJobs,
+  fetchJobDetails,
+  updateJobDetails,
+  updateAssessmentDetails,
   type JobCreationData,
   type JobWithAssessment,
   type CandidateApplication,
   type RoundInfo,
+  type JobOpening,
+  type JobDetailedInfo,
+  type JobUpdateData,
+  type AssessmentUpdateData,
 } from './actions';
 import { toast } from 'sonner';
 import mongoose from 'mongoose';
@@ -537,6 +545,167 @@ export function useUpdateCandidatesForRound() {
 
   return {
     updateCandidates,
+    loading
+  };
+}
+
+// ========================================
+// JOB MANAGEMENT HOOKS
+// ========================================
+
+/**
+ * Hook to fetch employer jobs with optional filter
+ */
+export function useFetchEmployerJobs(statusFilter?: 'all' | 'active' | 'draft' | 'archived') {
+  const [jobs, setJobs] = useState<JobOpening[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchJobs = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const result = await fetchEmployerJobs(statusFilter);
+      
+      if (result.success) {
+        setJobs(result.data || []);
+      } else {
+        setError(result.message);
+        toast.error(result.message);
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to fetch jobs';
+      setError(message);
+      toast.error(message);
+    } finally {
+      setLoading(false);
+    }
+  }, [statusFilter]);
+
+  useEffect(() => {
+    fetchJobs();
+  }, [fetchJobs]);
+
+  return {
+    jobs,
+    loading,
+    error,
+    refetch: fetchJobs
+  };
+}
+
+/**
+ * Hook to fetch detailed job information
+ */
+export function useFetchJobDetails(jobId: string | null) {
+  const [jobDetails, setJobDetails] = useState<JobDetailedInfo | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchDetails = useCallback(async () => {
+    if (!jobId) {
+      setJobDetails(null);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const result = await fetchJobDetails(jobId);
+      
+      if (result.success) {
+        setJobDetails(result.data || null);
+      } else {
+        setError(result.message);
+        toast.error(result.message);
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to fetch job details';
+      setError(message);
+      toast.error(message);
+    } finally {
+      setLoading(false);
+    }
+  }, [jobId]);
+
+  useEffect(() => {
+    fetchDetails();
+  }, [fetchDetails]);
+
+  return {
+    jobDetails,
+    loading,
+    error,
+    refetch: fetchDetails
+  };
+}
+
+/**
+ * Hook to update job details
+ */
+export function useUpdateJobDetails() {
+  const [loading, setLoading] = useState(false);
+
+  const updateJob = useCallback(async (jobId: string, updates: JobUpdateData) => {
+    setLoading(true);
+    
+    try {
+      const result = await updateJobDetails(jobId, updates);
+      
+      if (result.success) {
+        toast.success(result.message);
+        return { success: true };
+      } else {
+        toast.error(result.message);
+        return { success: false, message: result.message };
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to update job';
+      toast.error(message);
+      return { success: false, message };
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  return {
+    updateJob,
+    loading
+  };
+}
+
+/**
+ * Hook to update assessment details
+ */
+export function useUpdateAssessmentDetails() {
+  const [loading, setLoading] = useState(false);
+
+  const updateAssessment = useCallback(async (assessmentId: string, updates: AssessmentUpdateData) => {
+    setLoading(true);
+    
+    try {
+      const result = await updateAssessmentDetails(assessmentId, updates);
+      
+      if (result.success) {
+        toast.success(result.message);
+        return { success: true };
+      } else {
+        toast.error(result.message);
+        return { success: false, message: result.message };
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to update assessment';
+      toast.error(message);
+      return { success: false, message };
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  return {
+    updateAssessment,
     loading
   };
 }

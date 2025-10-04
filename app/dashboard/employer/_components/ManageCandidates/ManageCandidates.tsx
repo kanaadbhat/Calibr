@@ -12,7 +12,7 @@ import type { JobWithAssessment } from "../../actions";
 import { CandidatesTable } from ".";
 
 export function ManageCandidates() {
-  const { jobs, loading, error, refetch } = useFetchJobsWithAssessments();
+  const { jobs, loading, error } = useFetchJobsWithAssessments();
   const [selectedJob, setSelectedJob] = useState<JobWithAssessment | null>(null);
 
   // If a job is selected, show the candidates table
@@ -55,23 +55,13 @@ export function ManageCandidates() {
     <div className="space-y-4 sm:space-y-6 lg:space-y-8 mt-16">
       {/* Header */}
       <div className="sticky top-0 z-30 bg-gradient-to-br from-[#0A0A18]/90 to-[#0D0D20]/90 backdrop-blur-xl border-b border-white/10 pb-4 pt-8 sm:pt-6 px-4 sm:px-6 lg:px-8 xl:px-12">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2 sm:mb-3">
-              Manage Candidates
-            </h1>
-            <p className="text-white/60 mt-1">
-              Select candidates for assessment rounds
-            </p>
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={refetch}
-            disabled={loading}
-          >
-            Refresh
-          </Button>
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2 sm:mb-3">
+            Manage Candidates
+          </h1>
+          <p className="text-white/60 mt-1">
+            Select candidates for assessment rounds
+          </p>
         </div>
       </div>
 
@@ -155,7 +145,7 @@ export function ManageCandidates() {
                           ? 'secondary'
                           : 'outline'
                       }
-                      className="capitalize text-xs"
+                      className="capitalize text-xs text-white"
                     >
                       {job.assessment.status}
                     </Badge>

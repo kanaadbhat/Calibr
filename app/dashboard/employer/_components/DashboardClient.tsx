@@ -23,9 +23,10 @@ import {
 import { JobListItem, CreateJob } from "./CreateJobForm";
 import { AddAssessmentPage, CreateAssessmentFlow } from "./AddAssessmentForm";
 import { ManageCandidates } from "./ManageCandidates";
+import { MyOpenings } from "./MyOpenings";
 import type { DashboardData, Stat } from "../types";
 
-type PageView = "dashboard" | "create-job" | "add-assessment" | "create-assessment" | "manage-candidates";
+type PageView = "dashboard" | "create-job" | "add-assessment" | "create-assessment" | "manage-candidates" | "my-openings";
 
 interface DashboardClientProps {
   initialData: DashboardData;
@@ -61,6 +62,10 @@ export function DashboardClient({ initialData }: DashboardClientProps) {
 
   if (currentView === "manage-candidates") {
     return <ManageCandidates />;
+  }
+
+  if (currentView === "my-openings") {
+    return <MyOpenings />;
   }
 
   return (
