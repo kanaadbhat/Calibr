@@ -16,7 +16,7 @@ import { Home, MapPin, Users, Calendar, Briefcase } from "lucide-react";
 import Link from "next/link";
 import { useEffect } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useJobPostings } from "../hooks";
+import { useJobPostings } from "../../hooks";
 
 interface JobPosting {
   _id: string;

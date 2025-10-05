@@ -1,6 +1,6 @@
 import type React from "react";
 import type { Metadata } from "next";
-import { Toaster } from "@/components/ui/sonner";
+import { Toaster } from "sonner";
 // import { GeistSans } from "geist/font/sans";
 // import { GeistMono } from "geist/font/mono";
 import { Analytics } from "@vercel/analytics/next";
@@ -33,8 +33,24 @@ export default function RootLayout({
           </Suspense>
         </div>
       </SidebarProvider>
-    <Analytics />
-    <Toaster theme="dark" richColors position="bottom-right" />
+      <Analytics />
+      <Toaster 
+        position="bottom-right"
+        toastOptions={{
+          duration: 4000,
+          style: {
+            background: "white",         
+            color: "#7C3AED",         
+            border: "1px solid #E9D5FF", 
+          },
+          classNames: {
+            icon: "text-violet-600",   
+            title: "text-violet-600",   
+            description: "text-violet-600", 
+            closeButton: "text-violet-600 hover:text-violet-800",
+          },
+        }}
+      />
     </main>
   );
 }
