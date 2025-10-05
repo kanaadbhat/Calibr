@@ -3,12 +3,12 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { useAssessmentCreation } from "../hooks";
+import { useAssessmentCreation } from "../../hooks";
 import AddAssessment from "./addAssesment";
 import AssessmentGeneralForm, {
   AssessmentGeneralData,
-} from "./AssesmentForm/GeneralForm";
-import FormConfig, { CompleteAssessmentData } from "./AssesmentForm/FormConfig";
+} from "./GeneralForm";
+import FormConfig, { CompleteAssessmentData } from "./FormConfig";
 
 interface CreateAssessmentFlowProps {
   onBack: () => void;

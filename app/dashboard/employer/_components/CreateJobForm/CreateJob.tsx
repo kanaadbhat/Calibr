@@ -26,8 +26,8 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
 import { toast } from "sonner";
-import { useCreateJob } from "../hook";
-import type { JobCreationData } from "../actions";
+import { useCreateJob } from "../../hooks";
+import type { JobCreationData } from "../../actions";
 
 export default function CreateJobPage() {
   const [uploadedFile, setUploadedFile] = React.useState<File | null>(null);
