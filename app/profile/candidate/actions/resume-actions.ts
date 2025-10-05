@@ -1,7 +1,7 @@
 "use server";
 
 import ResumeModel, { Resume } from "@/models/resume.model";
-import Profile from "@/models/profile.model";
+import Profile from "@/models/candidateProfile.model";
 import { validateSession, validateResume, updateCandidateProfileWithResume } from "../lib/validation";
 import { S3Operations } from "@/lib/s3Service";
 import { 
