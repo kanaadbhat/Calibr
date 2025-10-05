@@ -5,7 +5,9 @@ export interface Employer extends Document{
     password : string
     firstName : string
     lastName : string
+    companyName : string
     avatar : string
+    logo : string
     isVerified : boolean,
     otp : number,
     role : string
@@ -31,7 +33,15 @@ const employerSchema : Schema<Employer>  = new Schema({
         type: String, 
         required: [true, 'Last name is required'] 
     },
+    companyName: { 
+        type: String, 
+        default: '' 
+    },
     avatar: { 
+        type: String, 
+        default: '' 
+    },
+    logo: { 
         type: String, 
         default: '' 
     },

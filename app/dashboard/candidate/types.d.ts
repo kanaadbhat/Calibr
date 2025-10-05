@@ -8,6 +8,49 @@ export interface Job {
   skills: string;
 }
 
+export interface JobOpportunity {
+  _id: string;
+  title: string;
+  department: string;
+  position: string;
+  employmentType: 'full-time' | 'part-time' | 'contract' | 'internship';
+  seniority: 'junior' | 'mid' | 'senior' | 'lead';
+  locationType: 'remote' | 'hybrid' | 'onsite';
+  location: string;
+  openings: number;
+  employer: {
+    _id: string;
+    companyName: string;
+    logo?: string;
+  };
+  experience?: string;
+  workMode?: string;
+  salaryMin?: number;
+  salaryMax?: number;
+  deadline?: string;
+  techStack: string[];
+  description?: string;
+  requirements?: string;
+  benefits?: string;
+  startDate?: string;
+  autoScreen?: boolean;
+  isPublic?: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface Application {
+  _id: string;
+  candidateId: string;
+  jobId: string;
+  job?: JobOpportunity;
+  resumeId?: string;
+  applicationDate: Date;
+  status: 'applied' | 'under-review' | 'shortlisted' | 'interviewed' | 'rejected' | 'accepted' | 'withdrawn';
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface Interview {
   id: string;
   company: string;

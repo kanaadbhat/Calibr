@@ -5,7 +5,7 @@ export interface Application extends Document {
   jobId: mongoose.Types.ObjectId;
   resumeId?: mongoose.Types.ObjectId;
   applicationDate: Date;
-  status: 'applied' | 'under-review' | 'shortlisted' | 'interviewed' | 'rejected' | 'accepted';
+  status: 'applied' | 'under-review' | 'shortlisted' | 'interviewed' | 'rejected' | 'accepted' | 'withdrawn';
 }
 
 const ApplicationSchema: Schema = new Schema(
@@ -32,7 +32,7 @@ const ApplicationSchema: Schema = new Schema(
     },
     status: {
       type: String,
-      enum: ['applied', 'under-review', 'shortlisted', 'interviewed', 'rejected', 'accepted'],
+      enum: ['applied', 'under-review', 'shortlisted', 'interviewed', 'rejected', 'accepted', 'withdrawn'],
       default: 'applied',
       required: true
     }

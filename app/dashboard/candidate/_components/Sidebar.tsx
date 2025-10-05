@@ -1,20 +1,26 @@
 'use client';
 
 import React from 'react';
-import { usePathname } from 'next/navigation';
-import Link from 'next/link';
-import { ChevronLeft, ChevronRight, BarChart3 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, BarChart3, Briefcase, Search } from 'lucide-react';
 
 interface SidebarProps {
   collapsed?: boolean;
   onToggle?: () => void;
+  currentView?: 'dashboard' | 'my-applications' | 'job-opportunities';
+  onViewChange?: (view: 'dashboard' | 'my-applications' | 'job-opportunities') => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ collapsed = false, onToggle }) => {
-  const pathname = usePathname();
+const Sidebar: React.FC<SidebarProps> = ({ 
+  collapsed = false, 
+  onToggle,
+  currentView = 'dashboard',
+  onViewChange 
+}) => {
 
   const navItems = [
-    { icon: BarChart3, label: 'Dashboard', href: '/dashboard/candidate' },
+    { icon: BarChart3, label: 'Dashboard', view: 'dashboard' as const },
+    { icon: Briefcase, label: 'My Applications', view: 'my-applications' as const },
+    { icon: Search, label: 'Job Opportunities', view: 'job-opportunities' as const },
   ];
 
   return (
@@ -23,13 +29,13 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed = false, onToggle }) => {
         {navItems.map((item) => {
           const IconComponent = item.icon;
           // Build className for nav item
-          let baseClass = 'flex items-center transition-all duration-200';
+          let baseClass = 'flex items-center transition-all duration-200 cursor-pointer';
           if (collapsed) {
             baseClass += ' justify-center h-12 sm:h-14 my-1 rounded-xl w-full'; // Centered square with auto margin
           } else {
             baseClass += ' space-x-2 sm:space-x-3 px-3 sm:px-4 py-2 sm:py-3 rounded-lg';
           }
-          if (pathname === item.href) {
+          if (currentView === item.view) {
             if (collapsed) {
               // When collapsed, only show background, no border
               baseClass += ' text-white bg-gradient-to-r from-indigo-500/20 to-rose-500/20';
@@ -41,15 +47,15 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed = false, onToggle }) => {
             baseClass += ' text-white/60 hover:text-white hover:bg-white/5';
           }
           return (
-            <Link
-              key={item.href}
-              href={item.href}
+            <button
+              key={item.view}
+              onClick={() => onViewChange?.(item.view)}
               className={baseClass}
               title={collapsed ? item.label : undefined}
             >
               <IconComponent className="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0" />
               {!collapsed && <span className="font-medium text-sm sm:text-base">{item.label}</span>}
-            </Link>
+            </button>
           );
         })}
       </nav>
