@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useAssessmentCreation } from "../../hooks";
@@ -22,13 +22,29 @@ export default function CreateAssessmentFlow({
   const router = useRouter();
   const { loading: assessmentLoading, createNewAssessment } =
     useAssessmentCreation();
-  const [currentStep, setCurrentStep] =
-    useState<AssessmentStep>("job-selection");
-  const [selectedJobId, setSelectedJobId] = useState<string>("");
-  const [jobTitle, setJobTitle] = useState<string>("");
+  
+  // Check if we have stored job data from direct navigation
+  const storedJobId = typeof window !== 'undefined' ? sessionStorage.getItem('selectedJobId') : null;
+  const storedJobTitle = typeof window !== 'undefined' ? sessionStorage.getItem('selectedJobTitle') : null;
+  
+  const [currentStep, setCurrentStep] = useState<AssessmentStep>(
+    storedJobId ? "general-form" : "job-selection"
+  );
+  const [selectedJobId, setSelectedJobId] = useState<string>(storedJobId || "");
+  const [jobTitle, setJobTitle] = useState<string>(storedJobTitle || "");
   const [generalData, setGeneralData] = useState<AssessmentGeneralData | null>(
     null
   );
+
+  // Cleanup stored data when component unmounts
+  useEffect(() => {
+    return () => {
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem('selectedJobId');
+        sessionStorage.removeItem('selectedJobTitle');
+      }
+    };
+  }, []);
 
   const handleJobSelect = (jobId: string, title: string) => {
     setSelectedJobId(jobId);
@@ -78,6 +94,11 @@ export default function CreateAssessmentFlow({
 
       if (result.success) {
         toast.success("Assessment created successfully!");
+        // Clear stored data
+        if (typeof window !== 'undefined') {
+          sessionStorage.removeItem('selectedJobId');
+          sessionStorage.removeItem('selectedJobTitle');
+        }
         router.refresh();
         onBack(); // Go back to main dashboard
       } else {

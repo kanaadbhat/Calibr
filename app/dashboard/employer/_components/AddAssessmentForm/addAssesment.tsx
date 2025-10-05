@@ -50,9 +50,14 @@ export default function AddAssessmentPage({ onJobSelect }: AddAssessmentPageProp
       event.stopPropagation();
     }
     
+    // Always use the onJobSelect callback if available (for CreateAssessmentFlow)
     if (onJobSelect) {
       onJobSelect(jobId, jobTitle);
-    } else if ((window as any).handleViewChange) {
+      return;
+    }
+    
+    // For standalone AddAssessmentPage, navigate directly to create-assessment
+    if ((window as any).handleViewChange) {
       // Store selected job ID for the assessment creation flow
       sessionStorage.setItem('selectedJobId', jobId);
       sessionStorage.setItem('selectedJobTitle', jobTitle);
