@@ -10,6 +10,8 @@ import {
 import { requireAuth } from '@/utils/auth-helpers';
 import JobOpportunityModel from '@/models/jobOpportunity.model';
 import AssessmentModel from '@/models/assesment.model';
+import ApplicationModel from '@/models/application.model';
+import EmployerProfileModel from '@/models/employerProfile.model';
 import type { JobOpportunity } from './types.d.ts';
 import Candidate from '@/models/candidate.model';
 import mongoose from 'mongoose';
@@ -42,15 +44,67 @@ export async function getJobOpportunities(): Promise<JobOpportunity[]> {
   return await withDatabase(async () => {
     try {
       const jobs = await JobOpportunityModel.find({ isPublic: true })
+        .populate('employer', 'firstName lastName avatar')
         .sort({ createdAt: -1 })
         .lean();
       console.log("Fetched jobs:", jobs.length);
       
+      // Get all employer IDs to fetch their profiles
+      const employerIds = jobs
+        .map((job: any) => job.employer?._id)
+        .filter(Boolean);
+      
+      // Fetch all employer profiles in one query
+      const employerProfiles = await EmployerProfileModel.find({
+        employer: { $in: employerIds }
+      }).lean();
+      
+      // Create a map for quick lookup
+      const employerProfileMap = new Map(
+        employerProfiles.map((profile: any) => [
+          profile.employer.toString(),
+          profile
+        ])
+      );
+
+      // Get all job IDs for aggregation queries
+      const jobIds = jobs.map((job: any) => job._id);
+
+      // Get application counts for all jobs in one query
+      const applicationCounts = await ApplicationModel.aggregate([
+        { $match: { jobId: { $in: jobIds } } },
+        { 
+          $group: { 
+            _id: '$jobId', 
+            total: { $sum: 1 },
+            applied: { $sum: { $cond: [{ $eq: ['$status', 'applied'] }, 1, 0] } },
+            underReview: { $sum: { $cond: [{ $eq: ['$status', 'under-review'] }, 1, 0] } },
+            shortlisted: { $sum: { $cond: [{ $eq: ['$status', 'shortlisted'] }, 1, 0] } },
+            interviewed: { $sum: { $cond: [{ $eq: ['$status', 'interviewed'] }, 1, 0] } },
+            accepted: { $sum: { $cond: [{ $eq: ['$status', 'accepted'] }, 1, 0] } },
+            rejected: { $sum: { $cond: [{ $eq: ['$status', 'rejected'] }, 1, 0] } }
+          } 
+        }
+      ]);
+
+      // Create application counts map
+      const applicationCountsMap = new Map(
+        applicationCounts.map((count: any) => [
+          count._id.toString(),
+          count
+        ])
+      );
+      
       const jobsWithAssessments = await Promise.all(
         jobs.map(async (job: any) => {
           const assessments = await AssessmentModel.find({ jobOpportunity: job._id })
-            .select('title description status toConductRounds totalCandidates completedCandidates passingCandidates')
+            .select('title description status toConductRounds totalCandidates completedCandidates passingCandidates overallPassingCriteria')
             .lean();
+
+          const employerProfile = employerProfileMap.get(job.employer?._id?.toString());
+          const applicationStats = applicationCountsMap.get(job._id.toString()) || { 
+            total: 0, applied: 0, underReview: 0, shortlisted: 0, interviewed: 0, accepted: 0, rejected: 0 
+          };
           
           // Format the job data for frontend display - properly serialize all data
           const formattedJob: JobOpportunity = {
@@ -86,15 +140,26 @@ export async function getJobOpportunities(): Promise<JobOpportunity[]> {
               totalCandidates: assessment.totalCandidates,
               completedCandidates: assessment.completedCandidates,
               passingCandidates: assessment.passingCandidates,
+              overallPassingCriteria: assessment.overallPassingCriteria,
               _id: assessment._id.toString()
             })),
-            // Add frontend display properties
-            company: job.department, 
-            logo: null,
+            // Add frontend display properties with real data
+            company: employerProfile?.companyName || job.department,
+            logo: employerProfile?.companyLogo || job.employer?.avatar || null,
             timePosted: getTimeAgo(job.createdAt ? new Date(job.createdAt) : new Date()),
             salary: job.salaryMin && job.salaryMax ? `$${job.salaryMin}k - $${job.salaryMax}k` : undefined,
             type: job.employmentType,
-            applicants: (job.applications || []).length
+            applicants: applicationStats.total,
+            // Add application statistics
+            applicationStats: {
+              total: applicationStats.total,
+              applied: applicationStats.applied,
+              underReview: applicationStats.underReview,
+              shortlisted: applicationStats.shortlisted,
+              interviewed: applicationStats.interviewed,
+              accepted: applicationStats.accepted,
+              rejected: applicationStats.rejected
+            }
           };
           
           return formattedJob;
@@ -143,15 +208,43 @@ export async function getTechStackOptions(): Promise<string[]> {
 export async function getJobOpportunityById(id: string): Promise<JobOpportunity | null> {
   return await withDatabase(async () => {
     try {
-      // Fetch the specific job opportunity
-      const job: any = await JobOpportunityModel.findById(id).lean();
+      // Fetch the specific job opportunity with employer details
+      const job: any = await JobOpportunityModel.findById(id)
+        .populate('employer', 'firstName lastName avatar')
+        .lean();
       
       if (!job) return null;
+
+      // Fetch employer profile for company details
+      const employerProfile = await EmployerProfileModel.findOne({ 
+        employer: job.employer?._id 
+      }).lean();
       
       // Fetch assessments for this job
       const assessments = await AssessmentModel.find({ jobOpportunity: id })
         .select('title description status toConductRounds totalCandidates completedCandidates passingCandidates overallPassingCriteria')
         .lean();
+
+      // Get application statistics for this job
+      const applicationStats = await ApplicationModel.aggregate([
+        { $match: { jobId: job._id } },
+        { 
+          $group: { 
+            _id: null,
+            total: { $sum: 1 },
+            applied: { $sum: { $cond: [{ $eq: ['$status', 'applied'] }, 1, 0] } },
+            underReview: { $sum: { $cond: [{ $eq: ['$status', 'under-review'] }, 1, 0] } },
+            shortlisted: { $sum: { $cond: [{ $eq: ['$status', 'shortlisted'] }, 1, 0] } },
+            interviewed: { $sum: { $cond: [{ $eq: ['$status', 'interviewed'] }, 1, 0] } },
+            accepted: { $sum: { $cond: [{ $eq: ['$status', 'accepted'] }, 1, 0] } },
+            rejected: { $sum: { $cond: [{ $eq: ['$status', 'rejected'] }, 1, 0] } }
+          } 
+        }
+      ]);
+
+      const stats = applicationStats[0] || { 
+        total: 0, applied: 0, underReview: 0, shortlisted: 0, interviewed: 0, accepted: 0, rejected: 0 
+      };
       
       // Generate selection rounds based on assessments
       const selectionRounds: string[] = [];
@@ -206,15 +299,25 @@ export async function getJobOpportunityById(id: string): Promise<JobOpportunity 
           overallPassingCriteria: assessment.overallPassingCriteria,
           _id: assessment._id.toString()
         })),
-        // Frontend display properties
-        company: job.department,
-        logo: null, // Use Avatar fallback for company initials
+        // Frontend display properties with real data
+        company: employerProfile?.companyName || job.department,
+        logo: employerProfile?.companyLogo || job.employer?.avatar || null,
         timePosted: getTimeAgo(job.createdAt ? new Date(job.createdAt) : new Date()),
         salary: job.salaryMin && job.salaryMax ? `$${job.salaryMin}k - $${job.salaryMax}k` : undefined,
         type: job.employmentType,
         profileMatch: Math.floor(Math.random() * 20) + 80, // Mock profile match 80-100%
-        applicants: (job.applications || []).length,
+        applicants: stats.total,
         selectionRounds,
+        // Application statistics
+        applicationStats: {
+          total: stats.total,
+          applied: stats.applied,
+          underReview: stats.underReview,
+          shortlisted: stats.shortlisted,
+          interviewed: stats.interviewed,
+          accepted: stats.accepted,
+          rejected: stats.rejected
+        },
         // Split requirements and benefits if they contain line breaks or bullets
         requirementsList: job.requirements ? job.requirements.split('\n').filter((req: string) => req.trim()) : undefined,
         benefitsList: job.benefits ? job.benefits.split('\n').filter((benefit: string) => benefit.trim()) : undefined,
