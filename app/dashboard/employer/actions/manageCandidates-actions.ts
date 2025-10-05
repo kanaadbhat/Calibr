@@ -38,6 +38,12 @@ export interface CandidateApplication {
   applicationDate: string;
   status: string;
   resumeId?: string;
+  rounds: {
+    aptitude: 'pending' | 'shortlisted' | 'rejected' | 'completed';
+    coding: 'pending' | 'shortlisted' | 'rejected' | 'completed';
+    technicalInterview: 'pending' | 'shortlisted' | 'rejected' | 'completed';
+    hrInterview: 'pending' | 'shortlisted' | 'rejected' | 'completed';
+  };
 }
 
 export interface RoundInfo {
@@ -158,6 +164,12 @@ export async function fetchCandidatesForJob(jobId: string): Promise<ActionRespon
           applicationDate: app.applicationDate.toISOString(),
           status: app.status,
           resumeId: app.resumeId?.toString(),
+          rounds: app.rounds || {
+            aptitude: 'pending',
+            coding: 'pending',
+            technicalInterview: 'pending',
+            hrInterview: 'pending'
+          }
         };
       });
 
@@ -267,14 +279,17 @@ export async function updateCandidatesForRound(
         aptitude.candidateIds = candidateObjectIds;
         await aptitude.save();
 
-        // Update application status to 'shortlisted' for selected candidates
+        // Update application rounds.aptitude status to 'shortlisted' for selected candidates
         const updateResult = await ApplicationModel.updateMany(
           {
             candidateId: { $in: candidateObjectIds },
             jobId: assessment.jobOpportunity
           },
           {
-            $set: { status: 'shortlisted' }
+            $set: { 
+              status: 'shortlisted',
+              'rounds.aptitude': 'shortlisted'
+            }
           }
         );
 
