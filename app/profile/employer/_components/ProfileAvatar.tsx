@@ -13,23 +13,22 @@ import {
 } from "@/components/ui/dialog";
 import { Camera, UploadCloud } from "lucide-react";
 import { toast } from "sonner";
-import { useProfileUpdate, useProfileImageUpload } from "../hooks";
+import { useEmployerProfileUpdate, useEmployerProfileImageUpload } from "../hooks";
 
 interface ProfileAvatarProps {
   profileData: any;
   setProfileData: (data: any) => void;
-  candidateId: string;
 }
 
-export default function ProfileAvatar({ profileData, setProfileData}: ProfileAvatarProps) {
+export default function ProfileAvatar({ profileData, setProfileData }: ProfileAvatarProps) {
   const [isImageUploadDialogOpen, setIsImageUploadDialogOpen] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | undefined>(undefined);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imageLoadError, setImageLoadError] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  const { updateProfile } = useProfileUpdate();
-  const { uploadImage, isUploading } = useProfileImageUpload();
+  const { updateProfile } = useEmployerProfileUpdate();
+  const { uploadImage, isUploading } = useEmployerProfileImageUpload();
 
   // Client-side file validation
   const validateImageFile = (file: File): { valid: boolean; error?: string } => {
@@ -50,7 +49,6 @@ export default function ProfileAvatar({ profileData, setProfileData}: ProfileAva
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      // Validate the file
       const validation = validateImageFile(file);
       if (!validation.valid) {
         toast.error(validation.error);
@@ -73,8 +71,6 @@ export default function ProfileAvatar({ profileData, setProfileData}: ProfileAva
     const files = event.dataTransfer.files;
     if (files.length > 0) {
       const file = files[0];
-
-      // Validate the file
       const validation = validateImageFile(file);
       if (!validation.valid) {
         toast.error(validation.error);
@@ -101,11 +97,9 @@ export default function ProfileAvatar({ profileData, setProfileData}: ProfileAva
       return;
     }
 
-    // Create FormData for server action
     const formData = new FormData();
     formData.append('file', imageFile);
 
-    // Upload using hook
     const uploadResult = await uploadImage(formData);
     
     if (uploadResult.success && uploadResult.fileUrl) {
@@ -114,7 +108,6 @@ export default function ProfileAvatar({ profileData, setProfileData}: ProfileAva
         profileImage: uploadResult.fileUrl,
       };
 
-      // Update profile with S3 URL
       const res = await updateProfile(updatedData);
 
       if (res.success) {
@@ -141,17 +134,11 @@ export default function ProfileAvatar({ profileData, setProfileData}: ProfileAva
             src={profileData.profileImage} 
             alt={`${profileData.name}'s profile`}
             className="object-cover"
-            onLoad={() => {
-              console.log('Profile image loaded successfully:', profileData.profileImage);
-              setImageLoadError(false);
-            }}
-            onError={() => {
-              console.error('Failed to load profile image:', profileData.profileImage);
-              setImageLoadError(true);
-            }}
+            onLoad={() => setImageLoadError(false)}
+            onError={() => setImageLoadError(true)}
           />
         ) : null}
-        <AvatarFallback className="bg-violet-600 text-white text-4xl">
+        <AvatarFallback className="bg-purple-600 text-white text-4xl">
           {profileData.name
             .split(" ")
             .map((n: string) => n[0])
@@ -164,7 +151,7 @@ export default function ProfileAvatar({ profileData, setProfileData}: ProfileAva
           <Button
             variant="ghost"
             size="icon"
-            className="absolute bottom-0 right-0 bg-violet-600 hover:bg-violet-700 text-white rounded-full w-8 h-8"
+            className="absolute bottom-0 right-0 bg-purple-600 hover:bg-purple-700 text-white rounded-full w-8 h-8"
           >
             <Camera className="w-4 h-4" />
           </Button>
@@ -178,7 +165,6 @@ export default function ProfileAvatar({ profileData, setProfileData}: ProfileAva
           </DialogHeader>
           
           <div className="space-y-4">
-            {/* File Upload Area */}
             <div
               className="border-2 border-dashed border-gray-600 rounded-lg p-6 text-center hover:border-gray-500 transition-colors cursor-pointer"
               onDrop={handleDrop}
@@ -215,7 +201,6 @@ export default function ProfileAvatar({ profileData, setProfileData}: ProfileAva
               )}
             </div>
 
-            {/* Action Buttons */}
             <div className="flex justify-end space-x-3">
               <Button
                 variant="outline"
@@ -232,7 +217,7 @@ export default function ProfileAvatar({ profileData, setProfileData}: ProfileAva
               <Button
                 onClick={handleImageUpload}
                 disabled={!imageFile || isUploading}
-                className="bg-violet-600 hover:bg-violet-700"
+                className="bg-purple-600 hover:bg-purple-700"
               >
                 {isUploading ? "Uploading..." : "Upload"}
               </Button>

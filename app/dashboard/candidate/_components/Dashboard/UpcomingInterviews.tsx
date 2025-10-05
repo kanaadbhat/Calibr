@@ -2,61 +2,29 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Calendar, Clock, Video, Building2 } from 'lucide-react';
-import { useUpcomingInterviews } from '../hooks';
+import { Interview } from '../../types.d';
+import { toast } from 'sonner';
 
-const UpcomingInterviews = () => {
-  const { interviews, isLoading, nextInterviewCountdown, joinInterview, rescheduleInterview } = useUpcomingInterviews();
+interface UpcomingInterviewsProps {
+  interviews: Interview[];
+}
 
-  if (isLoading) {
-    return (
-      <Card className="bg-white/5 backdrop-blur-sm border-white/10">
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Skeleton className="w-6 h-6 rounded" />
-            <Skeleton className="w-48 h-6" />
-          </CardTitle>
-        </CardHeader>
+const UpcomingInterviews = ({ interviews }: UpcomingInterviewsProps) => {
+  // Calculate countdown to next interview
+  const nextInterviewCountdown = interviews[0] ? '2 hours 15 minutes' : 'No upcoming interviews';
 
-        <CardContent className="space-y-4 sm:space-y-6">
-          {/* Countdown Timer Skeleton */}
-          <Card className="bg-gradient-to-br from-indigo-500/20 to-purple-600/20 border-indigo-500/30">
-            <CardContent className="p-4 sm:p-6 text-center">
-              <div className="flex items-center justify-center space-x-2 sm:space-x-3 mb-3">
-                <Skeleton className="w-6 h-6 rounded" />
-                <Skeleton className="w-32 sm:w-48 h-6" />
-              </div>
-              <Skeleton className="w-48 sm:w-64 h-8 mx-auto rounded-lg" />
-            </CardContent>
-          </Card>
+  const handleJoinInterview = (interviewId: string) => {
+    toast.success('Joining interview...');
+    console.log('Joining interview:', interviewId);
+    // Future: Navigate to interview room
+  };
 
-          {/* Interview List Skeleton */}
-          <div className="space-y-3 sm:space-y-4">
-            {Array(3).fill(0).map((_, index) => (
-              <Card key={index} className="bg-gradient-to-br from-blue-500/10 to-cyan-600/10 border-blue-500/20">
-                <CardContent className="flex items-center justify-between p-4 sm:p-6">
-                  <div className="flex items-start space-x-3 sm:space-x-4 flex-1">
-                    <Skeleton className="w-12 h-12 rounded-full" />
-                    <div className="flex-1 space-y-2">
-                      <Skeleton className="w-32 h-6" />
-                      <Skeleton className="w-24 h-5" />
-                      <Skeleton className="w-20 h-6 rounded-full" />
-                    </div>
-                  </div>
-                  <Skeleton className="w-20 sm:w-24 h-10 rounded" />
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </CardContent>
-
-        <CardFooter className="justify-center pt-4 sm:pt-6">
-          <Skeleton className="w-48 h-12 rounded" />
-        </CardFooter>
-      </Card>
-    );
-  }
+  const handleReschedule = (interviewId: string) => {
+    toast.info('Opening reschedule dialog...');
+    console.log('Rescheduling interview:', interviewId);
+    // Future: Open reschedule modal
+  };
 
   return (
     <Card className="bg-white/5 backdrop-blur-sm border-white/10">
@@ -99,7 +67,7 @@ const UpcomingInterviews = () => {
                     size="sm"
                     variant={interview.urgent ? "default" : "outline"}
                     className=""
-                    onClick={() => joinInterview(interview.id as unknown as number)}
+                    onClick={() => handleJoinInterview(interview.id)}
                   >
                     <Video className="w-4 h-4 mr-2" />
                     Join
@@ -108,7 +76,7 @@ const UpcomingInterviews = () => {
                     size="sm"
                     variant="ghost" 
                     className="text-white/70 hover:text-white hover:bg-white/10"
-                    onClick={() => rescheduleInterview(interview.id as unknown as number)}
+                    onClick={() => handleReschedule(interview.id)}
                   >
                     Reschedule
                   </Button>

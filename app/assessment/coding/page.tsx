@@ -92,7 +92,9 @@ const Coding: React.FC = () => {
       if (savedFontSize) setFontSize(parseInt(savedFontSize));
       if (savedLeftWidth) setLeftPanelWidth(parseFloat(savedLeftWidth));
       if (savedOutputHeight) setOutputPanelHeight(parseFloat(savedOutputHeight));
-    } catch (_) {}
+    } catch {
+      // Ignore localStorage errors
+    }
   }, []);
 
   // Load starter or persisted code when question/language changes
@@ -113,7 +115,9 @@ const Coding: React.FC = () => {
   const handleLanguageChange = (language: string) => {
     if (['javascript', 'python', 'java', 'cpp'].includes(language)) {
       setSelectedLanguage(language as Language);
-      try { localStorage.setItem('pg_language', language); } catch (_) {}
+      try { localStorage.setItem('pg_language', language); } catch {
+        // Ignore localStorage errors
+      }
     }
   };
 
@@ -123,13 +127,17 @@ const Coding: React.FC = () => {
     try {
       const lsKey = `pg_code_q${questionId}_${selectedLanguage}`;
       localStorage.setItem(lsKey, val);
-    } catch (_) {}
+    } catch {
+      // Ignore localStorage errors
+    }
   };
 
   const handleFontSizeChange = (size: string) => {
     const parsed = parseInt(size);
     setFontSize(parsed);
-    try { localStorage.setItem('pg_fontSize', String(parsed)); } catch (_) {}
+    try { localStorage.setItem('pg_fontSize', String(parsed)); } catch {
+      // Ignore localStorage errors
+    }
   };
 
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -145,7 +153,9 @@ const Coding: React.FC = () => {
     
     if (newLeftWidth >= 20 && newLeftWidth <= 80) {
       setLeftPanelWidth(newLeftWidth);
-      try { localStorage.setItem('pg_leftPanelWidth', String(newLeftWidth)); } catch (_) {}
+      try { localStorage.setItem('pg_leftPanelWidth', String(newLeftWidth)); } catch {
+        // Ignore localStorage errors
+      }
     }
   };
 
@@ -173,7 +183,9 @@ const Coding: React.FC = () => {
     
     if (newOutputHeight >= 20 && newOutputHeight <= 80) {
       setOutputPanelHeight(newOutputHeight);
-      try { localStorage.setItem('pg_outputPanelHeight', String(newOutputHeight)); } catch (_) {}
+      try { localStorage.setItem('pg_outputPanelHeight', String(newOutputHeight)); } catch {
+        // Ignore localStorage errors
+      }
     }
   };
 
@@ -340,7 +352,7 @@ const Coding: React.FC = () => {
         } else if (compilationResult.stdout) {
           try {
             result = JSON.parse(compilationResult.stdout.trim());
-          } catch (e) {
+          } catch {
             result = compilationResult.stdout.trim();
           }
         } else {
@@ -397,7 +409,7 @@ const Coding: React.FC = () => {
         if (functionMatch) {
           try {
             eval(`userFunction = ${functionMatch[0]}`);
-          } catch (e) {
+          } catch {
             userFunction = () => null;
           }
         } else {
@@ -463,7 +475,7 @@ const Coding: React.FC = () => {
     if (!testResults) {
       return (
         <div className="p-5 text-center text-gray-400">
-          Click "Run" to execute your code and see the results.
+          Click &quot;Run&quot; to execute your code and see the results.
         </div>
       );
     }

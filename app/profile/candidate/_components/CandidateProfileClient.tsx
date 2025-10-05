@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { ProfileData } from "../type";
+import { ProfileData } from "../types";
 
 // Import components
 import ProfileSidebar from "./ProfileSidebar";

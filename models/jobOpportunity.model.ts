@@ -52,7 +52,7 @@ const JobOpportunitySchema: Schema = new Schema(
     openings: { type: Number, required: true, min: 1, default: 1 },
     employer: { 
       type: mongoose.Schema.Types.ObjectId, 
-      ref: "employer",
+      ref: "employers",
       required: true,
       index: true
     },
