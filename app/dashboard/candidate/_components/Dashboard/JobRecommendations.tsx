@@ -2,54 +2,36 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Briefcase, MapPin, DollarSign, Clock } from 'lucide-react';
-import { useJobRecommendations } from '../hooks';
+import { Job } from '../../types.d';
+import { toast } from 'sonner';
 
-const JobRecommendations = () => {
-  const { jobs, isLoading, quickApply, saveJob, viewJobDetails, viewAllRecommendations } = useJobRecommendations();
+interface JobRecommendationsProps {
+  jobs: Job[];
+}
 
-  if (isLoading) {
-    return (
-      <Card className="bg-white/5 backdrop-blur-sm border-white/10">
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Skeleton className="w-6 h-6 rounded" />
-            <Skeleton className="w-48 h-6" />
-          </CardTitle>
-        </CardHeader>
+const JobRecommendations = ({ jobs }: JobRecommendationsProps) => {
+  const handleQuickApply = (index: number) => {
+    toast.success('Application submitted successfully!');
+    console.log('Quick apply to job:', index);
+    // Future: Submit application
+  };
 
-        <CardContent className="space-y-3 sm:space-y-4">
-          {Array(3).fill(0).map((_, index) => (
-            <Card key={index} className="bg-gradient-to-br from-emerald-500/10 to-cyan-600/10 border-emerald-500/20">
-              <CardContent className="p-3 sm:p-4">
-                <div className="flex justify-between items-start mb-2 sm:mb-3">
-                  <Skeleton className="w-32 sm:w-48 h-6" />
-                  <Skeleton className="w-16 h-6 rounded-full" />
-                </div>
-                
-                <div className="space-y-2 mb-2 sm:mb-3">
-                  <Skeleton className="w-48 sm:w-64 h-4" />
-                  <Skeleton className="w-32 sm:w-48 h-4" />
-                  <Skeleton className="w-40 sm:w-56 h-4" />
-                </div>
-                
-                <div className="flex flex-col sm:flex-row gap-2 mt-3 sm:mt-4">
-                  <Skeleton className="w-24 h-8 rounded" />
-                  <Skeleton className="w-20 h-8 rounded" />
-                  <Skeleton className="w-28 h-8 rounded" />
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </CardContent>
+  const handleSaveJob = (index: number) => {
+    toast.success('Job saved!');
+    console.log('Save job:', index);
+    // Future: Save to database
+  };
 
-        <CardFooter className="justify-center pt-3 sm:pt-4">
-          <Skeleton className="w-48 h-10 rounded" />
-        </CardFooter>
-      </Card>
-    );
-  }
+  const handleViewDetails = (index: number) => {
+    console.log('View job details:', index);
+    // Future: Navigate to job details page
+  };
+
+  const handleViewAll = () => {
+    console.log('View all recommendations');
+    // Future: Navigate to all recommendations page
+  };
 
   return (
     <Card className="bg-white/5 backdrop-blur-sm border-white/10">
@@ -92,7 +74,7 @@ const JobRecommendations = () => {
                   size="sm" 
                   variant="outline" 
                   className="bg-gradient-to-r from-purple-500/20 to-pink-600/20 text-purple-200 border-purple-500/30 hover:bg-purple-500/30 font-semibold transition-all duration-300"
-                  onClick={() => quickApply(index)}
+                  onClick={() => handleQuickApply(index)}
                 >
                   Quick Apply
                 </Button>
@@ -101,7 +83,7 @@ const JobRecommendations = () => {
                   size="sm" 
                   variant="ghost" 
                   className="text-white/70 hover:text-white hover:bg-white/10"
-                  onClick={() => saveJob(index)}
+                  onClick={() => handleSaveJob(index)}
                 >
                   Save
                 </Button>
@@ -110,7 +92,7 @@ const JobRecommendations = () => {
                   size="sm" 
                   variant="ghost" 
                   className="text-white/70 hover:text-white hover:bg-white/10"
-                  onClick={() => viewJobDetails(index)}
+                  onClick={() => handleViewDetails(index)}
                 >
                   View Details
                 </Button>
@@ -124,7 +106,7 @@ const JobRecommendations = () => {
         <Button 
           variant="outline" 
           className=""
-          onClick={viewAllRecommendations}
+          onClick={handleViewAll}
         >
           View All Recommendations
         </Button>

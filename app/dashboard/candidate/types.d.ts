@@ -60,3 +60,15 @@ export interface PerformanceData {
     tip: string;
   };
 }
+
+export interface DashboardData {
+  performanceData: PerformanceData;
+  interviews: Interview[];
+  activities: Activity[];
+  skillData: {
+    skills: Skill[];
+    radarData: any[];
+    recommendation: string;
+  };
+  jobs: Job[];
+}

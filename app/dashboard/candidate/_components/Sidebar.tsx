@@ -3,7 +3,7 @@
 import React from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { ChevronLeft, ChevronRight, BarChart3, FileText, Target, User, Briefcase, Settings } from 'lucide-react';
+import { ChevronLeft, ChevronRight, BarChart3 } from 'lucide-react';
 
 interface SidebarProps {
   collapsed?: boolean;
@@ -15,11 +15,6 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed = false, onToggle }) => {
 
   const navItems = [
     { icon: BarChart3, label: 'Dashboard', href: '/dashboard/candidate' },
-    { icon: FileText, label: 'Assessments', href: '/dashboard/candidate/assessments' },
-    { icon: Target, label: 'Interviews', href: '/dashboard/candidate/interviews' },
-    { icon: User, label: 'Profile', href: '/dashboard/candidate/profile' },
-    { icon: Briefcase, label: 'Job Matches', href: '/dashboard/candidate/jobs' },
-    { icon: Settings, label: 'Settings', href: '/dashboard/candidate/settings' },
   ];
 
   return (
