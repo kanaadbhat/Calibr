@@ -1,109 +1,29 @@
-import { Types } from 'mongoose';
-
-
-export interface Question {
-  id: number | string;
+import { Dispatch, SetStateAction } from 'react';
+// ===== CORE QUESTION TYPES =====
+export interface AptitudeQuestion {
+  id: number;
+  topic: string;
+  subtopic: string;
   question: string;
-  text?: string;
   options: string[];
-  correctAnswer: number;
-  section: 'A' | 'B' | 'C' | 'D';
+  correct_answer: string;
 }
 
-export interface TestSession {
-  _id: string;
-  questionIds: (number | string)[];
-  status: 'inactive' | 'active' | 'completed';
-  currentQuestionIndex: number;
-  startTime?: Date;
-  endTime?: Date;
-  warnings: {
-    fullscreen: number;
-    tabSwitch: number;
-    audio: number;
-  };
-  score?: number;
-  resultId?: string;
+export interface ProcessedQuestion {
+  id: number;
+  text: string;
+  options: string[];
+  correctAnswer?: number;
 }
 
-export type Section = { 
-  name: string; 
+// ===== SECTION TYPES =====
+export interface Section {
+  name: string;
   title: string;
-  questions: Question[];
-  questionIds?: (number | string)[] 
-};
+  questions: ProcessedQuestion[];
+}
 
-export type Test = {
-  _id?: Types.ObjectId;
-  userId: Types.ObjectId;
-  questionIds: (number | string)[];
-  startedAt?: Date | null;
-  durationSec: number;
-  sections: Section[];
-  status: 'inactive' | 'active' | 'completed';
-  currentQuestionIndex: number;
-  warnings: {
-    fullscreen: number;
-    tabSwitch: number;
-    audio: number;
-  };
-  score?: number;
-  resultId?: Types.ObjectId;
-  createdAt: Date;
-  updatedAt: Date;
-};
-
-export type Result = {
-  _id?: Types.ObjectId;
-  testId: Types.ObjectId;
-  userId: Types.ObjectId;
-  answers: Record<string, number>; // qid -> chosen option index
-  score: number;
-  timeTaken: number; // in seconds
-  warnings: {
-    fullscreen: number;
-    tabSwitch: number;
-    audio: number;
-  };
-  sectionScores: Record<string, { correct: number; total: number }>;
-  completedAt: Date;
-  passed: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-};
-
-export type TestWithQuestions = Omit<Test, 'questionIds'> & {
-  questions: Question[];
-};
-
-export type ActiveTestSession = {
-  test: TestWithQuestions;
-  currentQuestionIndex: number;
-  remainingTime: number;
-};
-
-export type TestResult = {
-  result: Omit<Result, 'testId'> & {
-    test: Pick<Test, '_id' | 'startedAt' | 'durationSec'>;
-  };
-  correctAnswers: number;
-  totalQuestions: number;
-  percentage: number;
-  sectionWiseScore: Record<string, { correct: number; total: number }>;
-};
-
-export type StartTestResponse = {
-  success: boolean;
-  test?: TestWithQuestions;
-  error?: string;
-};
-
-export type SubmitTestResponse = {
-  success: boolean;
-  result?: TestResult;
-  error?: string;
-};
-
+// ===== APTITUDE DATA TYPES =====
 export interface AptitudeData {
   _id: string;
   totalQuestions: number;
@@ -122,5 +42,56 @@ export interface AptitudeData {
     audio: number;
   };
   matchingQuestions: number;
-  allQuestions: Question[];
+  allQuestions: ProcessedQuestion[];
 }
+
+// ===== API RESPONSE TYPES =====
+export interface FetchTestSessionResponse {
+  success: boolean;
+  data?: AptitudeData;
+  error?: string;
+}
+
+// ===== HOOK RETURN TYPES =====
+export interface UseTestQuestionsReturn {
+  questions: ProcessedQuestion[];
+  aptitudeData: AptitudeData | null;
+  loading: boolean;
+  error: string | null;
+  tabSwitchWarningCount: number;
+  setTabSwitchWarningCount: Dispatch<SetStateAction<number>>;
+}
+
+// ===== WARNING TYPES =====
+export interface WarningState {
+  tabSwitch: {
+    count: number;
+    maxAllowed: number;
+    exceeded: boolean;
+  };
+  fullscreen: {
+    count: number;
+    maxAllowed: number;
+    exceeded: boolean;
+  };
+  audio: {
+    count: number;
+    maxAllowed: number;
+    exceeded: boolean;
+  };
+}
+
+// ===== QUESTION STATUS TYPES =====
+export type QuestionStatus = 'unattempted' | 'attempted' | 'marked';
+
+export interface QuestionStats {
+  total: number;
+  attempted: number;
+  marked: number;
+  unattempted: number;
+}
+
+// ===== UTILITY TYPES =====
+export type SectionName = 'A' | 'B' | 'C' | 'D';
+
+
