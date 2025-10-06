@@ -5,6 +5,7 @@ import AssessmentModel from '@/models/assesment.model';
 import ApplicationModel from '@/models/application.model';
 import CandidateModel from '@/models/candidate.model';
 import AptitudeModel from '@/models/aptitude.model';
+import CodingModel from '@/models/coding.model';
 import mongoose from 'mongoose';
 import {
   safeAction,
@@ -27,6 +28,7 @@ export interface JobWithAssessment {
     title: string;
     status: string;
     aptitudeId?: string;
+    codingRoundId?: string;
   };
 }
 
@@ -108,6 +110,7 @@ export async function fetchJobsWithAssessments(): Promise<ActionResponse<JobWith
               title: assessment.title,
               status: assessment.status,
               aptitudeId: assessment.aptitudeId?.toString(),
+              codingRoundId: (assessment as any).codingRoundId?.toString(),
             }
           });
         }
@@ -217,7 +220,26 @@ export async function fetchRoundInfo(
         });
       }
 
-      // For future rounds (coding, technical, HR)
+      if (roundType === 'coding') {
+        const coding = await CodingModel.findById(roundId).lean();
+        if (!coding) {
+          return createErrorResponse('Coding round not found');
+        }
+        const assessment = await AssessmentModel.findOne({
+          _id: (coding as any).assessmentId,
+          employer: employerId
+        }).lean();
+        if (!assessment) {
+          return createErrorResponse('Unauthorized access to this round');
+        }
+        return createSuccessResponse('Round info fetched', {
+          type: 'coding',
+          id: roundId,
+          alreadySelectedCount: (coding as any).candidateIds?.length || 0
+        });
+      }
+
+      // For future rounds (technical, HR)
       return createErrorResponse(`Round type ${roundType} not yet implemented`);
     });
   });
@@ -302,7 +324,60 @@ export async function updateCandidatesForRound(
         );
       }
 
-      // For future rounds (coding, technical, HR)
+      if (roundType === 'coding') {
+        const coding = await CodingModel.findById(roundId);
+        if (!coding) {
+          return createErrorResponse('Coding round not found');
+        }
+
+        // Verify the assessment belongs to this employer
+        const assessment = await AssessmentModel.findOne({
+          _id: (coding as any).assessmentId,
+          employer: employerId
+        });
+
+        if (!assessment) {
+          return createErrorResponse('Unauthorized access to this round');
+        }
+
+        // Verify all candidates exist
+        const candidateObjectIds = candidateIds.map(id => new mongoose.Types.ObjectId(id));
+        const candidatesCount = await CandidateModel.countDocuments({
+          _id: { $in: candidateObjectIds }
+        });
+
+        if (candidatesCount !== candidateIds.length) {
+          return createErrorResponse('Some candidate IDs are invalid');
+        }
+
+        // Update the candidateIds array in coding round
+        (coding as any).candidateIds = candidateObjectIds;
+        await coding.save();
+
+        // Update application rounds.coding status to 'shortlisted' for selected candidates
+        const updateResult = await ApplicationModel.updateMany(
+          {
+            candidateId: { $in: candidateObjectIds },
+            jobId: assessment.jobOpportunity
+          },
+          {
+            $set: {
+              status: 'shortlisted',
+              'rounds.coding': 'shortlisted'
+            }
+          }
+        );
+
+        return createSuccessResponse(
+          `Successfully selected ${candidateIds.length} candidates for coding round and updated application status`,
+          {
+            updatedCount: candidateIds.length,
+            applicationsUpdated: updateResult.modifiedCount
+          }
+        );
+      }
+
+      // For future rounds (technical, HR)
       return createErrorResponse(`Round type ${roundType} not yet implemented`);
     });
   });

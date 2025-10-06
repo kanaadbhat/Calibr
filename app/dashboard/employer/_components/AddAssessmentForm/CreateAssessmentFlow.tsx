@@ -67,13 +67,15 @@ export default function CreateAssessmentFlow({
 
     try {
       // Transform the complete assessment data to match the backend structure
-      const assessmentFormData = {
+      const assessmentFormData: any = {
         title: completeData.general.title,
         description: completeData.general.description,
         jobId: selectedJobId,
         jobTitle: jobTitle,
         timeLimit: 120, // Default time limit in minutes
         maxAttempts: completeData.general.maxAttempts || 1,
+        // Pass full coding data at top-level so server action can create Coding doc
+        ...(completeData.coding && { codingFullData: completeData.coding }),
         rounds: {
           ...(completeData.aptitude && {
             aptitude: {
@@ -86,6 +88,7 @@ export default function CreateAssessmentFlow({
               fullData: completeData.aptitude
             },
           }),
+          ...(completeData.coding && { coding: { enabled: true } }),
           // Other rounds will be added when their forms are implemented
         },
       };

@@ -130,24 +130,8 @@ export function useAssessmentCreation() {
           }
         }),
 
-        ...(data.rounds.coding?.enabled && {
-          coding: {
-            numberOfProblems: data.rounds.coding.questionsCount,
-            duration: data.rounds.coding.timeLimit,
-            score: { min: 0, max: 100, required: 60 },
-            warnings: { fullscreen: 3, tabSwitch: 3, audio: 2 },
-            candidateIds: [],
-            allowedLanguages: data.rounds.coding.languages,
-            testCasesVisible: true,
-            compilerTimeout: 30,
-            memoryLimit: 256,
-            difficultyWeightage: {
-              easy: data.rounds.coding.difficulty === 'easy' ? 70 : 20,
-              medium: data.rounds.coding.difficulty === 'medium' ? 70 : 50,
-              hard: data.rounds.coding.difficulty === 'hard' ? 70 : 30
-            }
-          }
-        }),
+        // Pass through codingFullData when present (from CreateAssessmentFlow)
+        ...((data as any).codingFullData ? { codingFullData: (data as any).codingFullData } : {}),
 
         ...(data.rounds.technicalInterview?.enabled && {
           technicalInterview: {

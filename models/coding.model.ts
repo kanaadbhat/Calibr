@@ -25,6 +25,7 @@ export interface Coding extends Document {
 		hard: number;
 	};
 	randomizeProblems: boolean;
+	manuallyAddProblems: boolean;
 	showResultImmediately: boolean;
 	allowReviewBeforeSubmit: boolean;
 	languages: string[];
@@ -70,6 +71,7 @@ export const CodingSchema: Schema = new Schema({
 		hard: { type: Number, default: 0, min: 0 }
 	},
 	randomizeProblems: { type: Boolean, default: true },
+	manuallyAddProblems: { type: Boolean, default: false },
 	showResultImmediately: { type: Boolean, default: false },
 	allowReviewBeforeSubmit: { type: Boolean, default: true },
 	languages: [{ type: String, enum: ['javascript','typescript','python','java','cpp','c','go','ruby','php'] }],

@@ -7,6 +7,7 @@ import { ArrowLeft, CheckCircle } from 'lucide-react';
 import { AssessmentGeneralData } from './GeneralForm';
 import { AptitudeFormData } from './AptitudeForm';
 import AptitudeForm from './AptitudeForm';
+import CodingForm, { CodingFormData } from './CodingForm';
 
 interface FormConfigProps {
   generalData: AssessmentGeneralData;
@@ -18,7 +19,8 @@ interface FormConfigProps {
 export interface CompleteAssessmentData {
   general: AssessmentGeneralData;
   aptitude?: AptitudeFormData;
-  // Future: coding, technicalInterview, hrInterview
+  coding?: CodingFormData;
+  // Future: technicalInterview, hrInterview
 }
 
 type FormStep = 'aptitude' | 'coding' | 'technicalInterview' | 'hrInterview' | 'review';
@@ -29,7 +31,7 @@ export default function FormConfig({
   onBack,
   onNext
 }: FormConfigProps) {
-  const [currentStep] = useState<FormStep>('aptitude');
+  const [currentStep, setCurrentStep] = useState<FormStep>('aptitude');
   const [completedForms, setCompletedForms] = useState<Partial<CompleteAssessmentData>>({
     general: generalData
   });
@@ -45,9 +47,16 @@ export default function FormConfig({
       aptitude: aptitudeData
     };
     setCompletedForms(updatedData);
-    
-    // For now, since we only have aptitude, go directly to review
-    // Later: Check if there are more rounds to configure
+    if (generalData.toConductRounds.coding) {
+      setCurrentStep('coding');
+      return;
+    }
+    handleFinalSubmit(updatedData as CompleteAssessmentData);
+  };
+
+  const handleCodingNext = (codingData: CodingFormData) => {
+    const updatedData = { ...completedForms, coding: codingData };
+    setCompletedForms(updatedData);
     handleFinalSubmit(updatedData as CompleteAssessmentData);
   };
 
@@ -124,25 +133,7 @@ export default function FormConfig({
 
       {/* Future forms will be added here */}
       {currentStep === 'coding' && generalData.toConductRounds.coding && (
-        <Card className="bg-[#171726] border-0">
-          <CardHeader>
-            <CardTitle className="text-white">Coding Round Configuration</CardTitle>
-            <CardDescription className="text-white/60">
-              Coming soon - Coding challenge configuration
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-center py-8">
-              <p className="text-white/60">This form will be implemented next</p>
-              <Button 
-                onClick={() => onNext(completedForms as CompleteAssessmentData)}
-                className="mt-4 bg-blue-600 hover:bg-blue-700 text-white"
-              >
-                Skip for now
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        <CodingForm onBack={onBack} onNext={handleCodingNext} />
       )}
 
       {currentStep === 'technicalInterview' && generalData.toConductRounds.technicalInterview && (

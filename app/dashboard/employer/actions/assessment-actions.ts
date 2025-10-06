@@ -2,6 +2,7 @@
 
 import AssessmentModel, { Assessment } from '@/models/assesment.model';
 import AptitudeModel, { Aptitude } from '@/models/aptitude.model';
+import CodingModel from '@/models/coding.model';
 import JobOpportunityModel from '@/models/jobOpportunity.model';
 import { Document } from 'mongoose';
 import mongoose from 'mongoose';
@@ -161,6 +162,39 @@ async function createAptitudeRoundForAssessment(aptitudeData: any): Promise<mong
 }
 
 /**
+ * Creates a coding round and returns its ID
+ * Single responsibility: Coding round creation
+ */
+async function createCodingRoundForAssessment(codingData: any): Promise<mongoose.Types.ObjectId> {
+  const prepared = {
+    totalProblems: codingData.totalProblems,
+    duration: codingData.duration,
+    passingScore: codingData.passingScore,
+    warnings: codingData.warnings,
+    addManualProblem: !!codingData.addManualProblem,
+    difficultyWeightage: codingData.difficultyWeightage,
+    candidateIds: [],
+    problemPool: codingData.problemPool,
+    randomizeProblems: !!codingData.randomizeProblems,
+    manuallyAddProblems: !!codingData.manuallyAddProblems,
+    showResultImmediately: !!codingData.showResultImmediately,
+    allowReviewBeforeSubmit: !!codingData.allowReviewBeforeSubmit,
+    languages: codingData.languages,
+    compilerTimeout: codingData.compilerTimeout,
+    memoryLimit: codingData.memoryLimit,
+    assessmentId: null,
+    // If manually adding problems, use the selected problem IDs, otherwise empty array for randomization
+    problemIds: codingData.manuallyAddProblems ? (codingData.selectedProblemIds || []) : [],
+    expiredProblemIds: [],
+    sections: [],
+    status: 'inactive'
+  };
+  const newCoding = new CodingModel(prepared as any);
+  const saved = await newCoding.save();
+  return saved._id as mongoose.Types.ObjectId;
+}
+
+/**
  * Cleans assessment data by removing embedded objects and disabled rounds
  * Single responsibility: Data sanitization
  */
@@ -236,12 +270,19 @@ export async function createAssessment(assessmentData: AssessmentCreationData): 
       // Step 3: Convert string IDs to ObjectIds (use authenticated employerId)
       const processedData = convertIdsToObjectIds(assessmentData, employerId);
       
-      // Step 4: Handle aptitude round creation if enabled
+      // Step 4: Handle round creations (aptitude/coding) if enabled
       let aptitudeId: mongoose.Types.ObjectId | undefined;
+      let codingId: mongoose.Types.ObjectId | undefined;
       
       if (assessmentData.toConductRounds?.aptitude && (assessmentData as any).aptitude) {
         aptitudeId = await createAptitudeRoundForAssessment((assessmentData as any).aptitude);
         processedData.aptitudeId = aptitudeId;
+      }
+
+      // Accept optional codingFullData passed from client flow
+      if ((assessmentData as any).codingFullData && assessmentData.toConductRounds?.coding) {
+        codingId = await createCodingRoundForAssessment((assessmentData as any).codingFullData);
+        (processedData as any).codingRoundId = codingId;
       }
       
       // Step 5: Sanitize assessment data (remove embedded objects and disabled rounds)
@@ -251,9 +292,16 @@ export async function createAssessment(assessmentData: AssessmentCreationData): 
       const newAssessment = new AssessmentModel(cleanAssessmentData);
       const savedAssessment = await newAssessment.save();
       
-      // Step 7: Link aptitude round to assessment (update assessmentId from null to actual ID)
+      // Step 7: Link rounds to assessment (update assessmentId from null to actual ID)
       if (aptitudeId) {
         await linkAptitudeToAssessment(aptitudeId, savedAssessment._id as mongoose.Types.ObjectId);
+      }
+      if (codingId) {
+        await CodingModel.findByIdAndUpdate(
+          codingId,
+          { assessmentId: savedAssessment._id },
+          { runValidators: true }
+        );
       }
       
       // Step 8: Convert to plain object and remove internal fields

@@ -17,6 +17,8 @@ export interface Assessment extends Document {
 
   // Aptitude Round Configuration
     aptitudeId?: mongoose.Types.ObjectId;
+  // Coding Round Configuration (reference)
+  codingRoundId?: mongoose.Types.ObjectId;
 
   // Overall assessment settings
   overallPassingCriteria: {
@@ -104,6 +106,10 @@ const AssessmentSchema: Schema = new Schema(
     aptitudeId: {
       type: Schema.Types.ObjectId,
       ref: "aptitude"
+    },
+    codingRoundId: {
+      type: Schema.Types.ObjectId,
+      ref: "coding"
     },
     
     /*
