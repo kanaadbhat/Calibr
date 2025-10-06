@@ -1,5 +1,23 @@
 import mongoose, { Schema, Document } from "mongoose";
 
+export interface CodeRun {
+  problemId: number;
+  code: string;
+  language: string;
+  timestamp: Date;
+  results?: any;
+  passed?: boolean;
+}
+
+export interface CodeSubmission {
+  problemId: number;
+  code: string;
+  language: string;
+  timestamp: Date;
+  results?: any;
+  passed?: boolean;
+}
+
 export interface CodingEvaluation extends Document {
   candidateId: mongoose.Types.ObjectId;
   jobId: mongoose.Types.ObjectId;
@@ -10,9 +28,34 @@ export interface CodingEvaluation extends Document {
   code: string;
   results?: any;
   passed?: boolean;
+  codeRuns: CodeRun[];
+  codeSubmissions: CodeSubmission[];
+  problemStatus: {
+    [problemId: number]: 'solved' | 'attempted' | 'not-attempted';
+  };
+  timeLeft: number; // Time remaining in seconds
+  isSubmitted: boolean; // Explicit submission flag
   createdAt: Date;
   updatedAt: Date;
 }
+
+const CodeRunSchema = new Schema({
+  problemId: { type: Number, required: true },
+  code: { type: String, required: true },
+  language: { type: String, required: true },
+  timestamp: { type: Date, default: Date.now },
+  results: { type: Schema.Types.Mixed },
+  passed: { type: Boolean, default: false }
+});
+
+const CodeSubmissionSchema = new Schema({
+  problemId: { type: Number, required: true },
+  code: { type: String, required: true },
+  language: { type: String, required: true },
+  timestamp: { type: Date, default: Date.now },
+  results: { type: Schema.Types.Mixed },
+  passed: { type: Boolean, default: false }
+});
 
 const CodingEvaluationSchema: Schema = new Schema(
   {
@@ -24,7 +67,12 @@ const CodingEvaluationSchema: Schema = new Schema(
     language: { type: String, required: true },
     code: { type: String, required: true },
     results: { type: Schema.Types.Mixed },
-    passed: { type: Boolean, default: false }
+    passed: { type: Boolean, default: false },
+    codeRuns: [CodeRunSchema],
+    codeSubmissions: [CodeSubmissionSchema],
+    problemStatus: { type: Map, of: String, default: {} },
+    timeLeft: { type: Number, default: 0 }, // Time remaining in seconds
+    isSubmitted: { type: Boolean, default: false } // Explicit submission flag
   },
   { timestamps: true }
 );

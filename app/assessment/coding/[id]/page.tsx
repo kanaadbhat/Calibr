@@ -1,11 +1,12 @@
 "use client";
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Editor from '@monaco-editor/react';
 import axios from 'axios';
 import questionsData from '../questions.json';
-import { fetchCodingRoundById, CodingRoundDetails } from '../actions';
-import { Loader2, AlertTriangle } from 'lucide-react';
+import { fetchCodingRoundById, CodingRoundDetails, saveCodeRun, saveCodeSubmission, getProblemStatus, updateTimer, getSavedTimer, markAssessmentAsSubmitted } from '../actions';
+import { Loader2, AlertTriangle, Clock, CheckCircle, AlertCircle, X } from 'lucide-react';
+import { toast } from 'sonner';
 
 const Coding = () => {
   const params = useParams();
@@ -16,6 +17,21 @@ const Coding = () => {
   const [isLoadingCodingRound, setIsLoadingCodingRound] = useState(true);
   const [codingRoundError, setCodingRoundError] = useState<string | null>(null);
   const [availableQuestions, setAvailableQuestions] = useState<any[]>([]);
+  
+  // Timer states
+  const [timeRemaining, setTimeRemaining] = useState(0);
+  const [isTimerActive, setIsTimerActive] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  
+  // Problem status tracking
+  const [problemStatus, setProblemStatus] = useState<{ [problemId: number]: 'solved' | 'attempted' | 'not-attempted' }>({});
+  
+  // Prevent multiple simultaneous data loads
+  const isLoadingRef = useRef(false);
+  
+  // Timer persistence ref
+  const timerUpdateRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   
   // UI states
   const [questionId, setQuestionId] = useState(1);
@@ -36,11 +52,19 @@ const Coding = () => {
   // Fetch coding round data on component mount
   useEffect(() => {
     const loadCodingRoundData = async () => {
-      if (!params.id) {
-        setCodingRoundError('Coding round ID not provided');
-        setIsLoadingCodingRound(false);
+      if (!params.id || isLoadingRef.current) {
+        if (!params.id) {
+          setCodingRoundError('Coding round ID not provided');
+          setIsLoadingCodingRound(false);
+        }
         return;
       }
+
+      isLoadingRef.current = true;
+      setIsLoadingCodingRound(true);
+      setCodingRoundError(null);
+      
+      console.log('Loading coding round data for ID:', params.id);
 
       try {
         const result = await fetchCodingRoundById(params.id as string);
@@ -48,25 +72,81 @@ const Coding = () => {
           setCodingRoundData(result.data);
           
           // Filter questions based on problemIds from coding round
+          let filteredQuestions = questionsData;
           if (result.data && result.data.manuallyAddProblems && result.data.problemIds.length > 0) {
             // Use manually selected problems
-            const filteredQuestions = questionsData.filter(q => 
+            filteredQuestions = questionsData.filter(q => 
               result.data!.problemIds.includes(q.id)
             );
-            setAvailableQuestions(filteredQuestions);
-          } else {
-            // Use all questions for randomization (or implement randomization logic)
-            setAvailableQuestions(questionsData);
+          }
+          setAvailableQuestions(filteredQuestions);
+          
+          // Set first question as default only if not already set
+          if (filteredQuestions.length > 0 && !questionId) {
+            setQuestionId(filteredQuestions[0].id);
           }
           
-          // Set first question as default
-          if (availableQuestions.length > 0) {
-            setQuestionId(availableQuestions[0].id);
-          }
-          
-          // Set default language from coding round configuration
-          if (result.data && result.data.languages.length > 0) {
+          // Set default language from coding round configuration only if not already set
+          if (result.data && result.data.languages.length > 0 && !selectedLanguage) {
             setSelectedLanguage(result.data.languages[0]);
+          }
+          
+          // Check if assessment is already submitted from database
+          const timerResult = await getSavedTimer(params.id as string);
+          if (timerResult.success && timerResult.data && timerResult.data.isSubmitted) {
+            setIsSubmitted(true);
+            setIsTimerActive(false);
+            setTimeRemaining(0);
+            console.log('Assessment already submitted');
+            toast.info('Assessment has already been submitted');
+          } else {
+            // Load timer from localStorage first, then database, then initialize
+            const lsTimerKey = `pg_timer_${params.id}`;
+            const savedTime = localStorage.getItem(lsTimerKey);
+            
+            if (savedTime) {
+              const timeLeft = parseInt(savedTime);
+              if (timeLeft > 0) {
+                setTimeRemaining(timeLeft);
+                setIsTimerActive(true);
+                console.log('Loaded timer from localStorage:', timeLeft, 'seconds');
+              } else {
+                // Timer expired in localStorage, auto-submit
+                console.log('Timer expired in localStorage, auto-submitting...');
+                setTimeout(() => {
+                  handleAutoSubmit();
+                }, 1000);
+              }
+            } else if (timerResult.success && timerResult.data && timerResult.data.exists && timerResult.data.timeLeft > 0) {
+              // Use saved timer from database
+              setTimeRemaining(timerResult.data.timeLeft);
+              setIsTimerActive(true);
+              console.log('Loaded saved timer from database:', timerResult.data.timeLeft, 'seconds');
+              
+              // Save to localStorage for immediate access
+              localStorage.setItem(lsTimerKey, timerResult.data.timeLeft.toString());
+            } else {
+              // Initialize with full duration
+              const fullDuration = result.data.duration * 60;
+              setTimeRemaining(fullDuration);
+              setIsTimerActive(true);
+              console.log('Initialized new timer:', fullDuration, 'seconds');
+              
+              // Save to localStorage and database
+              localStorage.setItem(lsTimerKey, fullDuration.toString());
+              try {
+                await updateTimer(params.id as string, fullDuration);
+                console.log('Saved initial timer to database');
+              } catch (error) {
+                console.error('Failed to save initial timer:', error);
+              }
+            }
+          }
+          
+          // Load problem status
+          const statusResult = await getProblemStatus(params.id as string);
+          if (statusResult.success && statusResult.data) {
+            setProblemStatus(statusResult.data);
           }
         } else {
           console.error('Failed to fetch coding round:', result);
@@ -76,12 +156,18 @@ const Coding = () => {
         console.error('Error fetching coding round:', error);
         setCodingRoundError(`Failed to load coding round: ${error instanceof Error ? error.message : 'Unknown error'}`);
       } finally {
+        isLoadingRef.current = false;
         setIsLoadingCodingRound(false);
       }
     };
 
     loadCodingRoundData();
-  }, [params.id, availableQuestions]);
+    
+    // Cleanup function
+    return () => {
+      isLoadingRef.current = false;
+    };
+  }, [params.id]); // Removed availableQuestions from dependency array to prevent infinite loop
 
   // Load persisted UI state on mount
   useEffect(() => {
@@ -109,6 +195,180 @@ const Coding = () => {
       setCode(currentQuestion.starterCode[selectedLanguage]);
     }
   }, [questionId, selectedLanguage, currentQuestion]);
+
+  // Timer effect
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval>;
+    
+    if (isTimerActive && timeRemaining > 0) {
+      interval = setInterval(() => {
+        setTimeRemaining(prev => {
+          if (prev <= 1) {
+            setIsTimerActive(false);
+            handleAutoSubmit();
+            return 0;
+          }
+          
+          const newTime = prev - 1;
+          
+          // Save to localStorage every second
+          const lsTimerKey = `pg_timer_${params.id}`;
+          localStorage.setItem(lsTimerKey, newTime.toString());
+          
+          // Show warnings at specific time intervals
+          if (newTime === 300) { // 5 minutes
+            toast.warning('5 minutes remaining!');
+          } else if (newTime === 60) { // 1 minute
+            toast.error('1 minute remaining! Submit your work now!');
+          }
+          
+          return newTime;
+        });
+      }, 1000);
+    }
+    
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isTimerActive, timeRemaining, params.id]);
+
+  // Timer persistence effect - update every 10 seconds
+  useEffect(() => {
+    if (isTimerActive && timeRemaining > 0 && params.id) {
+      // Clear any existing timer update interval
+      if (timerUpdateRef.current) {
+        clearInterval(timerUpdateRef.current);
+      }
+      
+      // Set up new timer update interval (every 10 seconds)
+      timerUpdateRef.current = setInterval(async () => {
+        try {
+          await updateTimer(params.id as string, timeRemaining);
+          console.log('Timer persisted to database:', timeRemaining, 'seconds remaining');
+        } catch (error) {
+          console.error('Failed to persist timer:', error);
+        }
+      }, 10000); // 10 seconds in milliseconds
+    }
+    
+    return () => {
+      if (timerUpdateRef.current) {
+        clearInterval(timerUpdateRef.current);
+        timerUpdateRef.current = null;
+      }
+    };
+  }, [isTimerActive, timeRemaining, params.id]);
+
+  // Function to clear localStorage for this coding round
+  const clearCodingRoundLocalStorage = () => {
+    try {
+      // Clear all coding-related localStorage items
+      const keysToRemove = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && (key.startsWith('pg_code_q') || key.startsWith('pg_language') || key.startsWith('pg_fontSize') || key.startsWith('pg_leftPanelWidth') || key.startsWith('pg_outputPanelHeight') || key.startsWith('pg_timer_'))) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach(key => localStorage.removeItem(key));
+      console.log('Cleared coding round localStorage items');
+    } catch (error) {
+      console.warn('Failed to clear localStorage:', error);
+    }
+  };
+
+  const handleAutoSubmit = async () => {
+    if (isSubmitted) return;
+    
+    setIsSubmitted(true);
+    setIsTimerActive(false);
+    
+    // Clear timer update interval
+    if (timerUpdateRef.current) {
+      clearInterval(timerUpdateRef.current);
+      timerUpdateRef.current = null;
+    }
+    
+    toast.warning('Time is up! Assessment will be submitted automatically.');
+    
+    // Auto-submit all problems
+    for (const question of availableQuestions) {
+      const lsKey = `pg_code_q${question.id}_${selectedLanguage}`;
+      const savedCode = localStorage.getItem(lsKey);
+      if (savedCode) {
+        try {
+          await saveCodeSubmission(params.id as string, question.id, savedCode, selectedLanguage, null, false);
+        } catch (error) {
+          console.error('Error auto-submitting problem:', error);
+        }
+      }
+    }
+    
+    // Mark assessment as submitted in database
+    try {
+      await markAssessmentAsSubmitted(params.id as string);
+      console.log('Assessment marked as submitted in database');
+    } catch (error) {
+      console.error('Failed to mark assessment as submitted:', error);
+    }
+    
+    // Clear localStorage
+    clearCodingRoundLocalStorage();
+    
+    toast.success('Assessment submitted automatically due to time limit.');
+    
+    // Redirect after a delay
+    setTimeout(() => {
+      router.push('/dashboard/candidate');
+    }, 3000);
+  };
+
+  // Handle End Test button click
+  const handleEndTest = async () => {
+    if (isSubmitted) return;
+    
+    setIsSubmitted(true);
+    setIsTimerActive(false);
+    
+    // Clear timer update interval
+    if (timerUpdateRef.current) {
+      clearInterval(timerUpdateRef.current);
+      timerUpdateRef.current = null;
+    }
+    
+    toast.warning('Assessment ended by user.');
+    
+    // Submit all problems
+    for (const question of availableQuestions) {
+      const lsKey = `pg_code_q${question.id}_${selectedLanguage}`;
+      const savedCode = localStorage.getItem(lsKey);
+      if (savedCode) {
+        try {
+          await saveCodeSubmission(params.id as string, question.id, savedCode, selectedLanguage, null, false);
+        } catch (error) {
+          console.error('Error submitting problem:', error);
+        }
+      }
+    }
+    
+    // Mark assessment as submitted in database
+    try {
+      await markAssessmentAsSubmitted(params.id as string);
+      console.log('Assessment marked as submitted in database');
+    } catch (error) {
+      console.error('Failed to mark assessment as submitted:', error);
+    }
+    
+    // Clear localStorage
+    clearCodingRoundLocalStorage();
+    
+    toast.success('Assessment submitted successfully.');
+    
+    // Redirect after a delay
+    setTimeout(() => {
+      router.push('/dashboard/candidate');
+    }, 2000);
+  };
 
   const handleQuestionChange = (id: number) => {
     setQuestionId(id);
@@ -449,6 +709,33 @@ const Coding = () => {
         loading: false
       });
       
+      // Save code run
+      try {
+        await saveCodeRun(
+          params.id as string,
+          questionId,
+          code,
+          selectedLanguage,
+          { results, allPassed, totalTests: results.length, passedTests: passedCount },
+          allPassed
+        );
+        
+        // Update problem status - only mark as attempted when running, not solved
+        setProblemStatus(prev => ({
+          ...prev,
+          [questionId]: 'attempted'
+        }));
+        
+        if (allPassed) {
+          toast.success('All test cases passed!');
+        } else {
+          toast.warning(`${passedCount}/${results.length} test cases passed`);
+        }
+      } catch (error) {
+        console.error('Error saving code run:', error);
+        toast.error('Failed to save code run');
+      }
+      
       setActiveTab('testcase');
     } catch (error) {
       setTestResults({
@@ -459,19 +746,53 @@ const Coding = () => {
         error: error instanceof Error ? error.message : 'Unknown error',
         loading: false
       });
+      
+      toast.error('Error running code');
     }
     setIsRunning(false);
   };
 
   const submitCode = async () => {
+    if (isSubmitted) {
+      toast.warning('Assessment already submitted!');
+      return;
+    }
+    
     await runCode();
-    setTimeout(() => {
-      if (testResults && testResults.allPassed) {
-        alert('🎉 Accepted! All test cases passed!');
-      } else if (testResults?.results?.some((r: any) => r.error && /Compilation/i.test(r.error))) {
-        alert('❌ Compilation Error. Please fix the errors and try again.');
-      } else {
-        alert('❌ Wrong Answer. Please check your solution.');
+    
+    setTimeout(async () => {
+      try {
+        // Save code submission
+        await saveCodeSubmission(
+          params.id as string,
+          questionId,
+          code,
+          selectedLanguage,
+          testResults ? { 
+            results: testResults.results, 
+            allPassed: testResults.allPassed, 
+            totalTests: testResults.totalTests, 
+            passedTests: testResults.passedTests 
+          } : null,
+          testResults?.allPassed || false
+        );
+        
+        // Update problem status
+        setProblemStatus(prev => ({
+          ...prev,
+          [questionId]: testResults?.allPassed ? 'solved' : 'attempted'
+        }));
+        
+        if (testResults && testResults.allPassed) {
+          toast.success('🎉 Accepted! All test cases passed!');
+        } else if (testResults?.results?.some((r: any) => r.error && /Compilation/i.test(r.error))) {
+          toast.error('❌ Compilation Error. Please fix the errors and try again.');
+        } else {
+          toast.error('❌ Wrong Answer. Please check your solution.');
+        }
+      } catch (error) {
+        console.error('Error saving code submission:', error);
+        toast.error('Failed to save submission');
       }
     }, 100);
   };
@@ -655,8 +976,35 @@ const Coding = () => {
               <span>Passing Score: {codingRoundData?.passingScore || 0}%</span>
             </div>
           </div>
-          <div className="flex items-center gap-2 text-sm text-gray-400">
-            <span>Languages: {codingRoundData?.languages?.join(', ') || 'Multiple'}</span>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 text-sm text-gray-400">
+              <span>Languages: {codingRoundData?.languages?.join(', ') || 'Multiple'}</span>
+            </div>
+            {/* Timer */}
+            <div className={`flex items-center gap-2 px-3 py-1 rounded-lg ${
+              timeRemaining < 300 ? 'bg-red-500/20 text-red-400' : 
+              timeRemaining < 600 ? 'bg-yellow-500/20 text-yellow-400' : 
+              'bg-green-500/20 text-green-400'
+            }`}>
+              <Clock className="h-4 w-4" />
+              <span className="font-mono text-sm">
+                {Math.floor(timeRemaining / 60)}:{(timeRemaining % 60).toString().padStart(2, '0')}
+              </span>
+            </div>
+            
+            {/* End Test Button */}
+            <button
+              onClick={handleEndTest}
+              disabled={isSubmitted}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                isSubmitted 
+                  ? 'bg-gray-600 text-gray-400 cursor-not-allowed' 
+                  : 'bg-red-600 hover:bg-red-700 text-white hover:shadow-lg'
+              }`}
+            >
+              <X className="h-4 w-4" />
+              <span>{isSubmitted ? 'Submitted' : 'End Test'}</span>
+            </button>
           </div>
         </div>
       </div>
@@ -678,11 +1026,14 @@ const Coding = () => {
             onChange={(e) => handleQuestionChange(parseInt(e.target.value))}
             className="w-full p-2 bg-gray-700 text-gray-300 border border-gray-600 rounded text-sm focus:outline-none focus:border-blue-500"
           >
-            {availableQuestions.map((question) => (
-              <option key={question.id} value={question.id}>
-                {question.id}. {question.title}
-              </option>
-            ))}
+            {availableQuestions.map((question) => {
+              const status = problemStatus[question.id] || 'not-attempted';
+              return (
+                <option key={question.id} value={question.id}>
+                  {question.id}. {question.title} {status === 'solved' ? '✓' : status === 'attempted' ? '!' : ''}
+                </option>
+              );
+            })}
           </select>
         </div>
 
@@ -695,6 +1046,28 @@ const Coding = () => {
             >
               {currentQuestion.difficulty}
             </span>
+            {/* Problem Status Indicator */}
+            {problemStatus[questionId] && (
+              <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
+                problemStatus[questionId] === 'solved' 
+                  ? 'bg-green-500/20 text-green-400' 
+                  : problemStatus[questionId] === 'attempted'
+                  ? 'bg-yellow-500/20 text-yellow-400'
+                  : 'bg-gray-500/20 text-gray-400'
+              }`}>
+                {problemStatus[questionId] === 'solved' ? (
+                  <>
+                    <CheckCircle className="h-3 w-3" />
+                    <span>Solved</span>
+                  </>
+                ) : problemStatus[questionId] === 'attempted' ? (
+                  <>
+                    <AlertCircle className="h-3 w-3" />
+                    <span>Attempted</span>
+                  </>
+                ) : null}
+              </div>
+            )}
           </div>
 
           <div className="mb-6 leading-relaxed">
@@ -807,9 +1180,19 @@ const Coding = () => {
               {isRunning ? <span className="inline-block w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" style={{animation: 'spin 1s linear infinite'}}></span> : '▶'}
               <span>Run</span>
             </button>
-            <button onClick={submitCode} disabled={isRunning} className={`px-4 py-2 rounded text-sm font-medium transition-colors flex items-center gap-2 ${isRunning ? 'bg-green-400 cursor-not-allowed' : 'bg-green-500 hover:bg-green-600'} text-white`}>
-              {isRunning ? <span className="inline-block w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" style={{animation: 'spin 1s linear infinite'}}></span> : null}
-              <span>Submit</span>
+            <button 
+              onClick={submitCode} 
+              disabled={isRunning || isSubmitted} 
+              className={`px-4 py-2 rounded text-sm font-medium transition-colors flex items-center gap-2 ${
+                isRunning || isSubmitted ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-500 hover:bg-green-600'
+              } text-white`}
+            >
+              {isRunning ? (
+                <span className="inline-block w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" style={{animation: 'spin 1s linear infinite'}}></span>
+              ) : isSubmitted ? (
+                <CheckCircle className="h-4 w-4" />
+              ) : null}
+              <span>{isSubmitted ? 'Submitted' : 'Submit'}</span>
             </button>
           </div>
         </div>

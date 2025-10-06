@@ -30,8 +30,7 @@ const Header: React.FC = () => {
     '/assessment/aptitude',    // All aptitude assessment pages
     '/assessment/technical',   // All technical assessment pages
     '/assessment/hr',          // All HR assessment pages
-    '/assessment/precheck',    // System check page
-    '/assessment/process'      // Assessment process page
+    '/assessment/precheck',    // System check page     
   ];
 
   // Check if current route should hide header

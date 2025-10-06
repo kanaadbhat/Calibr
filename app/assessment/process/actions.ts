@@ -9,6 +9,9 @@ import {
 } from '@/utils/action-helpers';
 import { requireAuth } from '@/utils/auth-helpers';
 import AssessmentModel from '@/models/assesment.model';
+import '@/models/aptitude.model'; 
+import '@/models/coding.model'; 
+
 import mongoose from 'mongoose';
 
 export interface AssessmentDetails {
@@ -110,6 +113,8 @@ export async function fetchAssessmentDetails(
         .populate('aptitudeId')
         .populate('codingRoundId')
         .lean();
+
+        console.log("Ae" , assessment);
 
       if (!assessment) {
         return createErrorResponse('Assessment not found');
