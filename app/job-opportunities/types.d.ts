@@ -61,6 +61,17 @@ export interface JobOpportunity {
   applicants?: number;
   selectionRounds?: string[];
   
+  // Application statistics (from Application model)
+  applicationStats?: {
+    total: number;
+    applied: number;
+    underReview: number;
+    shortlisted: number;
+    interviewed: number;
+    accepted: number;
+    rejected: number;
+  };
+  
   // Override for frontend display (when requirements/benefits are split into arrays)
   requirementsList?: string[];
   benefitsList?: string[];

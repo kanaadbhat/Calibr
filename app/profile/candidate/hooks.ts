@@ -12,7 +12,7 @@ import {
   parseResumeFromS3,
   getCandidateResumes,
 } from "./actions";
-import { ProfileData } from "./type";
+import { ProfileData } from "./types";
 
 // Hook for fetching profile data
 export function useProfileData(candidateId: string) {

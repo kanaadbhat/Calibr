@@ -1,9 +1,11 @@
 "use client"
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import { CheckCircle, Lock, Play, Clock, BarChart3, Brain, Code, Users, AlertTriangle, Loader2 } from 'lucide-react';
 import { useSession } from "next-auth/react";
 import { format } from 'date-fns';
+import { fetchAssessmentDetails, AssessmentDetails } from '../actions';
+import { toast } from 'sonner';
 
 export interface InterviewRound {
   id: string;
@@ -25,14 +27,49 @@ export interface Question {
 
 const InterviewProgress = () => {
   const router = useRouter();
+  const params = useParams();
   const { data: session } = useSession();
   const userName = session?.user?.name || "Candidate";
   const firstName = userName.split(" ")[0];
   
+  // Assessment data states
+  const [assessmentData, setAssessmentData] = useState<AssessmentDetails | null>(null);
+  const [isLoadingAssessment, setIsLoadingAssessment] = useState(true);
+  const [assessmentError, setAssessmentError] = useState<string | null>(null);
+  
   // System check validation states
   const [isValidatingSystemCheck, setIsValidatingSystemCheck] = useState(true);
-  const [hasValidSystemCheck, setHasValidSystemCheck] = useState(false);
+  const [hasValidSystemCheck, setHasValidSystemCheck] = useState(true);
   
+  // Fetch assessment data on component mount
+  useEffect(() => {
+    const loadAssessmentData = async () => {
+      if (!params.assessmentId) {
+        setAssessmentError('Assessment ID not provided');
+        setIsLoadingAssessment(false);
+        return;
+      }
+
+      console.log(hasValidSystemCheck);
+
+      try {
+        const result = await fetchAssessmentDetails(params.assessmentId as string);
+        if (result.success && result.data) {
+          setAssessmentData(result.data);
+        } else {
+          setAssessmentError(result.message || 'Failed to load assessment');
+        }
+      } catch (error) {
+        console.error('Error fetching assessment:', error);
+        setAssessmentError('Failed to load assessment');
+      } finally {
+        setIsLoadingAssessment(false);
+      }
+    };
+
+    loadAssessmentData();
+  }, [params.assessmentId]);
+
   // Validate system check on component mount
   useEffect(() => {
     const validateSystemCheck = () => {
@@ -86,41 +123,65 @@ const InterviewProgress = () => {
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
 
-  const defaultRounds: InterviewRound[] = [
-    {
-      id: 'aptitude',
-      type: 'aptitude',
-      name: 'Aptitude Round',
-      isEnabled: true,
-      duration: 30
-    },
-    {
-      id: 'coding',
-      type: 'coding',
-      name: 'Coding Round',
-      isEnabled: true,
-      duration: 45
-    },
-    {
-      id: 'technical',
-      type: 'technical',
-      name: 'Technical Interview',
-      isEnabled: true,
-      duration: 60
-    },
-    {
-      id: 'hr',
-      type: 'hr',
-      name: 'HR Interview',
-      isEnabled: true,
-      duration: 30
+  // Generate rounds based on assessment data
+  const generateRounds = (): InterviewRound[] => {
+    if (!assessmentData) return [];
+    
+    const rounds: InterviewRound[] = [];
+    
+    if (assessmentData.toConductRounds.aptitude && assessmentData.aptitudeDetails) {
+      rounds.push({
+        id: 'aptitude',
+        type: 'aptitude',
+        name: 'Aptitude Round',
+        isEnabled: true,
+        duration: assessmentData.aptitudeDetails.duration
+      });
     }
-  ];
+    
+    if (assessmentData.toConductRounds.coding && assessmentData.codingDetails) {
+      rounds.push({
+        id: 'coding',
+        type: 'coding',
+        name: 'Coding Round',
+        isEnabled: true,
+        duration: assessmentData.codingDetails.duration
+      });
+    }
+    
+    if (assessmentData.toConductRounds.technicalInterview) {
+      rounds.push({
+        id: 'technical',
+        type: 'technical',
+        name: 'Technical Interview',
+        isEnabled: true,
+        duration: 60 // Default duration for technical interview
+      });
+    }
+    
+    if (assessmentData.toConductRounds.hrInterview) {
+      rounds.push({
+        id: 'hr',
+        type: 'hr',
+        name: 'HR Interview',
+        isEnabled: true,
+        duration: 30 // Default duration for HR interview
+      });
+    }
+    
+    return rounds;
+  };
 
-  const currentRound = 2; // This could come from API or state management
-  const isMockMode = true; // This could be determined by route or props
+  const interviewRounds = generateRounds();
+  const currentRound = 0; // Start from first round
+  const isMockMode = assessmentData?.status === 'draft'; // Mock mode for draft assessments
 
   const handleStartRound = async (roundIndex: number) => {
+    if (!assessmentData) {
+      toast.error('Assessment data not loaded');
+      return;
+    }
+
     try {
       // Ensure we're in fullscreen mode before starting the round
       if (!document.fullscreenElement) {
@@ -134,14 +195,35 @@ const InterviewProgress = () => {
         }
       }
       
-      router.push(`/assessment/round/${roundIndex}`);
+      const round = interviewRounds[roundIndex];
+      if (!round) {
+        toast.error('Invalid round selected');
+        return;
+      }
+
+      // Navigate based on round type
+      switch (round.type) {
+        case 'aptitude':
+          router.push(`/assessment/aptitude/${assessmentData.aptitudeDetails?._id}`);
+          break;
+        case 'coding':
+          router.push(`/assessment/coding/${assessmentData.codingDetails?._id}`);
+          break;
+        case 'technical':
+          router.push(`/assessment/technical/${assessmentData._id}`);
+          break;
+        case 'hr':
+          router.push(`/assessment/hr/${assessmentData._id}`);
+          break;
+        default:
+          toast.error('Unknown round type');
+      }
     } catch (error) {
       console.error('Error starting round:', error);
-      alert('There was an error starting this assessment round. Please try again.');
+      toast.error('There was an error starting this assessment round. Please try again.');
     }
   };
 
-  const interviewRounds = defaultRounds;
   const enabledRounds = interviewRounds.filter(round => round.isEnabled);
 
   const getRoundIcon = (index: number, type: string) => {
@@ -170,27 +252,67 @@ const InterviewProgress = () => {
     return isMockMode || index === currentRound;
   };
 
-  const getRoundTypeDescription = (type: string) => {
-    switch(type) {
+  const getRoundTypeDescription = (type: string, roundIndex: number) => {
+    const round = enabledRounds[roundIndex];
+    if (!round) return 'Complete this round to progress in your interview journey.';
+  
+    let aptitudeDetails, codingDetails;
+  
+    switch (type) {
       case 'aptitude': 
-        return 'Test your logical reasoning and problem-solving abilities with multiple-choice questions.';
+        aptitudeDetails = assessmentData?.aptitudeDetails;
+        return `Test your logical reasoning and problem-solving abilities with ${aptitudeDetails?.totalQuestions || 0} multiple-choice questions. Duration: ${aptitudeDetails?.duration || 0} minutes.`;
       case 'coding': 
-        return 'Solve programming challenges to demonstrate your technical skills and coding proficiency.';
+        codingDetails = assessmentData?.codingDetails;
+        return `Solve ${codingDetails?.totalProblems || 0} programming challenges to demonstrate your technical skills. Duration: ${codingDetails?.duration || 0} minutes. Languages: ${codingDetails?.languages?.join(', ') || 'Multiple'}.`;
       case 'technical': 
-        return 'Discuss technical concepts, system design, and your experience with our AI interviewer.';
+        return 'Discuss technical concepts, system design, and your experience with our AI interviewer. Duration: 60 minutes.';
       case 'hr': 
-        return 'Explore cultural fit, behavioral patterns, and career aspirations in this comprehensive interview.';
+        return 'Explore cultural fit, behavioral patterns, and career aspirations in this comprehensive interview. Duration: 30 minutes.';
       default: 
         return 'Complete this round to progress in your interview journey.';
     }
   };
+  
+
+  // Show loading state while fetching assessment data
+  if (isLoadingAssessment) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-[#0A0A18] to-[#0D0D20] flex items-center justify-center">
+        <div className="text-center text-white">
+          <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-indigo-400" />
+          <h2 className="text-2xl font-bold mb-2">Loading Assessment</h2>
+          <p className="text-white/70">Please wait while we load your assessment details...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state if assessment failed to load
+  if (assessmentError) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-[#0A0A18] to-[#0D0D20] flex items-center justify-center">
+        <div className="text-center text-white">
+          <AlertTriangle className="h-12 w-12 mx-auto mb-4 text-red-400" />
+          <h2 className="text-2xl font-bold mb-2">Assessment Not Found</h2>
+          <p className="text-white/70 mb-6">{assessmentError}</p>
+          <button 
+            onClick={() => router.push('/dashboard/candidate')}
+            className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors"
+          >
+            Return to Dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // Add early return if no rounds are available
   if (enabledRounds.length === 0) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#0A0A18] to-[#0D0D20] flex items-center justify-center">
         <div className="text-center text-white/60">
-          <p>No interview rounds available at the moment.</p>
+          <p>No interview rounds available for this assessment.</p>
         </div>
       </div>
     );
@@ -206,7 +328,7 @@ const InterviewProgress = () => {
     if (completedPercentage < 100) return `You're doing great ${firstName}! Almost there!`;
     return `Congratulations ${firstName}! You've completed all rounds!`;
   };
-
+  console.log(getProgressMessage());
   // Add time estimates
   const getRemainingTime = () => {
     const remainingRounds = enabledRounds.slice(currentRound);
@@ -237,7 +359,7 @@ const InterviewProgress = () => {
     );
   }
 
-  if (!hasValidSystemCheck) {
+  if (hasValidSystemCheck) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#0A0A18] to-[#0D0D20] flex flex-col items-center justify-center p-6 text-white">
         <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-8 max-w-md w-full">
@@ -282,14 +404,22 @@ const InterviewProgress = () => {
         <div className="text-center mb-12">
           <div className="mb-6">
             <span className="px-4 py-1 rounded-full bg-indigo-500/20 text-indigo-300 text-sm font-medium">
+              {assessmentData?.status === 'draft' ? 'Practice Mode' : 'Assessment Mode'}
+            </span>
+            <span className="px-4 py-1 rounded-full bg-purple-500/20 text-purple-300 text-sm font-medium ml-2">
               {currentRound === enabledRounds.length ? "Final Round" : `Round ${currentRound + 1} of ${enabledRounds.length}`}
             </span>
           </div>
           <h1 className="text-4xl font-bold text-white mb-4">
             <span className="bg-gradient-to-r from-indigo-300 to-rose-300 bg-clip-text text-transparent">
-              {getProgressMessage()}
+              {assessmentData?.title || 'Assessment'}
             </span>
           </h1>
+          {assessmentData?.description && (
+            <p className="text-white/70 max-w-3xl mx-auto text-lg mb-4">
+              {assessmentData.description}
+            </p>
+          )}
           <p className="text-white/60 max-w-2xl mx-auto text-lg">
             {currentRound < enabledRounds.length ? (
               <span>
@@ -439,7 +569,7 @@ const InterviewProgress = () => {
 
                   <div className="mt-6">
                     <p className="text-white/70 leading-relaxed text-lg">
-                      {getRoundTypeDescription(round.type)}
+                      {getRoundTypeDescription(round.type, index)}
                     </p>
                     
                     {status === 'completed' && (
@@ -503,12 +633,37 @@ const InterviewProgress = () => {
           })}
         </div>
 
+        {/* Assessment Instructions */}
+        {(assessmentData?.instructions || assessmentData?.candidateInstructions) && (
+          <div className="mt-8">
+            <div className="bg-gradient-to-r from-blue-500/10 to-indigo-500/10 rounded-2xl border border-white/10 p-6">
+              <h3 className="text-lg font-semibold text-white mb-3">
+                <span className="bg-gradient-to-r from-blue-300 to-indigo-300 bg-clip-text text-transparent">
+                  Assessment Instructions
+                </span>
+              </h3>
+              {assessmentData?.candidateInstructions && (
+                <div className="mb-4">
+                  <h4 className="font-medium text-white mb-2">For Candidates:</h4>
+                  <p className="text-white/70">{assessmentData.candidateInstructions}</p>
+                </div>
+              )}
+              {assessmentData?.instructions && (
+                <div>
+                  <h4 className="font-medium text-white mb-2">General Instructions:</h4>
+                  <p className="text-white/70">{assessmentData.instructions}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {isMockMode && (
           <div className="mt-8">
             <div className="bg-gradient-to-r from-indigo-500/10 to-rose-500/10 rounded-2xl border border-white/10 p-6">
               <h3 className="text-lg font-semibold text-white mb-3">
                 <span className="bg-gradient-to-r from-indigo-300 to-rose-300 bg-clip-text text-transparent">
-                  Mock Practice Mode
+                  Practice Mode
                 </span>
               </h3>
               <p className="text-white/60">

@@ -1,12 +1,14 @@
 "use client";
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
 import { TrendingUp, Target, Award, Calendar, TrendingDown, Minus, Lightbulb } from 'lucide-react';
-import { usePerformanceData } from '../hooks';
+import { PerformanceData } from '../../types.d';
 
-const PerformanceOverview = () => {
-  const { data, isLoading } = usePerformanceData();
+interface PerformanceOverviewProps {
+  data: PerformanceData;
+}
+
+const PerformanceOverview = ({ data }: PerformanceOverviewProps) => {
 
   // Helper function to get trend difference with fallback
   const getTrendDifference = (current: number, previous: number, fallback: number = 5) => {
@@ -23,39 +25,6 @@ const PerformanceOverview = () => {
   const getTrendWithFallback = (trend: 'up' | 'down' | 'stable' | undefined, fallback: 'up' | 'down' | 'stable' = 'up') => {
     return trend || fallback;
   };
-
-  if (isLoading || !data) {
-    return (
-      <Card className="bg-white/5 backdrop-blur-sm border-white/10">
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Skeleton className="w-8 h-8 rounded" />
-            <Skeleton className="w-48 h-6" />
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-            {Array(4).fill(0).map((_, index) => (
-              <Card key={index} className="bg-white/5 border-white/10">
-                <CardContent className="p-4 sm:p-6 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <Skeleton className="w-8 h-8 rounded" />
-                    <Skeleton className="w-16 h-6 rounded-full" />
-                  </div>
-                  <Skeleton className="w-16 h-10" />
-                  <Skeleton className="w-24 h-4" />
-                  <div className="space-y-2">
-                    <Skeleton className="w-full h-3" />
-                    <Skeleton className="w-3/4 h-3" />
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
 
   const getTrendIcon = (trend: 'up' | 'down' | 'stable') => {
     switch (trend) {

@@ -11,27 +11,25 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Camera, UploadCloud } from "lucide-react";
+import { Building2, UploadCloud } from "lucide-react";
 import { toast } from "sonner";
-import { useProfileUpdate, useProfileImageUpload } from "../hooks";
+import { useEmployerProfileUpdate, useCompanyLogoUpload } from "../hooks";
 
-interface ProfileAvatarProps {
+interface CompanyLogoProps {
   profileData: any;
   setProfileData: (data: any) => void;
-  candidateId: string;
 }
 
-export default function ProfileAvatar({ profileData, setProfileData}: ProfileAvatarProps) {
-  const [isImageUploadDialogOpen, setIsImageUploadDialogOpen] = useState(false);
-  const [imagePreview, setImagePreview] = useState<string | undefined>(undefined);
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imageLoadError, setImageLoadError] = useState(false);
+export default function CompanyLogo({ profileData, setProfileData }: CompanyLogoProps) {
+  const [isLogoUploadDialogOpen, setIsLogoUploadDialogOpen] = useState(false);
+  const [logoPreview, setLogoPreview] = useState<string | undefined>(undefined);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoLoadError, setLogoLoadError] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  const { updateProfile } = useProfileUpdate();
-  const { uploadImage, isUploading } = useProfileImageUpload();
+  const { updateProfile } = useEmployerProfileUpdate();
+  const { uploadLogo, isUploading } = useCompanyLogoUpload();
 
-  // Client-side file validation
   const validateImageFile = (file: File): { valid: boolean; error?: string } => {
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
     const maxSize = 5 * 1024 * 1024; // 5MB
@@ -50,20 +48,19 @@ export default function ProfileAvatar({ profileData, setProfileData}: ProfileAva
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      // Validate the file
       const validation = validateImageFile(file);
       if (!validation.valid) {
         toast.error(validation.error);
         return;
       }
 
-      setImageFile(file);
+      setLogoFile(file);
       const reader = new FileReader();
       reader.onload = (e) => {
-        setImagePreview(e.target?.result as string);
+        setLogoPreview(e.target?.result as string);
       };
       reader.readAsDataURL(file);
-      toast.success("Image selected successfully");
+      toast.success("Logo selected successfully");
     }
   };
 
@@ -73,21 +70,19 @@ export default function ProfileAvatar({ profileData, setProfileData}: ProfileAva
     const files = event.dataTransfer.files;
     if (files.length > 0) {
       const file = files[0];
-
-      // Validate the file
       const validation = validateImageFile(file);
       if (!validation.valid) {
         toast.error(validation.error);
         return;
       }
 
-      setImageFile(file);
+      setLogoFile(file);
       const reader = new FileReader();
       reader.onload = (e) => {
-        setImagePreview(e.target?.result as string);
+        setLogoPreview(e.target?.result as string);
       };
       reader.readAsDataURL(file);
-      toast.success("Image dropped successfully");
+      toast.success("Logo dropped successfully");
     }
   };
 
@@ -95,38 +90,35 @@ export default function ProfileAvatar({ profileData, setProfileData}: ProfileAva
     event.preventDefault();
   };
 
-  const handleImageUpload = async () => {
-    if (!imageFile) {
-      toast.error("Please select an image to upload");
+  const handleLogoUpload = async () => {
+    if (!logoFile) {
+      toast.error("Please select a logo to upload");
       return;
     }
 
-    // Create FormData for server action
     const formData = new FormData();
-    formData.append('file', imageFile);
+    formData.append('file', logoFile);
 
-    // Upload using hook
-    const uploadResult = await uploadImage(formData);
+    const uploadResult = await uploadLogo(formData);
     
     if (uploadResult.success && uploadResult.fileUrl) {
       const updatedData = {
         ...profileData,
-        profileImage: uploadResult.fileUrl,
+        companyLogo: uploadResult.fileUrl,
       };
 
-      // Update profile with S3 URL
       const res = await updateProfile(updatedData);
 
       if (res.success) {
         setProfileData(updatedData);
-        setImageLoadError(false);
+        setLogoLoadError(false);
       }
     }
     
     // Always close dialog after upload attempt (success or error)
-    setIsImageUploadDialogOpen(false);
-    setImagePreview(undefined);
-    setImageFile(null);
+    setIsLogoUploadDialogOpen(false);
+    setLogoPreview(undefined);
+    setLogoFile(null);
   };
 
   const triggerFileInput = () => {
@@ -135,50 +127,40 @@ export default function ProfileAvatar({ profileData, setProfileData}: ProfileAva
 
   return (
     <div className="relative">
-      <Avatar className="w-32 h-32">
-        {profileData.profileImage && !imageLoadError ? (
+      <Avatar className="w-32 h-32 rounded-lg">
+        {profileData.companyLogo && !logoLoadError ? (
           <AvatarImage 
-            src={profileData.profileImage} 
-            alt={`${profileData.name}'s profile`}
-            className="object-cover"
-            onLoad={() => {
-              console.log('Profile image loaded successfully:', profileData.profileImage);
-              setImageLoadError(false);
-            }}
-            onError={() => {
-              console.error('Failed to load profile image:', profileData.profileImage);
-              setImageLoadError(true);
-            }}
+            src={profileData.companyLogo} 
+            alt={`${profileData.companyName} logo`}
+            className="object-contain p-2 bg-white"
+            onLoad={() => setLogoLoadError(false)}
+            onError={() => setLogoLoadError(true)}
           />
         ) : null}
-        <AvatarFallback className="bg-violet-600 text-white text-4xl">
-          {profileData.name
-            .split(" ")
-            .map((n: string) => n[0])
-            .join("")}
+        <AvatarFallback className="bg-purple-600 text-white text-4xl rounded-lg">
+          <Building2 className="w-16 h-16" />
         </AvatarFallback>
       </Avatar>
 
-      <Dialog open={isImageUploadDialogOpen} onOpenChange={setIsImageUploadDialogOpen}>
+      <Dialog open={isLogoUploadDialogOpen} onOpenChange={setIsLogoUploadDialogOpen}>
         <DialogTrigger asChild>
           <Button
             variant="ghost"
             size="icon"
-            className="absolute bottom-0 right-0 bg-violet-600 hover:bg-violet-700 text-white rounded-full w-8 h-8"
+            className="absolute bottom-0 right-0 bg-purple-600 hover:bg-purple-700 text-white rounded-full w-8 h-8"
           >
-            <Camera className="w-4 h-4" />
+            <Building2 className="w-4 h-4" />
           </Button>
         </DialogTrigger>
         <DialogContent className="bg-gray-900 border-gray-700 max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-white">Update Profile Picture</DialogTitle>
+            <DialogTitle className="text-white">Update Company Logo</DialogTitle>
             <DialogDescription className="text-gray-300">
-              Upload a new profile picture. Supported formats: JPEG, PNG, GIF, WebP (Max 5MB)
+              Upload your company logo. Supported formats: JPEG, PNG, GIF, WebP (Max 5MB)
             </DialogDescription>
           </DialogHeader>
           
           <div className="space-y-4">
-            {/* File Upload Area */}
             <div
               className="border-2 border-dashed border-gray-600 rounded-lg p-6 text-center hover:border-gray-500 transition-colors cursor-pointer"
               onDrop={handleDrop}
@@ -193,14 +175,14 @@ export default function ProfileAvatar({ profileData, setProfileData}: ProfileAva
                 className="hidden"
               />
               
-              {imagePreview ? (
+              {logoPreview ? (
                 <div className="space-y-3">
                   <img
-                    src={imagePreview}
+                    src={logoPreview}
                     alt="Preview"
-                    className="mx-auto h-32 w-32 object-cover rounded-lg"
+                    className="mx-auto h-32 w-32 object-contain rounded-lg bg-white p-2"
                   />
-                  <p className="text-sm text-gray-300">Click to change image</p>
+                  <p className="text-sm text-gray-300">Click to change logo</p>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -215,14 +197,13 @@ export default function ProfileAvatar({ profileData, setProfileData}: ProfileAva
               )}
             </div>
 
-            {/* Action Buttons */}
             <div className="flex justify-end space-x-3">
               <Button
                 variant="outline"
                 onClick={() => {
-                  setIsImageUploadDialogOpen(false);
-                  setImagePreview(undefined);
-                  setImageFile(null);
+                  setIsLogoUploadDialogOpen(false);
+                  setLogoPreview(undefined);
+                  setLogoFile(null);
                 }}
                 disabled={isUploading}
                 className="border-red-600 text-red-400 hover:bg-red-900/20 hover:text-red-300"
@@ -230,9 +211,9 @@ export default function ProfileAvatar({ profileData, setProfileData}: ProfileAva
                 Cancel
               </Button>
               <Button
-                onClick={handleImageUpload}
-                disabled={!imageFile || isUploading}
-                className="bg-violet-600 hover:bg-violet-700"
+                onClick={handleLogoUpload}
+                disabled={!logoFile || isUploading}
+                className="bg-purple-600 hover:bg-purple-700"
               >
                 {isUploading ? "Uploading..." : "Upload"}
               </Button>
