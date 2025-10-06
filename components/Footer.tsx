@@ -1,7 +1,34 @@
+"use client";
 import React from 'react';
 import { Zap, Mail, Phone, MapPin, Twitter, Linkedin, Github } from 'lucide-react';
+import { usePathname } from 'next/navigation';
 
 const Footer: React.FC = () => {
+  const pathname = usePathname();
+
+  // Routes where footer should be hidden
+  // Add any route pattern here to hide the footer
+  // This should match the same routes as the Header component
+  const hiddenFooterRoutes = [
+    '/assessment/coding',      // All coding assessment pages
+    '/assessment/aptitude',    // All aptitude assessment pages
+    '/assessment/technical',   // All technical assessment pages
+    '/assessment/hr',          // All HR assessment pages
+    '/assessment/precheck',    // System check page
+    '/assessment/process'      // Assessment process page
+  ];
+
+  // Check if current route should hide footer
+  const shouldHideFooter = () => {
+    if (!pathname) return false;
+    return hiddenFooterRoutes.some(route => pathname.startsWith(route));
+  };
+
+  // Hide footer for assessment routes
+  if (shouldHideFooter()) {
+    return null;
+  }
+
   const footerLinks = {
     product: [
       { name: 'Features', href: '#features' },

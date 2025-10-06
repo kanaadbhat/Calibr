@@ -20,9 +20,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <AuthProvider>
-      <html lang="en">
-        <body className={outfit.className}>
+    <html lang="en">
+      <body className={outfit.className}>
+        <AuthProvider>
           <Header />
           <Toaster 
             position="bottom-right"
@@ -44,8 +44,8 @@ export default function RootLayout({
 
           {children}
           <Footer />
-        </body>
-      </html>
-   </AuthProvider>
+        </AuthProvider>
+      </body>
+    </html>
   );
 }

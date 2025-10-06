@@ -1,4 +1,4 @@
-import React from 'react'
+import React from 'react';
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
@@ -15,14 +15,14 @@ export default async function RoleWrapper({ children, role }: RoleWrapperProps) 
     redirect("/login?toast=login_required");
   }
 
-  const userRole = session.user?.role;
+  const userRole = session.user?.role?.toLowerCase();
 
   if (role) {
-    const allowedRoles = Array.isArray(role) ? role : [role];
-    if (!allowedRoles.includes(userRole)) {
+    const allowedRoles = (Array.isArray(role) ? role : [role]).map(r => r.toLowerCase());
+    if (!userRole || !allowedRoles.includes(userRole)) {
       const roleMessage = Array.isArray(role) ? role.join("_") : role;
-      console.log(`Redirecting user with role ${userRole} from ${roleMessage} page`); // Add logging
-      redirect(`/?toast=${roleMessage}_cannot_access`);
+      console.warn(`Redirecting user with role ${userRole} from ${roleMessage} page`);
+      redirect(`/?toast=access_only_for_${roleMessage}`);
     }
   }
 

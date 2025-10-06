@@ -23,6 +23,22 @@ const Header: React.FC = () => {
   const { data: session, status } = useSession();
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  // Routes where header should be hidden
+  // Add any route pattern here to hide the header
+  const hiddenHeaderRoutes = [
+    '/assessment/coding',      // All coding assessment pages
+    '/assessment/aptitude',    // All aptitude assessment pages
+    '/assessment/technical',   // All technical assessment pages
+    '/assessment/hr',          // All HR assessment pages
+    '/assessment/precheck',    // System check page     
+  ];
+
+  // Check if current route should hide header
+  const shouldHideHeader = () => {
+    if (!pathname) return false;
+    return hiddenHeaderRoutes.some(route => pathname.startsWith(route));
+  };
+
   const handleSignOut = async () => {
     await signOut({ redirect: true, callbackUrl: "/" });
   };
@@ -61,6 +77,11 @@ const Header: React.FC = () => {
   };
 
   const isDashboardEmployeerPage = pathname?.startsWith("/dashboard/employer");
+
+  // Hide header for assessment routes
+  if (shouldHideHeader()) {
+    return null;
+  }
 
   // Dashboard header - just logo and profile
   if (isDashboardEmployeerPage) {

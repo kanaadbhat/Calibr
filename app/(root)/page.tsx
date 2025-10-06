@@ -22,28 +22,22 @@ const CallToAction = dynamic(() => import("./_components/CallToAction"), {
   loading: () => <div className="h-screen flex items-center justify-center">Loading...</div>,
 });
 
+const toastMessages: Record<string, string> = {
+  login_required: "You must log in to continue.",
+  access_only_for_candidate: "Access denied for Employer.",
+  access_only_for_employer: "Access denied for Candidate.",
+  // add more mappings as needed
+};
 export default function Home() {
   const searchParams = useSearchParams();
-
   useEffect(() => {
-    const toastMessage = searchParams.get("toast");
-    if (toastMessage) {
-      // map toast keys to messages
-      switch (toastMessage) {
-        case "login_required":
-          toast.error("Please log in to continue");
-          break;
-        case "candidate_cannot_access":
-          toast.error("Candidates cannot access this page");
-          break;
-        case "employer_cannot_access":
-          toast.error("Employers cannot access this page");
-          break;
-        default:
-          toast.error(toastMessage.replaceAll("_", " "));
-      }
+    const toastKey = searchParams.get("toast");
+    if (toastKey) {
+      const message = toastMessages[toastKey] || toastKey.replaceAll("_", " ");
+      toast.error(message);
     }
   }, [searchParams]);
+
 
 
   return (

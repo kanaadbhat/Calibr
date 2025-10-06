@@ -1,9 +1,11 @@
 'use client'
 import { useState, useEffect } from 'react'
+import { useSession } from 'next-auth/react'
 import { fetchTestSession } from './actions'
 import type { UseTestQuestionsReturn, ProcessedQuestion, AptitudeData } from './types'
 
 export function useTestQuestions(aptitudeId: string | null): UseTestQuestionsReturn {
+  const { data: session, status } = useSession()
   const [questions, setQuestions] = useState<ProcessedQuestion[]>([])
   const [aptitudeData, setAptitudeData] = useState<AptitudeData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -40,7 +42,7 @@ export function useTestQuestions(aptitudeId: string | null): UseTestQuestionsRet
     }
 
     loadQuestions()
-  }, [aptitudeId])
+  }, [aptitudeId, session, status])
 
   return { 
     questions, 

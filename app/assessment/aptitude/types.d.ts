@@ -62,6 +62,25 @@ export interface UseTestQuestionsReturn {
   setTabSwitchWarningCount: Dispatch<SetStateAction<number>>;
 }
 
+// ===== WARNING TYPES =====
+export interface WarningState {
+  tabSwitch: {
+    count: number;
+    maxAllowed: number;
+    exceeded: boolean;
+  };
+  fullscreen: {
+    count: number;
+    maxAllowed: number;
+    exceeded: boolean;
+  };
+  audio: {
+    count: number;
+    maxAllowed: number;
+    exceeded: boolean;
+  };
+}
+
 // ===== QUESTION STATUS TYPES =====
 export type QuestionStatus = 'unattempted' | 'attempted' | 'marked';
 

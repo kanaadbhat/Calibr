@@ -150,12 +150,34 @@ export default function JobActions({ job, isLoading }: JobActionsProps) {
               </div>
             )}
             
-            {job.applicants && job.applicants > 0 && (
+            {job.applicants !== undefined && job.applicants > 0 && (
               <div className="flex items-center gap-3">
                 <Users className="h-4 w-4 text-white/60" />
                 <div>
                   <p className="text-sm font-medium text-white">Applicants</p>
                   <p className="text-sm text-white/70">{job.applicants} applied</p>
+                  {job.applicationStats && (
+                    <div className="text-xs text-white/50 mt-1 space-y-0.5">
+                      {job.applicationStats.applied > 0 && (
+                        <p>• {job.applicationStats.applied} new</p>
+                      )}
+                      {job.applicationStats.underReview > 0 && (
+                        <p>• {job.applicationStats.underReview} under review</p>
+                      )}
+                      {job.applicationStats.shortlisted > 0 && (
+                        <p className="text-green-400">• {job.applicationStats.shortlisted} shortlisted</p>
+                      )}
+                      {job.applicationStats.interviewed > 0 && (
+                        <p className="text-blue-400">• {job.applicationStats.interviewed} interviewed</p>
+                      )}
+                      {job.applicationStats.accepted > 0 && (
+                        <p className="text-purple-400">• {job.applicationStats.accepted} accepted</p>
+                      )}
+                      {job.applicationStats.rejected > 0 && (
+                        <p className="text-red-400">• {job.applicationStats.rejected} rejected</p>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -214,7 +236,7 @@ export default function JobActions({ job, isLoading }: JobActionsProps) {
           <Button 
             variant="outline" 
             size="sm" 
-            className="mt-3 w-full bg-white/10 border-white/20 text-white hover:bg-white/20"
+            className="mt-3 w-full bg-purple-600/20 border-purple-500/30 text-purple-300 hover:bg-purple-600/30 hover:text-white"
           >
             View Company Profile
           </Button>
