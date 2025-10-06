@@ -6,7 +6,7 @@ const nextConfig = {
       headers: [
         {
           key: 'Permissions-Policy',
-          value: 'camera=(), microphone=()'
+          value: 'camera=(self), microphone=(self), fullscreen=(self)'
         }
       ]
     }

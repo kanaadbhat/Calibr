@@ -12,7 +12,7 @@ const CandidateProfileSchema: Schema = new Schema(
   {
     candidate: {
       type: Schema.Types.ObjectId,
-      ref: "candidate",
+      ref: "candidates",
       required: true,
       index: true,
     },

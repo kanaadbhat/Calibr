@@ -18,6 +18,7 @@ import {
   ChevronRight,
   Users,
   Briefcase,
+  ClipboardCheck,
 } from "lucide-react";
 
 const items = [
@@ -26,6 +27,7 @@ const items = [
   { label: "Add Assessment", action: "add-assessment", icon: FileText, type: "action" },
   { label: "My Openings", action: "my-openings", icon: Briefcase, type: "action" },
   { label: "Manage Candidates", action: "manage-candidates", icon: Users, type: "action" },
+  { label: "Candidate Evaluation", action: "candidate-evaluation", icon: ClipboardCheck, type: "action" },
 ];
 
 // Export navigation items (excluding action items) so TopNav can render them inside the mobile sheet
