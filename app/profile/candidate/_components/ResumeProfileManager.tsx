@@ -6,11 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Settings, FileText, Loader2 } from "lucide-react";
-import { 
-  getCandidateResumes, 
-  applyResumeToProfile,
-  parseResumeFromS3
-} from "../actions";
+import { useResumeOperations } from "../hooks";
 
 interface ResumeProfileManagerProps {
   candidateId: string;
@@ -30,27 +26,17 @@ interface Resume {
 
 export default function ResumeProfileManager({ candidateId, onProfileUpdated }: ResumeProfileManagerProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [resumes, setResumes] = useState<Resume[]>([]);
   const [selectedResume, setSelectedResume] = useState<string>("");
   const [selectedResumeId, setSelectedResumeId] = useState<string>("");
-  const [isApplying, setIsApplying] = useState(false);
-  const [isParsing, setIsParsing] = useState(false);
-
-  const loadResumes = async () => {
-    if (!candidateId) return;
-    
-    try {
-      const result = await getCandidateResumes(candidateId);
-      if (result.success && result.resumes) {
-        setResumes(result.resumes);
-      } else {
-        setResumes([]);
-      }
-    } catch (error) {
-      console.error("Error loading resumes:", error);
-      toast.error("Failed to load resumes");
-    }
-  };
+  
+  const { 
+    resumes, 
+    isApplying, 
+    isParsing,
+    loadResumes, 
+    parseResume, 
+    applyResume 
+  } = useResumeOperations(candidateId);
 
   const handleResumeSelect = (resume: Resume) => {
     setSelectedResume(resume.fileName);
@@ -63,82 +49,29 @@ export default function ResumeProfileManager({ candidateId, onProfileUpdated }: 
       return;
     }
 
-    setIsApplying(true);
+    // Find the selected resume
+    const selectedResumeData = resumes.find(r => r.id === selectedResumeId);
     
-    try {
-      // Find the selected resume
-      const selectedResumeData = resumes.find(r => r.id === selectedResumeId);
+    if (!selectedResumeData) {
+      toast.error("Selected resume not found");
+      return;
+    }
+
+    // Check if resume is not parsed
+    if (!selectedResumeData.isParsed) {
+      // Parse the resume first
+      const parseResult = await parseResume(selectedResumeId);
       
-      if (!selectedResumeData) {
-        toast.error("Selected resume not found");
+      if (!parseResult.success) {
         return;
       }
-
-      // Check if resume is not parsed
-      if (!selectedResumeData.isParsed) {
-        setIsParsing(true);
-        toast.info("Resume is not parsed. Parsing from S3 file...");
-        
-        // Parse the resume from S3 first
-        const parseResult = await parseResumeFromS3(selectedResumeId);
-        
-        if (!parseResult.success) {
-          // Show detailed error message
-          const errorMessage = parseResult.error || parseResult.message || "Failed to parse resume";
-          toast.error(errorMessage, {
-            duration: 5000, // Show longer for detailed errors
-          });
-          return;
-        }
-        
-        toast.success("Resume parsed successfully!");
-        setIsParsing(false);
-        
-        // Update the resume in our local state
-        setResumes(prev => prev.map(r => 
-          r.id === selectedResumeId 
-            ? { ...r, isParsed: true }
-            : r
-        ));
-      }
-
-      // Now apply to profile
-      const result = await applyResumeToProfile(selectedResumeId);
-      if (result.success) {
-        toast.dismiss();
-        toast.success(result.message);
-        setIsOpen(false);
-        
-        // Scroll to top before triggering profile update
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        
-        onProfileUpdated?.();
-      } else {
-        const errorMessage = result.error || result.message || "Failed to apply profile";
-        toast.error(errorMessage, {
-          duration: 4000,
-        });
-      }
-    } catch (error: any) {
-      console.error("Error applying profile:", error);
-      
-      // Show more specific error messages
-      let errorMessage = "An unexpected error occurred";
-      if (error.message?.includes('fetch')) {
-        errorMessage = "Network error: Unable to connect to server";
-      } else if (error.message?.includes('timeout')) {
-        errorMessage = "Request timeout: Operation took too long";
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-      
-      toast.error(errorMessage, {
-        duration: 4000,
-      });
-    } finally {
-      setIsApplying(false);
-      setIsParsing(false);
     }
+
+    // Now apply to profile
+    await applyResume(selectedResumeId, () => {
+      setIsOpen(false);
+      onProfileUpdated?.();
+    });
   };
 
   const handleDialogOpen = (open: boolean) => {

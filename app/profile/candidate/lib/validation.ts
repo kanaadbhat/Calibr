@@ -1,5 +1,5 @@
 import ResumeModel from "@/models/resume.model";
-import Profile from "@/models/profile.model";
+import Profile from "@/models/candidateProfile.model";
 
 // Re-export auth helpers from utils for backward compatibility
 export { validateSession, requireAuth } from "@/utils/auth-helpers";

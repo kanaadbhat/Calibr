@@ -9,6 +9,7 @@ export interface JobOpportunity extends Document {
   locationType: string;
   location: string;
   openings: number;
+  employer: mongoose.Types.ObjectId;
   experience?: string;
   workMode?: string;
   salaryMin?: number;
@@ -21,7 +22,6 @@ export interface JobOpportunity extends Document {
   startDate?: string;
   autoScreen?: boolean;
   isPublic?: boolean;
-  applications: mongoose.Types.ObjectId[];
 }
 
 
@@ -50,6 +50,12 @@ const JobOpportunitySchema: Schema = new Schema(
     },
     location: { type: String, required: true, trim: true },
     openings: { type: Number, required: true, min: 1, default: 1 },
+    employer: { 
+      type: mongoose.Schema.Types.ObjectId, 
+      ref: "employers",
+      required: true,
+      index: true
+    },
     experience: { type: String, trim: true },
     workMode: { type: String, trim: true },
     salaryMin: { type: Number, min: 0 },
@@ -62,7 +68,6 @@ const JobOpportunitySchema: Schema = new Schema(
     startDate: { type: String, trim: true },
     autoScreen: { type: Boolean, default: false },
     isPublic: { type: Boolean, default: true },
-    applications: [{ type: mongoose.Schema.Types.ObjectId, ref: "application" }],
   },
   { timestamps: true }
 );
@@ -71,6 +76,4 @@ const JobOpportunityModel =
   (mongoose.models.jobopportunity as mongoose.Model<JobOpportunity>) ||
   mongoose.model<JobOpportunity>("jobopportunity", JobOpportunitySchema);
 
-
 export default JobOpportunityModel;
-

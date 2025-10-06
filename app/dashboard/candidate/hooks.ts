@@ -8,16 +8,16 @@ import {
   fetchRecentActivity, 
   fetchSkillAnalysis, 
   fetchJobRecommendations,
-  joinInterviewAction,
-  rescheduleInterviewAction,
-  quickApplyAction,
-  saveJobAction,
+  joinInterview,
+  rescheduleInterview,
+  quickApply,
+  saveJob,
   markActivityAsRead
 } from './actions';
 
 import{
   Job,Interview,Activity,Skill,PerformanceData
-}from './interfaces';
+}from './types.d';
 
 // Custom hooks for data management
 export const usePerformanceData = () => {
@@ -28,7 +28,9 @@ export const usePerformanceData = () => {
     setIsLoading(true);
     try {
       const result = await fetchPerformanceData();
-      setData(result);
+      if (result.success && result.data) {
+        setData(result.data);
+      }
     } catch (error) {
       console.error('Error fetching performance data:', error);
     } finally {
@@ -52,7 +54,9 @@ export const useUpcomingInterviews = () => {
     setIsLoading(true);
     try {
       const result = await fetchUpcomingInterviews();
-      setInterviews(result);
+      if (result.success && result.data) {
+        setInterviews(result.data);
+      }
     } catch (error) {
       console.error('Error fetching upcoming interviews:', error);
     } finally {
@@ -62,7 +66,7 @@ export const useUpcomingInterviews = () => {
 
   const handleJoinInterview = async (index: number) => {
     try {
-      await joinInterviewAction(interviews[index].company);
+      await joinInterview(interviews[index].id);
     } catch (error) {
       console.error('Error joining interview:', error);
     }
@@ -70,8 +74,7 @@ export const useUpcomingInterviews = () => {
 
   const handleReschedule = async (index: number) => {
     try {
-      // For now, using company name as ID and defaulting new time
-      await rescheduleInterviewAction(interviews[index].company, 'Next available slot');
+      await rescheduleInterview(interviews[index].id, 'Next available slot');
       // Reload interviews after reschedule
       await loadInterviews();
     } catch (error) {
@@ -102,7 +105,9 @@ export const useRecentActivity = () => {
     setIsLoading(true);
     try {
       const result = await fetchRecentActivity();
-      setActivities(result);
+      if (result.success && result.data) {
+        setActivities(result.data);
+      }
     } catch (error) {
       console.error('Error fetching recent activity:', error);
     } finally {
@@ -144,9 +149,11 @@ export const useSkillAnalysis = () => {
     setIsLoading(true);
     try {
       const result = await fetchSkillAnalysis();
-      setSkills(result.skills);
-      setRadarData(result.radarData);
-      setRecommendation(result.recommendation);
+      if (result.success && result.data) {
+        setSkills(result.data.skills);
+        setRadarData(result.data.radarData);
+        setRecommendation(result.data.recommendation);
+      }
     } catch (error) {
       console.error('Error fetching skill analysis:', error);
     } finally {
@@ -178,7 +185,9 @@ export const useJobRecommendations = () => {
     setIsLoading(true);
     try {
       const result = await fetchJobRecommendations();
-      setJobs(result);
+      if (result.success && result.data) {
+        setJobs(result.data);
+      }
     } catch (error) {
       console.error('Error fetching job recommendations:', error);
     } finally {
@@ -188,7 +197,7 @@ export const useJobRecommendations = () => {
 
   const handleQuickApply = async (jobIndex: number) => {
     try {
-      await quickApplyAction(jobs[jobIndex].title);
+      await quickApply(jobs[jobIndex].title);
     } catch (error) {
       console.error('Error applying to job:', error);
     }
@@ -196,7 +205,7 @@ export const useJobRecommendations = () => {
 
   const handleSaveJob = async (jobIndex: number) => {
     try {
-      await saveJobAction(jobs[jobIndex].title);
+      await saveJob(jobs[jobIndex].title);
     } catch (error) {
       console.error('Error saving job:', error);
     }

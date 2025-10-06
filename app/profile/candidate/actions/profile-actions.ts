@@ -1,9 +1,9 @@
 "use server";
 
-import Profile from "@/models/profile.model";
+import Profile from "@/models/candidateProfile.model";
 import ResumeModel from "@/models/resume.model";
 import candidate from "@/models/candidate.model";
-import { ProfileData, ProfileResponse } from "../type";
+import { ProfileData, ProfileResponse } from "../types";
 import { validateSession } from "../lib/validation";
 import { 
   withDatabase, 

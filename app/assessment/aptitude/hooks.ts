@@ -1,41 +1,66 @@
 'use client'
 import { useState, useEffect } from 'react'
+import { useSession } from 'next-auth/react'
 import { fetchTestSession } from './actions'
+import type { UseTestQuestionsReturn, ProcessedQuestion, AptitudeData } from './types'
 
-
-export function useTestQuestions(aptitudeId: string | null) {
-  const [questions, setQuestions] = useState<any[]>([])
+export function useTestQuestions(aptitudeId: string | null): UseTestQuestionsReturn {
+  const { data: session, status } = useSession()
+  const [questions, setQuestions] = useState<ProcessedQuestion[]>([])
+  const [aptitudeData, setAptitudeData] = useState<AptitudeData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [aptitudeData,setAptitudeData] = useState<any>(null)
+  const [tabSwitchWarningCount, setTabSwitchWarningCount] = useState(0)
 
   useEffect(() => {
-    if (!aptitudeId) {
-      setError('No aptitude allotted for you ')
+    // Wait for session to load
+    if (status === 'loading') {
+      return
+    }
+
+    if (!session) {
+      setError('Authentication required')
       setLoading(false)
       return
     }
 
-    const loadQuestions = async () => {
+    if (!aptitudeId) {
+      setError('No aptitude assessment ID provided')
+      setLoading(false)
+      return
+    }
+
+    const loadQuestions = async (): Promise<void> => {
       try {
+        setLoading(true)
+        setError(null)
+        
         const result = await fetchTestSession(aptitudeId)
+        
         if (result.success && result.data) {
           setQuestions(result.data.allQuestions)
           setAptitudeData(result.data)
-
         } else {
           setError(result.error || 'Failed to load questions')
         }
       } catch (err) {
-        setError('An unexpected error occurred')
-        console.error(err)
+        const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred'
+        setError(errorMessage)
+        console.error('Error loading questions:', err)
       } finally {
         setLoading(false)
       }
     }
 
     loadQuestions()
-  }, [aptitudeId])
+  }, [aptitudeId, session, status])
 
-  return { questions , aptitudeData , loading , error }
+  return { 
+    questions, 
+    aptitudeData, 
+    loading, 
+    error ,
+    tabSwitchWarningCount,
+    setTabSwitchWarningCount
+  }
 }

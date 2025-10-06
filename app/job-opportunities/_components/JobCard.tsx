@@ -58,6 +58,23 @@ const JobCard: React.FC<JobCardProps> = ({ job, onViewDetails }) => {
                   ))}
                 </div>
 
+                {/* Application Statistics */}
+                {job.applicationStats && job.applicationStats.total > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-3 text-sm">
+                    <span className="text-white/90 font-medium">📊 Applications:</span>
+                    <span className="text-white/70">{job.applicationStats.total} total</span>
+                    {job.applicationStats.shortlisted > 0 && (
+                      <span className="text-green-400">• {job.applicationStats.shortlisted} shortlisted</span>
+                    )}
+                    {job.applicationStats.interviewed > 0 && (
+                      <span className="text-blue-400">• {job.applicationStats.interviewed} interviewed</span>
+                    )}
+                    {job.applicationStats.accepted > 0 && (
+                      <span className="text-purple-400">• {job.applicationStats.accepted} accepted</span>
+                    )}
+                  </div>
+                )}
+
                 {/* Action Button */}
                 <Button
                   onClick={() => onViewDetails(job._id)}

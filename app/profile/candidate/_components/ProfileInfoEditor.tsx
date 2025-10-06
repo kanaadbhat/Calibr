@@ -14,8 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Edit } from "lucide-react";
-import { toast } from "sonner";
-import updateCandidateProfile from "../actions";
+import { useProfileUpdate } from "../hooks";
 
 interface ProfileInfoEditorProps {
   profileData: any;
@@ -27,6 +26,8 @@ export default function ProfileInfoEditor({ profileData, setProfileData }: Profi
   const [editName, setEditName] = useState("");
   const [editTagline, setEditTagline] = useState("");
   const [editSummary, setEditSummary] = useState("");
+  
+  const { updateProfile, isUpdating } = useProfileUpdate();
 
   useEffect(() => {
     setEditName(profileData.name || "");
@@ -35,26 +36,18 @@ export default function ProfileInfoEditor({ profileData, setProfileData }: Profi
   }, [profileData.name, profileData.tagline, profileData.summary]);
 
   const handleSaveProfile = async () => {
-    try {
-      const updatedData = {
-        ...profileData,
-        summary: editSummary,
-        name: editName,
-        tagline: editTagline,
-      };
+    const updatedData = {
+      ...profileData,
+      summary: editSummary,
+      name: editName,
+      tagline: editTagline,
+    };
+    
+    const res = await updateProfile(updatedData);
+    
+    if (res.success) {
       setProfileData(updatedData);
       setIsEditDialogOpen(false);
-
-      const res = await updateCandidateProfile(updatedData);
-
-      if (res.success) {
-        toast.success(res.message);
-      } else {
-        toast.error(res.error || "Failed to update profile");
-      }
-    } catch (error) {
-      console.error("Error updating profile:", error);
-      toast.error("An error occurred while updating your profile");
     }
   };
 
@@ -124,9 +117,10 @@ export default function ProfileInfoEditor({ profileData, setProfileData }: Profi
             </Button>
             <Button
               onClick={handleSaveProfile}
-              className="bg-white text-[#0A0A18] hover:bg-white/90 border-none"
+              disabled={isUpdating}
+              className="bg-white text-[#0A0A18] hover:bg-white/90 border-none disabled:opacity-50"
             >
-              Save Changes
+              {isUpdating ? "Saving..." : "Save Changes"}
             </Button>
           </div>
         </div>

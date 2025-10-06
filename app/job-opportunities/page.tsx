@@ -7,7 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 // This is now a SERVER component
 export default function JobOpportunitiesPage() {
   return (
-    <RoleWrapper role={["candidate"]}>
+    <RoleWrapper role={["candidate","employer"]}>
       <div className="min-h-screen bg-gradient-to-br from-[#0A0A18] to-[#0D0D20] pt-22 pb-16">
         <div className="container mx-auto px-6">
           <h1 className="text-4xl font-bold mb-8 bg-gradient-to-r from-violet-300 to-purple-300 bg-clip-text text-transparent">

@@ -1,11 +1,19 @@
 import mongoose, { Schema, Document } from "mongoose";
 
+export interface RoundStatus {
+  aptitude: 'pending' | 'shortlisted' | 'rejected' | 'completed';
+  coding: 'pending' | 'shortlisted' | 'rejected' | 'completed';
+  technicalInterview: 'pending' | 'shortlisted' | 'rejected' | 'completed';
+  hrInterview: 'pending' | 'shortlisted' | 'rejected' | 'completed';
+}
+
 export interface Application extends Document {
   candidateId: mongoose.Types.ObjectId;
   jobId: mongoose.Types.ObjectId;
   resumeId?: mongoose.Types.ObjectId;
   applicationDate: Date;
-  status: 'applied' | 'under-review' | 'shortlisted' | 'interviewed' | 'rejected' | 'accepted';
+  status: 'applied' | 'under-review' | 'shortlisted' | 'interviewed' | 'rejected' | 'accepted' | 'withdrawn';
+  rounds?: RoundStatus;
 }
 
 const ApplicationSchema: Schema = new Schema(
@@ -32,9 +40,31 @@ const ApplicationSchema: Schema = new Schema(
     },
     status: {
       type: String,
-      enum: ['applied', 'under-review', 'shortlisted', 'interviewed', 'rejected', 'accepted'],
+      enum: ['applied', 'under-review', 'shortlisted', 'interviewed', 'rejected', 'accepted', 'withdrawn'],
       default: 'applied',
       required: true
+    },
+    rounds: {
+      aptitude: {
+        type: String,
+        enum: ['pending', 'shortlisted', 'rejected', 'completed'],
+        default: 'pending'
+      },
+      coding: {
+        type: String,
+        enum: ['pending', 'shortlisted', 'rejected', 'completed'],
+        default: 'pending'
+      },
+      technicalInterview: {
+        type: String,
+        enum: ['pending', 'shortlisted', 'rejected', 'completed'],
+        default: 'pending'
+      },
+      hrInterview: {
+        type: String,
+        enum: ['pending', 'shortlisted', 'rejected', 'completed'],
+        default: 'pending'
+      }
     }
   },
   { timestamps: true }

@@ -1,9 +1,6 @@
-// Sidebar navigation for the dashboard
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { Sidebar as ShadcnSidebar, useSidebar } from "@/components/ui/sidebar";
 import { Input } from "@/components/ui/input";
 import {
@@ -15,39 +12,26 @@ import {
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
-  Briefcase,
-  Users,
-  CalendarClock,
-  ActivitySquare,
-  LineChart,
-  UsersRound,
-  SettingsIcon,
+  Plus,
+  FileText,
   ChevronLeft,
   ChevronRight,
-  Plus,
-  Calendar,
-  FileText,
+  Users,
+  Briefcase,
 } from "lucide-react";
 
 const items = [
-  { label: "Create Job", action: "create-job", icon: Plus, type: "action" },
-  { label: "Schedule Interview", icon: Calendar, type: "dialog", component: null },
-  { label: "Add Assessment", action: "add-assessment", icon: FileText, type: "action" },
   { label: "Dashboard", action: "dashboard", icon: LayoutDashboard, type: "action" },
-  { label: "Job Postings", href: "/dashboard/employer/jobs", icon: Briefcase, type: "link" },
-  { label: "Candidates", href: "/dashboard/employer/candidates", icon: Users, type: "link" },
-  { label: "Interviews", href: "/dashboard/employer/interviews", icon: CalendarClock, type: "link" },
-  { label: "Live Monitoring", href: "/dashboard/employer/monitoring", icon: ActivitySquare, type: "link" },
-  { label: "Analytics", href: "/dashboard/employer/analytics", icon: LineChart, type: "link" },
-  { label: "Team", href: "/dashboard/employer/team", icon: UsersRound, type: "link" },
-  { label: "Settings", href: "/dashboard/employer/settings", icon: SettingsIcon, type: "link" },
+  { label: "Create Job", action: "create-job", icon: Plus, type: "action" },
+  { label: "Add Assessment", action: "add-assessment", icon: FileText, type: "action" },
+  { label: "My Openings", action: "my-openings", icon: Briefcase, type: "action" },
+  { label: "Manage Candidates", action: "manage-candidates", icon: Users, type: "action" },
 ];
 
 // Export navigation items (excluding action items) so TopNav can render them inside the mobile sheet
 export const NAV_ITEMS = items.filter(item => item.type === "link");
 
 export function Sidebar() {
-  const pathname = usePathname();
   const [query, setQuery] = useState("");
   const { state, toggleSidebar } = useSidebar();
   const collapsed = state === "collapsed";
@@ -101,7 +85,6 @@ export function Sidebar() {
         <nav className="flex-1">
           <ul className="flex flex-col">
             {items.map((item) => {
-              const active = item.type === "link" && pathname === item.href;
               const Icon = item.icon;
 
               let baseClass = "flex items-center transition-all duration-200 cursor-pointer";
@@ -112,18 +95,8 @@ export function Sidebar() {
                 baseClass +=
                   " space-x-2 sm:space-x-3 px-3 sm:px-4 py-2 sm:py-3 rounded-lg";
               }
-              if (active) {
-                if (collapsed) {
-                  baseClass +=
-                    " text-white bg-gradient-to-r from-indigo-500/20 to-rose-500/20";
-                } else {
-                  baseClass +=
-                    " bg-gradient-to-r from-indigo-500/20 to-rose-500/20 text-white border border-indigo-500/30";
-                }
-              } else {
-                baseClass +=
-                  " text-white/60 hover:text-white hover:bg-gradient-to-r hover:from-indigo-500/20 hover:to-rose-500/20";
-              }
+              baseClass +=
+                " text-white/60 hover:text-white hover:bg-gradient-to-r hover:from-indigo-500/20 hover:to-rose-500/20";
 
               const content = (
                 <>
@@ -151,38 +124,16 @@ export function Sidebar() {
                 <li key={item.label}>
                   <Tooltip open={collapsed ? undefined : false}>
                     <TooltipTrigger asChild>
-                      {item.type === "dialog" ? (
-                        <div
-                          className={baseClass}
-                          role="button"
-                          tabIndex={0}
-                          aria-label={item.label}
-                          title={collapsed ? item.label : undefined}
-                          onClick={() => console.log(`${item.label} clicked`)}
-                        >
-                          {content}
-                        </div>
-                      ) : item.type === "action" ? (
-                        <div
-                          className={baseClass}
-                          role="button"
-                          tabIndex={0}
-                          aria-label={item.label}
-                          title={collapsed ? item.label : undefined}
-                          onClick={handleActionClick}
-                        >
-                          {content}
-                        </div>
-                      ) : (
-                        <Link
-                          href={item.href!}
-                          className={baseClass}
-                          aria-current={active ? "page" : undefined}
-                          title={collapsed ? item.label : undefined}
-                        >
-                          {content}
-                        </Link>
-                      )}
+                      <div
+                        className={baseClass}
+                        role="button"
+                        tabIndex={0}
+                        aria-label={item.label}
+                        title={collapsed ? item.label : undefined}
+                        onClick={handleActionClick}
+                      >
+                        {content}
+                      </div>
                     </TooltipTrigger>
                     {collapsed && (
                       <TooltipContent side="right">{item.label}</TooltipContent>

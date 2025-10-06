@@ -13,8 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Camera, UploadCloud } from "lucide-react";
 import { toast } from "sonner";
-import updateCandidateProfile from "../actions";
-import { uploadProfileImage } from "../actions";
+import { useProfileUpdate, useProfileImageUpload } from "../hooks";
 
 interface ProfileAvatarProps {
   profileData: any;
@@ -26,9 +25,11 @@ export default function ProfileAvatar({ profileData, setProfileData}: ProfileAva
   const [isImageUploadDialogOpen, setIsImageUploadDialogOpen] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | undefined>(undefined);
   const [imageFile, setImageFile] = useState<File | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
   const [imageLoadError, setImageLoadError] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  const { updateProfile } = useProfileUpdate();
+  const { uploadImage, isUploading } = useProfileImageUpload();
 
   // Client-side file validation
   const validateImageFile = (file: File): { valid: boolean; error?: string } => {
@@ -100,49 +101,32 @@ export default function ProfileAvatar({ profileData, setProfileData}: ProfileAva
       return;
     }
 
-    setIsUploading(true);
-    const loadingToastId = toast.loading("Uploading image...");
+    // Create FormData for server action
+    const formData = new FormData();
+    formData.append('file', imageFile);
 
-    try {
-      // Create FormData for server action
-      const formData = new FormData();
-      formData.append('file', imageFile);
-
-      // Upload using server action
-      const uploadResult = await uploadProfileImage(formData);
-      
-      if (!uploadResult.success) {
-        throw new Error(uploadResult.error || 'Upload failed');
-      }
-      
+    // Upload using hook
+    const uploadResult = await uploadImage(formData);
+    
+    if (uploadResult.success && uploadResult.fileUrl) {
       const updatedData = {
         ...profileData,
         profileImage: uploadResult.fileUrl,
       };
 
       // Update profile with S3 URL
-      const res = await updateCandidateProfile(updatedData);
+      const res = await updateProfile(updatedData);
 
       if (res.success) {
-        toast.dismiss(loadingToastId);
-        toast.success("Profile image updated successfully");
-        
         setProfileData(updatedData);
         setImageLoadError(false);
-        setIsImageUploadDialogOpen(false);
-        setImagePreview(undefined);
-        setImageFile(null);
-      } else {
-        toast.dismiss(loadingToastId);
-        toast.error(res.error || "Failed to update profile image");
       }
-    } catch (error: any) {
-      console.error("Error uploading image:", error);
-      toast.dismiss(loadingToastId);
-      toast.error(error.message || "Failed to upload image");
-    } finally {
-      setIsUploading(false);
     }
+    
+    // Always close dialog after upload attempt (success or error)
+    setIsImageUploadDialogOpen(false);
+    setImagePreview(undefined);
+    setImageFile(null);
   };
 
   const triggerFileInput = () => {
@@ -241,7 +225,7 @@ export default function ProfileAvatar({ profileData, setProfileData}: ProfileAva
                   setImageFile(null);
                 }}
                 disabled={isUploading}
-                className="border-gray-600 text-gray-300 hover:bg-gray-800"
+                className="border-red-600 text-red-400 hover:bg-red-900/20 hover:text-red-300"
               >
                 Cancel
               </Button>
