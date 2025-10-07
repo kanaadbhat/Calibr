@@ -6,19 +6,16 @@ const nextConfig = {
       headers: [
         {
           key: 'Permissions-Policy',
-          value: 'camera=(), microphone=()'
+          value: 'camera=(self), microphone=(self)'
         }
       ]
     }
-  ])
+  ]),
+  reactStrictMode: true,
 }
+
 const withBundleAnalyzer = require('@next/bundle-analyzer')({
   enabled: process.env.ANALYZE === 'true',
 });
 
-module.exports = withBundleAnalyzer({
-  reactStrictMode: true,
-});
-
-
-module.exports = nextConfig
+module.exports = withBundleAnalyzer(nextConfig);
