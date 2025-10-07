@@ -13,17 +13,6 @@ export function useTestQuestions(aptitudeId: string | null): UseTestQuestionsRet
   const [tabSwitchWarningCount, setTabSwitchWarningCount] = useState(0)
 
   useEffect(() => {
-    // Wait for session to load
-    if (status === 'loading') {
-      return
-    }
-
-    if (!session) {
-      setError('Authentication required')
-      setLoading(false)
-      return
-    }
-
     if (!aptitudeId) {
       setError('No aptitude assessment ID provided')
       setLoading(false)
