@@ -12,6 +12,7 @@ import JobOpportunityModel from '@/models/jobOpportunity.model';
 import ApplicationModel from '@/models/application.model';
 import CandidateProfileModel from '@/models/candidateProfile.model';
 import CandidateModel from '@/models/candidate.model';
+import CodingEvaluationModel from '@/models/codingEvaluation.model';
 import mongoose from 'mongoose';
 
 export interface JobOpportunityBasic {
@@ -43,6 +44,34 @@ export interface CandidateEvaluation {
   codingScore?: number;
   technicalScore?: number;
   hrScore?: number;
+  codingEvaluation?: {
+    questionId: number;
+    language: string;
+    code: string;
+    results?: any;
+    passed?: boolean;
+    codeRuns: Array<{
+      problemId: number;
+      code: string;
+      language: string;
+      timestamp: Date;
+      results?: any;
+      passed?: boolean;
+    }>;
+    codeSubmissions: Array<{
+      problemId: number;
+      code: string;
+      language: string;
+      timestamp: Date;
+      results?: any;
+      passed?: boolean;
+    }>;
+    problemStatus: { [problemId: number]: 'solved' | 'attempted' | 'not-attempted' };
+    timeLeft: number;
+    isSubmitted: boolean;
+    createdAt: Date;
+    updatedAt: Date;
+  };
 }
 
 export async function fetchEmployerJobs(): Promise<ActionResponse<JobOpportunityBasic[]>> {
@@ -119,8 +148,8 @@ export async function fetchShortlistedCandidates(jobId?: string): Promise<Action
       // Get unique candidate IDs
       const candidateIds = [...new Set(validApplications.map(app => app.candidateId))];
 
-      // Fetch candidate profiles and core candidate docs in parallel
-      const [candidateProfiles, candidateDocs] = await Promise.all([
+      // Fetch candidate profiles, core candidate docs, and coding evaluations in parallel
+      const [candidateProfiles, candidateDocs, codingEvaluations] = await Promise.all([
         CandidateProfileModel.find({
           candidate: { $in: candidateIds }
         })
@@ -133,10 +162,15 @@ export async function fetchShortlistedCandidates(jobId?: string): Promise<Action
           _id: { $in: candidateIds }
         })
           .select('email firstName lastName avatar')
+          .lean(),
+        CodingEvaluationModel.find({
+          candidateId: { $in: candidateIds },
+          ...(jobId && jobId !== 'all' ? { jobId: new mongoose.Types.ObjectId(jobId) } : {})
+        })
           .lean()
       ]);
 
-      // Create maps of candidateId to profile and to base candidate
+      // Create maps of candidateId to profile, base candidate, and coding evaluation
       const profileMap = new Map(
         candidateProfiles.map(profile => [
           profile.candidate.toString(),
@@ -149,12 +183,19 @@ export async function fetchShortlistedCandidates(jobId?: string): Promise<Action
           c
         ])
       );
+      const codingEvalMap = new Map(
+        codingEvaluations.map((ce: any) => [
+          ce.candidateId.toString(),
+          ce
+        ])
+      );
 
       // Combine application and profile data
       const candidates: CandidateEvaluation[] = validApplications.map(app => {
         const cid = app.candidateId.toString();
         const profile = profileMap.get(cid) as any;
         const base = candidateMap.get(cid) as any;
+        const codingEval = codingEvalMap.get(cid) as any;
 
         const fullName = profile?.name || [base?.firstName, base?.lastName].filter(Boolean).join(' ') || 'Unknown';
         const email = base?.email || (profile?.candidate as any)?.email || 'N/A';
@@ -179,7 +220,34 @@ export async function fetchShortlistedCandidates(jobId?: string): Promise<Action
           aptitudeScore: undefined,
           codingScore: undefined,
           technicalScore: undefined,
-          hrScore: undefined
+          hrScore: undefined,
+          codingEvaluation: codingEval ? {
+            questionId: codingEval.questionId,
+            language: codingEval.language,
+            code: codingEval.code,
+            results: codingEval.results,
+            passed: codingEval.passed,
+            codeRuns: codingEval.codeRuns || [],
+            codeSubmissions: codingEval.codeSubmissions || [],
+            // Ensure Mongoose Map or plain object is serialized into a plain object
+            problemStatus: (() => {
+              const ps: any = codingEval.problemStatus;
+              if (!ps) return {};
+              // If it's a real Map (from Mongoose without lean or similar cases)
+              if (ps instanceof Map) {
+                return Object.fromEntries(Array.from(ps.entries()));
+              }
+              // If it's already a plain object after .lean()
+              if (typeof ps === 'object') {
+                return ps as Record<string, any>;
+              }
+              return {};
+            })(),
+            timeLeft: codingEval.timeLeft,
+            isSubmitted: codingEval.isSubmitted,
+            createdAt: codingEval.createdAt,
+            updatedAt: codingEval.updatedAt
+          } : undefined
         };
       });
 

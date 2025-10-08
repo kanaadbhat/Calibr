@@ -1,29 +1,26 @@
 "use client";
 
 import { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   ClipboardCheck, 
   Code, 
   Brain, 
   MessageSquare, 
-  TrendingUp, 
   Star,
   Clock,
   CheckCircle2,
   XCircle,
   AlertCircle,
-  ArrowLeft,
   Eye,
-  Download,
   Search
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useFetchEmployerJobOpportunities, useFetchShortlistedCandidates } from "../../hooks";
+import { CandidateEvaluationDetails } from "./CandidateEvaluationDetails";
 
 interface Candidate {
   id: string;
@@ -164,239 +161,7 @@ export function CandidateEvaluation() {
   };
 
   if (selectedCandidate) {
-    return (
-      <div className="space-y-6 mt-16">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setSelectedCandidate(null)}
-              className="text-white/80 bg-transparent border-white/20 hover:text-white hover:bg-white/10"
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to List
-            </Button>
-            <div>
-              <h2 className="text-2xl font-bold text-white">{selectedCandidate.name}</h2>
-              <p className="text-white/60 text-sm">{selectedCandidate.position}</p>
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" className="bg-white/5 border-white/10 text-white hover:bg-white/10">
-              <Download className="w-4 h-4 mr-2" />
-              Export Report
-            </Button>
-          </div>
-        </div>
-
-        {/* Candidate Details Card */}
-        <Card className="bg-white/5 border-white/10">
-          <CardHeader>
-            <CardTitle className="text-white">Candidate Information</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <p className="text-white/60 text-sm">Email</p>
-                <p className="text-white">{selectedCandidate.email}</p>
-              </div>
-              <div>
-                <p className="text-white/60 text-sm">Applied Date</p>
-                <p className="text-white">{new Date(selectedCandidate.appliedDate).toLocaleDateString()}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Score Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-          <Card className="bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border-indigo-500/30">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-white/60 text-sm">Overall Score</p>
-                  <p className={`text-3xl font-bold ${getScoreColor(selectedCandidate.overallScore)}`}>
-                    {selectedCandidate.overallScore || 'N/A'}%
-                  </p>
-                </div>
-                <TrendingUp className="w-8 h-8 text-indigo-400" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-white/5 border-white/10">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-white/60 text-sm">Aptitude</p>
-                  <p className={`text-2xl font-bold ${getScoreColor(selectedCandidate.aptitudeScore)}`}>
-                    {selectedCandidate.aptitudeScore || 'N/A'}%
-                  </p>
-                </div>
-                <Brain className="w-6 h-6 text-purple-400" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-white/5 border-white/10">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-white/60 text-sm">Coding</p>
-                  <p className={`text-2xl font-bold ${getScoreColor(selectedCandidate.codingScore)}`}>
-                    {selectedCandidate.codingScore || 'N/A'}%
-                  </p>
-                </div>
-                <Code className="w-6 h-6 text-blue-400" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-white/5 border-white/10">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-white/60 text-sm">Technical</p>
-                  <p className={`text-2xl font-bold ${getScoreColor(selectedCandidate.technicalScore)}`}>
-                    {selectedCandidate.technicalScore || 'N/A'}%
-                  </p>
-                </div>
-                <ClipboardCheck className="w-6 h-6 text-green-400" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-white/5 border-white/10">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-white/60 text-sm">HR Round</p>
-                  <p className={`text-2xl font-bold ${getScoreColor(selectedCandidate.hrScore)}`}>
-                    {selectedCandidate.hrScore || 'N/A'}%
-                  </p>
-                </div>
-                <MessageSquare className="w-6 h-6 text-rose-400" />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Detailed Evaluation Tabs */}
-        <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="bg-white/5 border-white/10">
-            <TabsTrigger value="overview" className="data-[state=active]:bg-white/10">Overview</TabsTrigger>
-            <TabsTrigger value="aptitude" className="data-[state=active]:bg-white/10">Aptitude</TabsTrigger>
-            <TabsTrigger value="coding" className="data-[state=active]:bg-white/10">Coding</TabsTrigger>
-            <TabsTrigger value="technical" className="data-[state=active]:bg-white/10">Technical</TabsTrigger>
-            <TabsTrigger value="hr" className="data-[state=active]:bg-white/10">HR Round</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="overview" className="mt-6">
-            <Card className="bg-white/5 border-white/10">
-              <CardHeader>
-                <CardTitle className="text-white">Assessment Summary</CardTitle>
-                <CardDescription className="text-white/60">
-                  Complete overview of candidate&apos;s performance across all rounds
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between p-4 bg-white/5 rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <Brain className="w-5 h-5 text-purple-400" />
-                      <span className="text-white">Aptitude Round</span>
-                    </div>
-                    <Badge className={getStatusColor('completed')}>Completed</Badge>
-                  </div>
-                  <div className="flex items-center justify-between p-4 bg-white/5 rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <Code className="w-5 h-5 text-blue-400" />
-                      <span className="text-white">Coding Round</span>
-                    </div>
-                    <Badge className={getStatusColor('completed')}>Completed</Badge>
-                  </div>
-                  <div className="flex items-center justify-between p-4 bg-white/5 rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <ClipboardCheck className="w-5 h-5 text-green-400" />
-                      <span className="text-white">Technical Interview</span>
-                    </div>
-                    <Badge className={getStatusColor('in-progress')}>In Progress</Badge>
-                  </div>
-                  <div className="flex items-center justify-between p-4 bg-white/5 rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <MessageSquare className="w-5 h-5 text-rose-400" />
-                      <span className="text-white">HR Round</span>
-                    </div>
-                    <Badge className={getStatusColor('pending')}>Pending</Badge>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="aptitude" className="mt-6">
-            <Card className="bg-white/5 border-white/10">
-              <CardHeader>
-                <CardTitle className="text-white">Aptitude Test Results</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-white/60">Detailed aptitude test results will be displayed here.</p>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="coding" className="mt-6">
-            <Card className="bg-white/5 border-white/10">
-              <CardHeader>
-                <CardTitle className="text-white">Coding Assessment Results</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-white/60">Detailed coding assessment results will be displayed here.</p>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="technical" className="mt-6">
-            <Card className="bg-white/5 border-white/10">
-              <CardHeader>
-                <CardTitle className="text-white">Technical Interview Feedback</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-white/60">Technical interview feedback will be displayed here.</p>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="hr" className="mt-6">
-            <Card className="bg-white/5 border-white/10">
-              <CardHeader>
-                <CardTitle className="text-white">HR Round Feedback</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-white/60">HR round feedback will be displayed here.</p>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
-
-        {/* Action Buttons */}
-        <div className="flex gap-4 justify-end">
-          <Button 
-            variant="outline" 
-            className="bg-red-500/20 border-red-500/30 text-red-300 hover:bg-red-500/30"
-          >
-            <XCircle className="w-4 h-4 mr-2" />
-            Reject Candidate
-          </Button>
-          <Button className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600">
-            <Star className="w-4 h-4 mr-2" />
-            Select Candidate
-          </Button>
-        </div>
-      </div>
-    );
+    return <CandidateEvaluationDetails candidate={selectedCandidate} onBack={() => setSelectedCandidate(null)} />;
   }
 
   return (
