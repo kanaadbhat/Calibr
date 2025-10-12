@@ -1,6 +1,6 @@
 "use client";
 
-import VideoProcessing from "@/lib/video-processing";
+import VideoProcessing from "@/lib/video-processing2";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AlertCircle, Camera, Eye, Smile, Hand, Box } from "lucide-react";
