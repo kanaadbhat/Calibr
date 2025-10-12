@@ -2,7 +2,31 @@ import * as tf from '@tensorflow/tfjs';
 
 let model;
 
-// COCO class names for YOLOv8 (80 classes)
+// Tech/Interview-relevant classes only (filter out animals, food, etc.)
+const RELEVANT_CLASSES = [
+  'person',      // Primary: people in interview
+  'cell phone',  // Violation: phone usage
+  'laptop',      // Common: laptop visible
+  'book',        // Allowed: reference materials
+  'tv',          // Background: monitor/screen
+  'mouse',       // Common: computer mouse
+  'keyboard',    // Common: keyboard
+  'remote',      // Potential violation
+  'clock',       // Background item
+  'bottle',      // Allowed: water bottle
+  'cup',         // Allowed: drinks
+  'chair',       // Background
+  'couch',       // Background
+  'bed',         // Background/setting
+  'dining table',// Background
+  'backpack',    // Background
+  'handbag',     // Background
+  'tie',         // Clothing
+  'scissors',    // Office item
+  'vase'         // Background decoration
+];
+
+// Full COCO class names for index mapping (kept for correct class ID mapping)
 const COCO_CLASSES = [
   'person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus', 'train', 'truck', 'boat',
   'traffic light', 'fire hydrant', 'stop sign', 'parking meter', 'bench', 'bird', 'cat',
@@ -22,8 +46,8 @@ self.onmessage = async (e) => {
   if (type === 'load') {
     try {
       await tf.ready();
-      model = await tf.loadGraphModel('/yolov8-tiny/model.json');
-      console.log('✅ YOLOv8 model loaded in worker');
+      model = await tf.loadGraphModel('/yolov8m/model.json');
+      console.log('✅ YOLOv8m model loaded in worker');
       self.postMessage({ type: 'loaded' });
     } catch (err) {
       console.error('❌ YOLO model load error:', err);
@@ -47,7 +71,7 @@ self.onmessage = async (e) => {
       const predArray = await outputTensor.array();
       
       const objects = [];
-      const confidenceThreshold = 0.25; // Detection threshold
+      const confidenceThreshold = 0.8; 
       
       // Output format: [batch, 84, 8400] where 84 = [x, y, w, h, class0...class79]
       const batch = predArray[0]; // Shape: [84, 8400]
@@ -56,7 +80,6 @@ self.onmessage = async (e) => {
         const numPredictions = batch[0].length; // Should be 8400
         
         for (let i = 0; i < numPredictions; i++) {
-          // YOLOv8n-seg format: indices 0-3 = bbox, indices 4-83 = 80 class scores
           let maxScore = 0;
           let classId = 0;
           
@@ -72,7 +95,8 @@ self.onmessage = async (e) => {
           // Only process if confidence meets threshold
           if (maxScore > confidenceThreshold && classId < COCO_CLASSES.length) {
             const className = COCO_CLASSES[classId];
-            if (!objects.includes(className)) {
+            // Only include tech/interview-relevant classes
+            if (RELEVANT_CLASSES.includes(className) && !objects.includes(className)) {
               objects.push(className);
             }
           }

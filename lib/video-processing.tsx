@@ -1,355 +1,468 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import * as tf from "@tensorflow/tfjs";
-import * as cocoSsd from "@tensorflow-models/coco-ssd";
-import * as faceLandmarksDetection from "@tensorflow-models/face-landmarks-detection";
+import * as faceapi from "face-api.js";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, Camera as CameraIcon } from "lucide-react";
-
-// Declare global MediaPipe types
-declare global {
-  interface Window {
-    Holistic: any;
-    Camera: any;
-  }
-}
 
 export default function VideoProcessing() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [cameraStatus, setCameraStatus] = useState<"idle" | "requesting" | "granted" | "denied">("idle");
+
+  const workerRef = useRef<Worker | null>(null);
+  const cameraRef = useRef<any>(null);
+  const holisticRef = useRef<any>(null);
+  const hasUsedCameraRef = useRef<boolean>(false); // Track if camera was used before
+
+  const [moodLogs, setMoodLogs] = useState<any[]>([]);
+  const [violationLogs, setViolationLogs] = useState<any[]>([]);
+  const [cameraStatus, setCameraStatus] = useState<
+    "idle" | "requesting" | "granted" | "denied" | "initializing"
+  >("idle");
   const [error, setError] = useState<string>("");
   const [mediapipeLoaded, setMediapipeLoaded] = useState(false);
-  const [detectionLogs, setDetectionLogs] = useState<any[]>([]);
-  const streamRef = useRef<MediaStream | null>(null);
-  const animationFrameRef = useRef<number | null>(null);
+  const [isInitializing, setIsInitializing] = useState(false);
+
+  // Histories for smoothing
+  const moodHistory = useRef<string[]>([]);
+  const gestureHistory = useRef<string[]>([]);
+  const objectsHistory = useRef<string[][]>([]);
+
+  // Last logged values
+  const lastMood = useRef<string | null>(null);
+  const lastGesture = useRef<string | null>(null);
+  const lastObjects = useRef<string[]>([]);
+  const lastLogTime = useRef<number>(0);
+
+  // Duration tracking for threshold violations (only log if sustained)
+  const violationStartTime = useRef<{
+    mood: number | null;
+    gesture: number | null;
+    objects: number | null;
+  }>({
+    mood: null,
+    gesture: null,
+    objects: null,
+  });
+
+  // Last logged non-neutral states (to detect actual changes)
+  const lastLoggedMood = useRef<string | null>(null);
+  const lastLoggedGesture = useRef<string | null>(null);
+  const lastLoggedObjects = useRef<string[]>([]);
+
+  // Duration thresholds in milliseconds
+  const MOOD_DURATION_THRESHOLD = 1000; // 1 second for mood
+  const VIOLATION_DURATION_THRESHOLD = 3000; // 3 seconds for violations
+
+  // Counters for throttling
+  const frameCount = useRef<number>(0);
+  const lastFaceCheck = useRef<number>(0);
+
+  // Load logs from localStorage on mount
+  useEffect(() => {
+    try {
+      const savedMoodLogs = localStorage.getItem("calibr_mood_logs");
+      const savedViolationLogs = localStorage.getItem("calibr_violation_logs");
+
+      if (savedMoodLogs) {
+        setMoodLogs(JSON.parse(savedMoodLogs));
+      }
+      if (savedViolationLogs) {
+        setViolationLogs(JSON.parse(savedViolationLogs));
+      }
+    } catch (err) {
+      console.error("Error loading logs from localStorage:", err);
+    }
+  }, []);
+
+  // Save logs to localStorage whenever they change
+  useEffect(() => {
+    try {
+      localStorage.setItem("calibr_mood_logs", JSON.stringify(moodLogs));
+    } catch (err) {
+      console.error("Error saving mood logs to localStorage:", err);
+    }
+  }, [moodLogs]);
 
   useEffect(() => {
-    // Load MediaPipe scripts from CDN
-    const loadMediaPipeScripts = () => {
-      if (typeof window !== 'undefined' && !window.Holistic) {
-        // Load Holistic
-        const holisticScript = document.createElement('script');
-        holisticScript.src = 'https://cdn.jsdelivr.net/npm/@mediapipe/holistic/holistic.js';
-        holisticScript.crossOrigin = 'anonymous';
-        
-        // Load Camera Utils
-        const cameraScript = document.createElement('script');
-        cameraScript.src = 'https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js';
-        cameraScript.crossOrigin = 'anonymous';
+    try {
+      localStorage.setItem(
+        "calibr_violation_logs",
+        JSON.stringify(violationLogs)
+      );
+    } catch (err) {
+      console.error("Error saving violation logs to localStorage:", err);
+    }
+  }, [violationLogs]);
 
-        cameraScript.onload = () => {
-          console.log("✅ MediaPipe scripts loaded");
-          setMediapipeLoaded(true);
-        };
+  /** Utility: load external scripts safely */
+  const loadScript = (src: string) =>
+    new Promise<void>((resolve, reject) => {
+      if (document.querySelector(`script[src="${src}"]`)) return resolve();
+      const s = document.createElement("script");
+      s.src = src;
+      s.crossOrigin = "anonymous";
+      s.onload = () => resolve();
+      s.onerror = () => reject(new Error(`Failed to load ${src}`));
+      document.body.appendChild(s);
+    });
 
-        document.body.appendChild(holisticScript);
-        document.body.appendChild(cameraScript);
-      } else if (window.Holistic) {
-        setMediapipeLoaded(true);
+  /** Smooth detection outputs */
+  const smoothDetection = (
+    newValue: string | string[],
+    historyRef: any,
+    maxLength = 5
+  ) => {
+    const history = historyRef.current;
+    history.push(newValue);
+    if (history.length > maxLength) history.shift();
+
+    if (Array.isArray(newValue)) {
+      // Objects: majority vote
+      const flat = history.flat();
+      const count: Record<string, number> = {};
+      flat.forEach((obj: string) => (count[obj] = (count[obj] || 0) + 1));
+      return Object.keys(count).filter(
+        (key) => count[key] >= Math.floor(maxLength / 2)
+      );
+    } else {
+      // Mood/Gaze/Gesture: most frequent
+      const count: Record<string, number> = {};
+      history.forEach((v: string) => (count[v] = (count[v] || 0) + 1));
+      return Object.keys(count).reduce((a, b) => (count[a] > count[b] ? a : b));
+    }
+  };
+
+  /** Compare arrays safely */
+  const arraysEqual = (a: string[] = [], b: string[] = []) =>
+    [...a].sort().join(",") === [...b].sort().join(",");
+
+  /** Log updates only when violations persist for threshold duration */
+  const updateLog = (updates: any) => {
+    const now = Date.now();
+
+    // Update internal state tracking
+    if (updates.mood) lastMood.current = updates.mood;
+    if (updates.gesture) lastGesture.current = updates.gesture;
+    if (updates.objects) lastObjects.current = updates.objects;
+
+    // === MOOD LOGGING (Separate - not a violation) ===
+    const currentMood =
+      lastMood.current !== "neutral" ? lastMood.current : null;
+
+    // Track when mood starts (or reset if neutral)
+    if (currentMood) {
+      if (violationStartTime.current.mood === null) {
+        violationStartTime.current.mood = now;
       }
+    } else {
+      violationStartTime.current.mood = null;
+    }
+
+    // Check if mood has persisted long enough (1 second)
+    const moodPersisted =
+      currentMood &&
+      violationStartTime.current.mood &&
+      now - violationStartTime.current.mood >= MOOD_DURATION_THRESHOLD;
+
+    // Check if mood actually CHANGED from last logged mood
+    const moodChanged = moodPersisted && currentMood !== lastLoggedMood.current;
+
+    if (moodChanged) {
+      const moodLog = {
+        time: new Date().toLocaleTimeString(),
+        timestamp: new Date().toISOString(),
+        mood: currentMood,
+      };
+      console.log("😊 Mood Change (sustained 1s+):", moodLog);
+
+      setMoodLogs((prev) => {
+        const next = [...prev, moodLog];
+        if (next.length > 500) next.shift(); // cap at 500
+        return next;
+      });
+
+      lastLoggedMood.current = currentMood;
+    }
+
+    // === VIOLATION LOGGING (Gesture + Objects only) ===
+    const currentGesture =
+      lastGesture.current !== "facing_forward" ? lastGesture.current : null;
+
+    // Filter out normal single person detection (the test-taker themselves)
+    const rawObjects = lastObjects.current || [];
+    const currentObjects = rawObjects.filter((obj) => {
+      // Allow single "person" (test-taker), but flag if multiple people
+      if (obj === "person") {
+        const personCount = rawObjects.filter((o) => o === "person").length;
+        return personCount > 1; // Only flag if 2+ people detected
+      }
+      return true; // Keep all other objects
+    });
+
+    // Track when violations start (or reset if they stop)
+    if (currentGesture) {
+      if (violationStartTime.current.gesture === null) {
+        violationStartTime.current.gesture = now;
+      }
+    } else {
+      violationStartTime.current.gesture = null;
+    }
+
+    if (currentObjects.length > 0) {
+      if (violationStartTime.current.objects === null) {
+        violationStartTime.current.objects = now;
+      }
+    } else {
+      violationStartTime.current.objects = null;
+    }
+
+    // Check if violations have persisted long enough
+    const gesturePersisted =
+      currentGesture &&
+      violationStartTime.current.gesture &&
+      now - violationStartTime.current.gesture >= VIOLATION_DURATION_THRESHOLD;
+    const objectsPersisted =
+      currentObjects.length > 0 &&
+      violationStartTime.current.objects &&
+      now - violationStartTime.current.objects >= VIOLATION_DURATION_THRESHOLD;
+
+    // Check if any violation state actually CHANGED from last log
+    const gestureChanged =
+      gesturePersisted && currentGesture !== lastLoggedGesture.current;
+    const objectsChanged =
+      objectsPersisted &&
+      !arraysEqual(currentObjects, lastLoggedObjects.current);
+
+    const violationChanged = gestureChanged || objectsChanged;
+
+    if (violationChanged && now - lastLogTime.current > 1000) {
+      // Build violation log object
+      const violationLog: any = {
+        time: new Date().toLocaleTimeString(),
+        timestamp: new Date().toISOString(),
+      };
+
+      if (gesturePersisted && currentGesture)
+        violationLog.gesture = currentGesture;
+      if (objectsPersisted && currentObjects.length > 0)
+        violationLog.objects = currentObjects;
+
+      // Only log if there's at least one violation field
+      if (Object.keys(violationLog).length > 2) {
+        // More than just time and timestamp
+        console.log("🚨 Violation (sustained 3s+):", violationLog);
+
+        setViolationLogs((prev) => {
+          const next = [...prev, violationLog];
+          if (next.length > 500) next.shift(); // cap at 500 logs
+          return next;
+        });
+
+        // Update last logged states
+        if (gesturePersisted) lastLoggedGesture.current = currentGesture;
+        if (objectsPersisted) lastLoggedObjects.current = currentObjects;
+        lastLogTime.current = now;
+      }
+    }
+  };
+
+  /** Load models + scripts once */
+  useEffect(() => {
+    // Suppress verbose MediaPipe console spam
+    const originalWarn = console.warn;
+    const originalLog = console.log;
+    const originalError = console.error;
+
+    // Filter function for MediaPipe noise
+    const isMediaPipeNoise = (...args: any[]) => {
+      const msg = args.join(" ");
+      // Suppress WASM binary logs (single ")" or very short messages from WASM)
+      if (args.length === 1 && typeof args[0] === "string" && args[0].trim() === ")") {
+        return true;
+      }
+      return (
+        msg.includes("dependency:") ||
+        msg.includes("still waiting on run dependencies") ||
+        msg.includes("(end of list)") ||
+        msg.includes("Calculator::Open()") ||
+        msg.includes("Calculator::Process()") ||
+        msg.includes("Failed to read file third_party/mediapipe") ||
+        msg.includes("third_party/mediapipe") ||
+        msg.includes("holistic_solution_packed_assets") ||
+        msg.includes("Cannot read properties of undefined") ||
+        msg.includes("fetchRemotePackage") ||
+        msg.includes("loadPackage") ||
+        msg.includes("XMLHttpRequest") ||
+        msg.includes("Source Location Trace") ||
+        msg.includes("Stack trace:") ||
+        msg.includes("Check failure stack trace") ||
+        msg.includes("Aborted(") ||
+        msg.includes("calculator_node.cc") ||
+        msg.includes("inference_calculator") ||
+        msg.includes("image_to_tensor") ||
+        msg.includes("ImageToTensorCalculator") ||
+        msg.includes("RET_CHECK failure") ||
+        msg.includes("roi->width") ||
+        msg.includes("roi->height") ||
+        msg.includes("ROI width and height") ||
+        msg.includes("type.googleapis.com/mediapipe") ||
+        msg.includes("resource_util_emscripten") ||
+        msg.includes("tflite_model_loader") ||
+        msg.includes("solutions_wasm.embind") ||
+        msg.includes("holistic_solution_simd_wasm_bin") ||
+        msg.includes("holisticlandmarkgpu") ||
+        msg.includes("poselandmarkgpu") ||
+        msg.includes("put_char") ||
+        msg.includes("write @") ||
+        msg.includes("doWritev") ||
+        msg.includes("_fd_write") ||
+        msg.includes("EEXIST") ||
+        msg.includes("ErrnoError") ||
+        msg.includes("File exists") ||
+        msg.includes("memory access out of bounds") ||
+        msg.includes("RuntimeError") ||
+        msg.includes("Frame send error") ||
+        msg.includes("E0000 00:00:") ||
+        msg.includes("I0000 00:00:") ||
+        msg.includes("W0000 00:00:") ||
+        msg.includes("F0000 00:00:")
+      );
     };
 
-    loadMediaPipeScripts();
+    console.warn = (...args) => {
+      if (isMediaPipeNoise(...args)) return;
+      originalWarn.apply(console, args);
+    };
 
-    // Cleanup function
-    return () => {
-      if (videoRef.current && videoRef.current.srcObject) {
-        const stream = videoRef.current.srcObject as MediaStream;
-        stream.getTracks().forEach(track => track.stop());
+    console.log = (...args) => {
+      if (isMediaPipeNoise(...args)) return;
+      originalLog.apply(console, args);
+    };
+
+    console.error = (...args) => {
+      if (isMediaPipeNoise(...args)) return;
+      originalError.apply(console, args);
+    };
+
+    const init = async () => {
+      try {
+        // Load face-api.js models
+        await faceapi.nets.tinyFaceDetector.loadFromUri("/face-api/");
+        await faceapi.nets.faceExpressionNet.loadFromUri("/face-api/");
+        console.log("✅ face-api.js models loaded");
+
+        // Load MediaPipe scripts (removed deprecated iris.js)
+        const scripts = [
+          "https://cdn.jsdelivr.net/npm/@mediapipe/holistic/holistic.js",
+          "https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js",
+        ];
+        await Promise.all(scripts.map(loadScript));
+        console.log("✅ MediaPipe scripts loaded");
+
+        // Don't initialize Holistic here - do it per session in startDetection
+        setMediapipeLoaded(true);
+
+        // Init YOLO worker
+        workerRef.current = new Worker(
+          new URL("../workers/yolo.worker.js", import.meta.url)
+        );
+        workerRef.current.onmessage = (e) => {
+          if (e.data.type === "result") {
+            updateLog({
+              objects: smoothDetection(e.data.objects, objectsHistory),
+            });
+          }
+        };
+        workerRef.current.postMessage({ type: "load" });
+      } catch (err) {
+        console.error("❌ Initialization failed", err);
       }
+    };
+    init();
+
+    return () => {
+      // Restore original console methods
+      console.warn = originalWarn;
+      console.log = originalLog;
+      console.error = originalError;
+
+      // Cleanup all resources on component unmount only
+      (async () => {
+        if (cameraRef.current) {
+          try {
+            await cameraRef.current.stop();
+          } catch (err) {
+            console.warn("Cleanup camera error:", err);
+          }
+          cameraRef.current = null;
+        }
+        
+        // Close Holistic on unmount
+        if (holisticRef.current) {
+          try {
+            await holisticRef.current.close();
+            console.log("🧹 Holistic closed (component unmounted)");
+          } catch (err) {
+            console.warn("Cleanup holistic error:", err);
+          }
+          holisticRef.current = null;
+        }
+      })();
+
+      workerRef.current?.terminate();
+      
+      const tracks = (videoRef.current?.srcObject as MediaStream)?.getTracks();
+      tracks?.forEach((track) => track.stop());
     };
   }, []);
 
-  const handleStartDetection = async () => {
-    setCameraStatus("requesting");
+  /** Start detection */
+  const startDetection = async () => {
+    // If camera was used before, force a page refresh for reliability
+    if (hasUsedCameraRef.current) {
+      window.location.reload();
+      return;
+    }
+
+    if (!videoRef.current) {
+      console.error("Video element not ready");
+      return;
+    }
+
+    setIsInitializing(true);
+    setCameraStatus("initializing");
     setError("");
 
-    try {
-      console.log("🎬 Starting detection...");
-      
-      // Request camera access first
-      console.log("📷 Requesting camera access...");
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      streamRef.current = stream; // Store stream reference for cleanup
-      console.log("✅ Camera access granted");
-      
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        console.log("📹 Video stream attached");
-        
-        // Wait for video to actually start playing
-        await new Promise<void>((resolve, reject) => {
-          const timeout = setTimeout(() => {
-            reject(new Error("Video metadata load timeout"));
-          }, 5000);
-          
-          videoRef.current!.onloadedmetadata = async () => {
-            clearTimeout(timeout);
-            console.log("📊 Video metadata loaded");
-            try {
-              await videoRef.current!.play();
-              console.log("▶️ Video playing, readyState:", videoRef.current!.readyState);
-              // Give it a moment to stabilize
-              setTimeout(resolve, 500);
-            } catch (err) {
-              console.error("❌ Video play error:", err);
-              reject(err);
-            }
-          };
-        });
-      } else {
-        throw new Error("Video ref is null");
+    // Clean up previous instances
+    if (cameraRef.current) {
+      try {
+        cameraRef.current.stop();
+        cameraRef.current = null;
+      } catch (err) {
+        console.warn("Previous camera cleanup:", err);
       }
+    }
 
-      console.log("🔄 Initializing TensorFlow...");
-      // Initialize TensorFlow.js backend
-      await tf.ready();
-      console.log("✅ TensorFlow backend initialized:", tf.getBackend());
+    if (holisticRef.current) {
+      try {
+        await holisticRef.current.close();
+        holisticRef.current = null;
+      } catch (err) {
+        console.warn("Previous holistic cleanup:", err);
+      }
+    }
 
-      // Initialize variables for detection
-      let objectModel: cocoSsd.ObjectDetection;
-      let emotionModel: faceLandmarksDetection.FaceLandmarksDetector;
-      let holistic: any = null;
+    setCameraStatus("requesting");
 
-      // Track last state for "on-change" logging
-      let lastMood: string | null = null;
-      let lastGesture: string | null = null;
-      let lastGaze: string | null = null;
-      let lastObjects: string[] = [];
-      let lastLogTime = 0; // Track last log timestamp
-
-      // Load AI models
-      const loadModels = async () => {
-        objectModel = await cocoSsd.load();
-        emotionModel = await faceLandmarksDetection.createDetector(
-          faceLandmarksDetection.SupportedModels.MediaPipeFaceMesh,
-          { runtime: "tfjs", refineLandmarks: true }
-        );
-        console.log("✅ Models loaded");
-      };
-
-      // Setup MediaPipe Holistic
-      const setupHolistic = async () => {
-        // Wait for MediaPipe to be available
-        if (!window.Holistic || !window.Camera) {
-          throw new Error("MediaPipe scripts not loaded yet");
-        }
-
-        console.log("🔧 Initializing MediaPipe Holistic...");
-        
-        // Setup MediaPipe Holistic using global window objects
-        holistic = new window.Holistic({
-          locateFile: (file: string) => {
-            const url = `https://cdn.jsdelivr.net/npm/@mediapipe/holistic/${file}`;
-            console.log(`📦 Loading: ${file}`);
-            return url;
-          },
-        });
-
-        console.log("⚙️ Configuring Holistic options...");
-        holistic.setOptions({
-          modelComplexity: 1,
-          smoothLandmarks: true,
-          minDetectionConfidence: 0.5,
-          minTrackingConfidence: 0.5,
-        });
-
-        console.log("📊 Setting up results callback...");
-        holistic.onResults(async (results: any) => {
-          console.log("📹 Frame received from MediaPipe");
-          
-          if (!canvasRef.current) {
-            console.error("❌ Canvas ref is null!");
-            return;
-          }
-          
-          const canvas = canvasRef.current;
-          const ctx = canvas.getContext("2d");
-          
-          if (!ctx) {
-            console.error("❌ Could not get canvas context!");
-            return;
-          }
-          
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
-          
-          if (results.image) {
-            ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
-          } else {
-            console.warn("⚠️ No image in results");
-          }
-
-          let detectedMood: string | null = null;
-          let detectedGesture: string | null = null;
-          let detectedGaze: string | null = null;
-          let detectedObjects: string[] = [];
-
-          // ---------------- MOOD DETECTION (FIXED - Use results.image) ----------------
-          try {
-            if (emotionModel && results.image) {
-              const faces = await emotionModel.estimateFaces(results.image);
-              
-              if (faces.length > 0) {
-                const face = faces[0];
-                const mouthTop = face.keypoints.find((p: any) => p.name === "lipsUpperInner");
-                const mouthBottom = face.keypoints.find((p: any) => p.name === "lipsLowerInner");
-                
-                if (mouthTop && mouthBottom) {
-                  const mouthGap = Math.abs(mouthTop.y - mouthBottom.y);
-                  
-                  // Adjusted threshold and check mouth corners for better smile detection
-                  const leftMouthCorner = face.keypoints.find((p: any) => p.name === "leftMouthCorner");
-                  const rightMouthCorner = face.keypoints.find((p: any) => p.name === "rightMouthCorner");
-                  
-                  // Check if mouth is open (gap > 15) OR mouth corners are raised (smile)
-                  const isSmiling = mouthGap > 15;
-                  let isMouthCornersRaised = false;
-                  
-                  if (leftMouthCorner && rightMouthCorner && mouthTop) {
-                    const avgCornerY = (leftMouthCorner.y + rightMouthCorner.y) / 2;
-                    isMouthCornersRaised = mouthTop.y > avgCornerY + 5;
-                  }
-                  
-                  detectedMood = (isSmiling || isMouthCornersRaised) ? "happy" : "neutral";
-                }
-              }
-            }
-          } catch (err) {
-            console.error("❌ Mood detection error:", err);
-          }
-
-          // ---------------- GESTURE DETECTION ----------------
-          if (results.faceLandmarks) {
-            const nose = results.faceLandmarks[1]; // nose tip
-            if (nose.x < 0.3 || nose.x > 0.7) {
-              detectedGesture = "looking_away";
-            } else {
-              detectedGesture = "looking_forward";
-            }
-          }
-
-          // ---------------- GAZE DETECTION ----------------
-          if (results.faceLandmarks) {
-            const leftEyeInner = results.faceLandmarks[133];
-            const leftEyeOuter = results.faceLandmarks[33];
-            const leftEyeTop = results.faceLandmarks[159];
-            const leftEyeBottom = results.faceLandmarks[145];
-
-            if (leftEyeInner && leftEyeOuter && leftEyeTop && leftEyeBottom) {
-              const eyeCenterX = (leftEyeInner.x + leftEyeOuter.x) / 2;
-              const eyeCenterY = (leftEyeTop.y + leftEyeBottom.y) / 2;
-
-              if (eyeCenterX < 0.45) detectedGaze = "looking_left";
-              else if (eyeCenterX > 0.55) detectedGaze = "looking_right";
-              else if (eyeCenterY < 0.45) detectedGaze = "looking_up";
-              else if (eyeCenterY > 0.55) detectedGaze = "looking_down";
-              else detectedGaze = "looking_center";
-            }
-          }
-
-          // ---------------- OBJECT DETECTION (FIXED - Use results.image) ----------------
-          try {
-            if (objectModel && results.image) {
-              const preds = await objectModel.detect(results.image);
-              detectedObjects = preds.map((p: any) => p.class);
-            }
-          } catch (err) {
-            console.error("❌ Object detection error:", err);
-          }
-
-          // ---------------- ON CHANGE LOGGING (Throttled to 1Hz - once per second) ----------------
-          const moodChanged = detectedMood !== lastMood;
-          const gestureChanged = detectedGesture !== lastGesture;
-          const gazeChanged = detectedGaze !== lastGaze;
-          const objectsChanged =
-            detectedObjects.sort().join(",") !== lastObjects.sort().join(",");
-
-          const now = Date.now();
-          const timeSinceLastLog = now - lastLogTime;
-
-          // Log only if something changed AND at least 1000ms (1 second) have passed
-          if ((moodChanged || gestureChanged || gazeChanged || objectsChanged) && timeSinceLastLog >= 1000) {
-            const eventLog = {
-              time: new Date().toLocaleTimeString(),
-              timestamp: new Date().toISOString(),
-              mood: detectedMood,
-              gesture: detectedGesture,
-              gaze: detectedGaze,
-              objects: detectedObjects,
-            };
-            console.log("📊 Event:", eventLog);
-            
-            // Add to logs state
-            setDetectionLogs(prev => [...prev, eventLog]);
-
-            // Update last known states
-            lastMood = detectedMood;
-            lastGesture = detectedGesture;
-            lastGaze = detectedGaze;
-            lastObjects = detectedObjects;
-            lastLogTime = now;
-          }
-        });
-
-        // Start sending frames to holistic manually
-        console.log("🎥 Starting frame capture...");
-        
-        // Initialize holistic first
-        await holistic.initialize();
-        console.log("✅ Holistic initialized");
-        
-        // Wait for video to be fully ready
-        console.log("⏳ Waiting for video to be ready...");
-        await new Promise<void>((resolve) => {
-          const checkReady = () => {
-            if (videoRef.current && videoRef.current.readyState >= 3) {
-              console.log("✅ Video is ready! readyState:", videoRef.current.readyState);
-              resolve();
-            } else {
-              console.log("⏳ Video readyState:", videoRef.current?.readyState);
-              setTimeout(checkReady, 100);
-            }
-          };
-          checkReady();
-        });
-        
-        let frameCount = 0;
-        const sendFrame = async () => {
-          if (videoRef.current && videoRef.current.readyState >= 3) {
-            frameCount++;
-            if (frameCount % 60 === 0) {
-              console.log(`📤 Sent ${frameCount} frames to holistic`);
-            }
-            try {
-              await holistic.send({ image: videoRef.current });
-            } catch (err) {
-              console.error("❌ Frame send error:", err);
-            }
-          }
-          animationFrameRef.current = requestAnimationFrame(sendFrame);
-        };
-        
-        sendFrame();
-        console.log("✅ Frame capture started");
-      };
-
-      // Start the detection pipeline
-      console.log("📦 Loading AI models...");
-      await loadModels();
-      console.log("🔧 Setting up MediaPipe Holistic...");
-      await setupHolistic();
-
-      // Everything is ready, update status
-      setCameraStatus("granted");
-      console.log("🎉 Detection started successfully - updating UI to show video");
-
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { width: 640, height: 480 },
+      });
+      videoRef.current.srcObject = stream;
+      await videoRef.current.play();
     } catch (err: any) {
-      console.error("❌ FATAL ERROR in handleStartDetection:", err);
-      console.error("Error name:", err.name);
-      console.error("Error message:", err.message);
-      console.error("Stack trace:", err.stack);
-      
+      console.error("Camera access denied", err);
+      setIsInitializing(false);
       setCameraStatus("denied");
       if (err.name === "NotAllowedError") {
         setError("Camera permission denied. Please allow camera access.");
@@ -358,32 +471,154 @@ export default function VideoProcessing() {
       } else {
         setError(`Error: ${err.message || "Unknown error occurred"}`);
       }
+      return;
+    }
+
+    try {
+      // Create Holistic instance
+      holisticRef.current = new (window as any).Holistic({
+        locateFile: (file: string) =>
+          `https://cdn.jsdelivr.net/npm/@mediapipe/holistic/${file}`,
+      });
+      holisticRef.current.setOptions({
+        modelComplexity: 1,
+        smoothLandmarks: true,
+      });
+
+      holisticRef.current.onResults(async (results: any) => {
+        frameCount.current++;
+        const now = Date.now();
+
+        /** Mood (every 1s) */
+        let mood: string | null = null;
+        if (now - lastFaceCheck.current > 1000) {
+          lastFaceCheck.current = now;
+          try {
+            const detections = await faceapi
+              .detectSingleFace(
+                videoRef.current!,
+                new faceapi.TinyFaceDetectorOptions()
+              )
+              .withFaceExpressions();
+            
+            const rawMood = detections?.expressions
+              ? Object.entries(detections.expressions).sort(
+                  (a, b) => b[1] - a[1]
+                )[0][0]
+              : null;
+            if (rawMood) mood = smoothDetection(rawMood, moodHistory) as string;
+          } catch (err) {
+            console.error("face-api detection error", err);
+          }
+        }
+
+        /** Gesture */
+        let gesture: string | null = null;
+        if (results.poseLandmarks) {
+          const leftShoulder = results.poseLandmarks[11];
+          const rightShoulder = results.poseLandmarks[12];
+          const nose = results.faceLandmarks?.[1];
+          if (nose && leftShoulder && rightShoulder) {
+            const midX = (leftShoulder.x + rightShoulder.x) / 2;
+            const rawGesture =
+              nose.x < midX - 0.05
+                ? "turned_left"
+                : nose.x > midX + 0.05
+                ? "turned_right"
+                : "facing_forward";
+            gesture = smoothDetection(rawGesture, gestureHistory) as string;
+          }
+        }
+
+        updateLog({ mood, gesture });
+
+        /** Objects every 10 frames */
+        if (
+          workerRef.current &&
+          videoRef.current &&
+          frameCount.current % 10 === 0 &&
+          videoRef.current.readyState >= 2
+        ) {
+          try {
+            if (
+              videoRef.current.readyState >= 2 &&
+              !videoRef.current.paused &&
+              !videoRef.current.ended
+            ) {
+              const bitmap = await createImageBitmap(videoRef.current);
+              workerRef.current.postMessage(
+                { type: "detect", imageBitmap: bitmap },
+                [bitmap]
+              );
+            }
+          } catch {
+            // Ignore frame processing errors
+          }
+        }
+      });
+
+      cameraRef.current = new (window as any).Camera(videoRef.current, {
+        onFrame: async () => {
+          if (
+            !holisticRef.current ||
+            !videoRef.current ||
+            !videoRef.current.srcObject ||
+            videoRef.current.readyState < 2
+          ) {
+            return;
+          }
+          
+          try {
+            await holisticRef.current.send({ image: videoRef.current });
+          } catch {
+            // Silently ignore WASM errors
+          }
+        },
+      });
+      cameraRef.current.start();
+
+      // Mark camera as used and ready
+      hasUsedCameraRef.current = true;
+      setIsInitializing(false);
+      setCameraStatus("granted");
+    } catch (err: any) {
+      console.error("Error starting MediaPipe holistic", err);
+      setIsInitializing(false);
+      setCameraStatus("denied");
+      setError(`Error: ${err.message || "Unknown error occurred"}`);
     }
   };
 
   const handleStopCamera = () => {
-    console.log("🛑 Stopping camera...");
-    
-    // Stop video stream
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => {
-        track.stop();
-        console.log("🔴 Stopped track:", track.kind);
-      });
-      streamRef.current = null;
+    setCameraStatus("idle");
+
+    // Stop camera
+    if (cameraRef.current) {
+      try {
+        cameraRef.current.stop();
+      } catch (err) {
+        console.warn("Camera stop warning:", err);
+      }
+      cameraRef.current = null;
     }
-    
-    // Cancel animation frame
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current);
-      animationFrameRef.current = null;
-    }
-    
-    // Clear video source
-    if (videoRef.current) {
+
+    // Stop video stream tracks
+    if (videoRef.current?.srcObject) {
+      const tracks = (videoRef.current.srcObject as MediaStream).getTracks();
+      tracks.forEach((track) => track.stop());
       videoRef.current.srcObject = null;
     }
-    
+
+    // Close Holistic instance
+    if (holisticRef.current) {
+      try {
+        holisticRef.current.close();
+        holisticRef.current = null;
+      } catch (err) {
+        console.warn("Holistic close warning:", err);
+      }
+    }
+
     // Clear canvas
     if (canvasRef.current) {
       const ctx = canvasRef.current.getContext("2d");
@@ -391,65 +626,38 @@ export default function VideoProcessing() {
         ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
       }
     }
-    
-    setCameraStatus("idle");
-    console.log("✅ Camera stopped");
-  };
 
-  const downloadLogs = () => {
-    const dataStr = JSON.stringify(detectionLogs, null, 2);
-    const dataBlob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(dataBlob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `detection-logs-${new Date().toISOString().replace(/:/g, '-')}.json`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    console.log(`📥 Downloaded ${detectionLogs.length} detection events`);
+    // Reset frame counter
+    frameCount.current = 0;
+    lastFaceCheck.current = 0;
   };
 
   return (
     <div className="flex flex-col items-center gap-4">
-      {/* Always render video and canvas, but hide them until ready */}
+      {/* Show video directly - smooth and hardware-accelerated */}
       <div className={`relative ${cameraStatus === "granted" ? "" : "hidden"}`}>
-        <video 
-          ref={videoRef} 
-          autoPlay 
-          muted 
-          playsInline 
-          width="640" 
-          height="480" 
-          className="rounded-lg hidden"
-        />
-        <canvas 
-          ref={canvasRef} 
-          width="640" 
-          height="480" 
+        <video
+          ref={videoRef}
+          autoPlay
+          muted
+          playsInline
+          width="640"
+          height="480"
           className="rounded-lg border border-white/20"
         />
+        {/* Canvas hidden - only used internally for processing if needed */}
+        <canvas ref={canvasRef} width="640" height="480" className="hidden" />
       </div>
 
       {/* Control buttons when camera is active */}
       {cameraStatus === "granted" && (
-        <div className="flex gap-3">
-          <Button
-            onClick={handleStopCamera}
-            variant="destructive"
-            className="bg-red-600 hover:bg-red-700"
-          >
-            Stop Camera
-          </Button>
-          <Button
-            onClick={downloadLogs}
-            variant="outline"
-            className="border-violet-500/30 text-violet-300 hover:bg-violet-600/20"
-            disabled={detectionLogs.length === 0}
-          >
-            Download Logs ({detectionLogs.length})
-          </Button>
-        </div>
+        <Button
+          onClick={handleStopCamera}
+          variant="destructive"
+          className="bg-red-600 hover:bg-red-700"
+        >
+          Stop Camera
+        </Button>
       )}
 
       {!mediapipeLoaded && (
@@ -463,13 +671,15 @@ export default function VideoProcessing() {
         <div className="text-center space-y-4 p-8 bg-white/5 rounded-lg border border-white/10">
           <CameraIcon className="h-16 w-16 mx-auto text-violet-400" />
           <div>
-            <h3 className="text-white font-semibold mb-2">Camera Access Required</h3>
+            <h3 className="text-white font-semibold mb-2">
+              Camera Access Required
+            </h3>
             <p className="text-white/70 text-sm mb-4">
               Click the button below to start video detection
             </p>
           </div>
           <Button
-            onClick={handleStartDetection}
+            onClick={startDetection}
             className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700"
           >
             <CameraIcon className="h-4 w-4 mr-2" />
@@ -485,18 +695,31 @@ export default function VideoProcessing() {
         </div>
       )}
 
+      {(cameraStatus === "initializing" || isInitializing) && (
+        <div className="text-center space-y-4 p-8 bg-purple-600/10 rounded-lg border border-purple-500/30">
+          <div className="animate-spin h-12 w-12 mx-auto border-4 border-purple-500 border-t-transparent rounded-full" />
+          <p className="text-purple-300">Initializing AI models...</p>
+          <p className="text-purple-200/60 text-xs">
+            Please wait while we set up the detection system
+          </p>
+        </div>
+      )}
+
       {cameraStatus === "denied" && (
         <div className="text-center space-y-4 p-8 bg-red-600/10 rounded-lg border border-red-500/30">
           <AlertCircle className="h-16 w-16 mx-auto text-red-400" />
           <div>
-            <h3 className="text-red-300 font-semibold mb-2">Camera Access Denied</h3>
+            <h3 className="text-red-300 font-semibold mb-2">
+              Camera Access Denied
+            </h3>
             <p className="text-red-200/70 text-sm mb-4">{error}</p>
             <p className="text-red-200/70 text-xs">
-              Please enable camera permissions in your browser settings and refresh the page.
+              Please enable camera permissions in your browser settings and
+              refresh the page.
             </p>
           </div>
           <Button
-            onClick={handleStartDetection}
+            onClick={startDetection}
             variant="outline"
             className="border-red-500/30 text-red-300 hover:bg-red-600/20"
           >

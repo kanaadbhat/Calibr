@@ -49,3 +49,7 @@ next-env.d.ts
 
 backend-services/
 **/aptitude_questions.json
+
+# AI models (large files)
+/public/yolov8m/
+/public/face-api/
