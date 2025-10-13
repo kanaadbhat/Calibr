@@ -3,7 +3,6 @@
 import ResumeModel, { Resume } from "@/models/resume.model";
 import Profile from "@/models/candidateProfile.model";
 import { validateSession, validateResume, updateCandidateProfileWithResume } from "../lib/validation";
-import { S3Operations } from "@/lib/s3Service";
 import { 
   withDatabase, 
   createErrorResponse, 
@@ -13,7 +12,7 @@ import {
   logSuccess
 } from "@/utils/action-helpers";
 
-// Get all resumes for a candidate from Resume model
+// Get all resumes for a candidate from Resume model (only those in profile.resumes array)
 export async function getCandidateResumes(candidateId: string): Promise<{
   success: boolean;
   resumes?: Array<{
@@ -24,19 +23,26 @@ export async function getCandidateResumes(candidateId: string): Promise<{
     size: number;
     key: string;
     isParsed: boolean;
-    version: number;
   }>;
   message: string;
   error?: string;
 }> {
   return safeAction(async () => {
     return await withDatabase(async () => {
+      // Get candidate profile to find which resumes are "active" for this candidate
+      const profile = await Profile.findOne({ candidate: candidateId });
+      
+      if (!profile || !profile.resumes || profile.resumes.length === 0) {
+        return createSuccessResponse("No resumes found for this candidate", { resumes: [] });
+      }
+
+      // Only fetch resumes that are in the profile's resumes array
       const resumes = await ResumeModel.find({
-        candidateId: candidateId,
-        isActive: true
+        _id: { $in: profile.resumes },
+        candidateId: candidateId
       })
       .sort({ uploadedAt: -1 }) // Newest first
-      .select('fileName s3Url s3Key fileSize uploadedAt isParsed version');
+      .select('fileName s3Url s3Key fileSize uploadedAt isParsed');
 
       if (!resumes || resumes.length === 0) {
         return createSuccessResponse("No resumes found for this candidate", { resumes: [] });
@@ -50,7 +56,6 @@ export async function getCandidateResumes(candidateId: string): Promise<{
         size: resume.fileSize,
         key: resume.s3Key,
         isParsed: resume.isParsed,
-        version: resume.version,
       }));
 
       return {
@@ -62,7 +67,7 @@ export async function getCandidateResumes(candidateId: string): Promise<{
   }, "Failed to fetch resumes");
 }
 
-// Delete resume from S3 and database (including all versions)
+// Soft delete resume - only remove from candidate profile (keep in S3 and Resume collection for applications)
 export async function deleteResume(resumeId: string): Promise<{
   success: boolean;
   message: string;
@@ -76,7 +81,7 @@ export async function deleteResume(resumeId: string): Promise<{
     
     return await withDatabase(async () => {
 
-    // Find the resume document to get the originalFileName
+    // Find the resume document
       const resume = await ResumeModel.findOne({
         _id: resumeId,
         candidateId: candidateId
@@ -89,65 +94,26 @@ export async function deleteResume(resumeId: string): Promise<{
         );
       }
 
-      logAction("🗑️", `Deleting all versions of resume: ${resume.originalFileName}`);
+      logAction("🗑️", `Soft deleting resume: ${resume.fileName} (removing from profile only)`);
 
-      // Find ALL versions of this resume (same originalFileName)
-      const allVersions = await ResumeModel.find({
-        candidateId: candidateId,
-        originalFileName: resume.originalFileName
-      });
-
-      if (allVersions.length === 0) {
-        return createErrorResponse("No resume versions found", "Resume versions not found");
-      }
-
-      logAction("📋", `Found ${allVersions.length} versions to delete`);
-
-      // Delete all versions from S3
-      const s3Keys = allVersions.map(version => version.s3Key);
-      await S3Operations.deleteMultipleObjects(s3Keys);
-      logSuccess(`Successfully deleted ${allVersions.length} files from S3`);
-
-      // Get all version IDs for database cleanup
-      const allVersionIds = allVersions.map(version => version._id);
-
-      // Delete ALL versions from database (hard delete)
-      await ResumeModel.deleteMany({
-        candidateId: candidateId,
-        originalFileName: resume.originalFileName
-      });
-
-      logSuccess(`Successfully deleted ${allVersions.length} resume versions from database`);
-
-      // Update candidate profile to remove all resume references and activeResume if needed
+      // Update candidate profile to remove resume reference
       const profile = await Profile.findOne({ candidate: candidateId });
     if (profile) {
-      // Remove all version IDs from resumes array
+      // Remove resume ID from resumes array
       const updatedResumes = profile.resumes.filter(
-        resumeRef => !allVersionIds.some(versionId => (versionId as any).equals(resumeRef))
+        resumeRef => !(resumeRef as any).equals(resumeId)
       );
 
-      // Check if activeResume is one of the deleted versions
+      // Check if this was the active resume
       const needsActiveResumeUpdate = profile.activeResume && 
-        allVersionIds.some(versionId => (versionId as any).equals(profile.activeResume!));
+        (profile.activeResume as any).equals(resumeId);
 
       // Update profile
       const updateData: any = { resumes: updatedResumes };
       if (needsActiveResumeUpdate) {
-        // Set activeResume to the most recent remaining resume, or unset if none
-        if (updatedResumes.length > 0) {
-          const remainingResumes = await ResumeModel.find({
-            _id: { $in: updatedResumes },
-            candidateId: candidateId,
-            isActive: true
-          }).sort({ uploadedAt: -1 });
-          
-          updateData.activeResume = remainingResumes.length > 0 
-            ? remainingResumes[0]._id 
-            : null;
-        } else {
-          updateData.activeResume = null;
-        }
+        // Set the most recent remaining resume as active, or null if no resumes left
+        updateData.activeResume = updatedResumes.length > 0 ? updatedResumes[0] : null;
+        logAction("🔄", "Active resume updated after deletion");
       }
 
         await Profile.findOneAndUpdate(
@@ -155,11 +121,11 @@ export async function deleteResume(resumeId: string): Promise<{
           updateData
         );
 
-        logSuccess("Updated candidate profile after resume deletion");
+        logSuccess("Resume removed from candidate profile");
       }
 
       return createSuccessResponse(
-        `Successfully deleted all versions (${allVersions.length}) of resume: ${resume.originalFileName}`
+        `Resume "${resume.fileName}" has been removed from your profile. Note: This resume will still be visible to employers for jobs you've already applied to.`
       );
     }, "Error deleting resume");
   }, "Failed to delete resume");

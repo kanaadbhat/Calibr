@@ -1,6 +1,6 @@
 "use server";
 
-import { uploadFile, validateFile, UploadConfig } from "@/lib/s3Service";
+import { UploadConfig, S3Service } from "@/lib/s3Service";
 import { parseAndSaveResume } from "./resume-parsing";
 import { requireAuth } from "../lib/validation";
 import { 
@@ -15,10 +15,11 @@ import {
 // Server action for profile image upload
 export async function uploadProfileImage(formData: FormData): Promise<{
   success: boolean;
-  fileUrl?: string;
-  s3Key?: string;
   message?: string;
   error?: string;
+  data?: {
+    fileUrl: string;
+  };
 }> {
   return safeAction(async () => {
     // Check authentication using helper
@@ -34,8 +35,6 @@ export async function uploadProfileImage(formData: FormData): Promise<{
       folderPrefix: 'profile-images',
       allowedFileTypes: ['image/*'],
       maxFileSize: 5 * 1024 * 1024, // 5MB
-      cleanupPrevious: true,
-      generateUniqueFilename: true,
       userId: userId,
       userRole: 'candidate',
       metadata: {
@@ -45,21 +44,37 @@ export async function uploadProfileImage(formData: FormData): Promise<{
     };
 
     // Validate file on server
-    const validation = validateFile(file, profileImageConfig);
+    const validation = S3Service.validate(file, profileImageConfig);
     if (!validation.valid) {
       return createErrorResponse("File validation failed", validation.error);
     }
 
-    // Upload file
-    const uploadResult = await uploadFile(file, profileImageConfig);
+    // Upload new file first (before deleting old ones for safety)
+    const uploadResult = await S3Service.upload(file, profileImageConfig);
     
     if (!uploadResult.success) {
       return createErrorResponse("Upload failed", uploadResult.error);
     }
 
+    // Only delete previous profile images AFTER successful upload
+    // (Only one profile image should exist at a time)
+    try {
+      const prefix = `${profileImageConfig.folderPrefix}/${userId}/`;
+      const allFiles = await S3Service.list(prefix);
+      
+      // Delete all files except the one we just uploaded
+      const filesToDelete = allFiles.filter(key => key !== uploadResult.s3Key);
+      if (filesToDelete.length > 0) {
+        await S3Service.deleteMultiple(filesToDelete);
+      }
+    } catch (error) {
+      console.warn("Error deleting previous profile images:", error);
+      // Upload was successful, so we still return success even if cleanup fails
+    }
+
+    // Only return fileUrl - key is not needed in DB since we use folder-based cleanup
     return createSuccessResponse("Profile image uploaded successfully", {
       fileUrl: uploadResult.fileUrl,
-      s3Key: uploadResult.s3Key,
     });
   }, "Failed to upload profile image");
 }
@@ -101,8 +116,6 @@ export async function uploadResume(formData: FormData): Promise<{
         'text/plain'
       ],
       maxFileSize: 5 * 1024 * 1024, // 5MB
-      cleanupPrevious: false,
-      generateUniqueFilename: false,
       userId: userId,
       userRole: 'candidate',
       metadata: {
@@ -113,7 +126,7 @@ export async function uploadResume(formData: FormData): Promise<{
 
     // Validate file on server
     logAction("🔍", "Validating file...");
-    const validation = validateFile(file, resumeConfig);
+    const validation = S3Service.validate(file, resumeConfig);
     if (!validation.valid) {
       logError(`File validation failed: ${validation.error}`);
       return createErrorResponse("File validation failed", validation.error);
@@ -122,7 +135,7 @@ export async function uploadResume(formData: FormData): Promise<{
 
     // Upload file to S3
     logAction("☁️", "Uploading file to S3...");
-    const uploadResult = await uploadFile(file, resumeConfig);
+    const uploadResult = await S3Service.upload(file, resumeConfig);
     
     if (!uploadResult.success) {
       logError(`S3 upload failed: ${uploadResult.error}`);

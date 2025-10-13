@@ -40,13 +40,13 @@ export function useEmployerProfileImageUpload() {
     try {
       const result = await uploadEmployerProfileImage(formData);
       
-      if (result.success) {
+      if (result.success && result.data?.fileUrl) {
         toast.success(result.message || "Profile image uploaded successfully");
+        return { success: true, fileUrl: result.data.fileUrl };
       } else {
         toast.error(result.error || "Failed to upload image");
+        return { success: false, error: result.error };
       }
-      
-      return result;
     } catch (error) {
       console.error("Error uploading image:", error);
       toast.error("An unexpected error occurred during upload");
@@ -68,13 +68,13 @@ export function useCompanyLogoUpload() {
     try {
       const result = await uploadCompanyLogo(formData);
       
-      if (result.success) {
+      if (result.success && result.data?.fileUrl) {
         toast.success(result.message || "Company logo uploaded successfully");
+        return { success: true, fileUrl: result.data.fileUrl };
       } else {
         toast.error(result.error || "Failed to upload logo");
+        return { success: false, error: result.error };
       }
-      
-      return result;
     } catch (error) {
       console.error("Error uploading logo:", error);
       toast.error("An unexpected error occurred during upload");

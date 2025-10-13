@@ -1,5 +1,14 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'calibr.s3.us-east-1.amazonaws.com',
+        pathname: '/**',
+      },
+    ],
+  },
   headers: async () => ([
     {
       source: '/:path*',
