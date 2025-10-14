@@ -201,10 +201,11 @@ export function useProfileImageUpload() {
       
       toast.dismiss(loadingToastId);
       
-      if (result.success && result.fileUrl) {
+      // The action returns { success, message, data: { fileUrl } }
+      if (result.success && result.data?.fileUrl) {
         toast.dismiss();
         toast.success("Profile image uploaded successfully!");
-        return { success: true, fileUrl: result.fileUrl };
+        return { success: true, fileUrl: result.data.fileUrl };
       } else {
         toast.dismiss();
         toast.error(result.message || "Failed to upload image");

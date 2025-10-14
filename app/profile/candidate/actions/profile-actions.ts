@@ -22,6 +22,7 @@ export async function updateCandidateProfile(
       if (!success) {
         return createErrorResponse("Unauthorized", error);
       }
+      
       // Get or create profile with candidate name
       const candidateDoc = await candidate
         .findById(candidateId)
@@ -32,6 +33,7 @@ export async function updateCandidateProfile(
         : profileData.name;
 
       let profile = await Profile.findOne({ candidate: candidateId });
+      
       if (!profile) {
         // Create basic profile if it doesn't exist
         profile = await Profile.create({
@@ -40,7 +42,6 @@ export async function updateCandidateProfile(
           profileImage: profileData.profileImage,
           resumes: [],
         });
-        console.log("Created new profile:", profile._id);
       }
 
       // Update profile image if provided
@@ -152,13 +153,15 @@ export async function fetchCandidateProfile(
       const name = `${candidateInfo.firstName} ${candidateInfo.lastName}`;
       const profile = await Profile.findOne({ candidate: candidateId }).lean();
 
-      // Fetch resume data from Resume collection
-      const resumes = await ResumeModel.find({
-        candidateId: candidateId,
-        isActive: true
-      })
-      .select('fileName s3Url fileSize mimeType uploadedAt')
-      .sort({ uploadedAt: -1 });
+      // Fetch resume data from Resume collection - filter by profile.resumes array
+      let resumes: any[] = [];
+      if (profile?.resumes && profile.resumes.length > 0) {
+        resumes = await ResumeModel.find({
+          _id: { $in: profile.resumes }
+        })
+        .select('fileName s3Url fileSize mimeType uploadedAt')
+        .sort({ uploadedAt: -1 });
+      }
 
       // Fetch active resume data for profile content
       let activeResumeData = null;

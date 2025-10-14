@@ -15,7 +15,8 @@ const Footer: React.FC = () => {
     '/assessment/technical',   // All technical assessment pages
     '/assessment/hr',          // All HR assessment pages
     '/assessment/precheck',    // System check page
-    '/assessment/process'      // Assessment process page
+    '/assessment/process' ,     // Assessment process page
+    '/dashboard/employer'
   ];
 
   // Check if current route should hide footer

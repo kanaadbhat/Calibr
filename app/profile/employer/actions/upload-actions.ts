@@ -1,6 +1,6 @@
 "use server";
 
-import { uploadFile, validateFile, UploadConfig } from "@/lib/s3Service";
+import { UploadConfig, S3Service } from "@/lib/s3Service";
 import { requireAuth } from "@/utils/auth-helpers";
 import { 
   createErrorResponse, 
@@ -14,10 +14,11 @@ import {
 // Server action for employer profile image upload
 export async function uploadEmployerProfileImage(formData: FormData): Promise<{
   success: boolean;
-  fileUrl?: string;
-  s3Key?: string;
   message?: string;
   error?: string;
+  data?: {
+    fileUrl: string;
+  };
 }> {
   return safeAction(async () => {
     const userId = await requireAuth();
@@ -32,8 +33,6 @@ export async function uploadEmployerProfileImage(formData: FormData): Promise<{
       folderPrefix: 'profile-images',
       allowedFileTypes: ['image/*'],
       maxFileSize: 5 * 1024 * 1024, // 5MB
-      cleanupPrevious: true,
-      generateUniqueFilename: true,
       userId: userId,
       userRole: 'employer',
       metadata: {
@@ -43,21 +42,37 @@ export async function uploadEmployerProfileImage(formData: FormData): Promise<{
     };
 
     // Validate file on server
-    const validation = validateFile(file, profileImageConfig);
+    const validation = S3Service.validate(file, profileImageConfig);
     if (!validation.valid) {
       return createErrorResponse("File validation failed", validation.error);
     }
 
-    // Upload file
-    const uploadResult = await uploadFile(file, profileImageConfig);
+    // Upload new file first (before deleting old ones for safety)
+    const uploadResult = await S3Service.upload(file, profileImageConfig);
     
     if (!uploadResult.success) {
       return createErrorResponse("Upload failed", uploadResult.error);
     }
 
+    // Only delete previous profile images AFTER successful upload
+    // (Only one profile image should exist at a time)
+    try {
+      const prefix = `${profileImageConfig.folderPrefix}/${userId}/`;
+      const allFiles = await S3Service.list(prefix);
+      
+      // Delete all files except the one we just uploaded
+      const filesToDelete = allFiles.filter(key => key !== uploadResult.s3Key);
+      if (filesToDelete.length > 0) {
+        await S3Service.deleteMultiple(filesToDelete);
+      }
+    } catch (error) {
+      console.warn("Error deleting previous profile images:", error);
+      // Upload was successful, so we still return success even if cleanup fails
+    }
+
+    // Only return fileUrl - key is not needed in DB since we use folder-based cleanup
     return createSuccessResponse("Profile image uploaded successfully", {
       fileUrl: uploadResult.fileUrl,
-      s3Key: uploadResult.s3Key,
     });
   });
 }
@@ -65,10 +80,11 @@ export async function uploadEmployerProfileImage(formData: FormData): Promise<{
 // Server action for company logo upload
 export async function uploadCompanyLogo(formData: FormData): Promise<{
   success: boolean;
-  fileUrl?: string;
-  s3Key?: string;
   message?: string;
   error?: string;
+  data?: {
+    fileUrl: string;
+  };
 }> {
   return safeAction(async () => {
     const userId = await requireAuth();
@@ -85,8 +101,6 @@ export async function uploadCompanyLogo(formData: FormData): Promise<{
       folderPrefix: 'company-logos',
       allowedFileTypes: ['image/*'],
       maxFileSize: 5 * 1024 * 1024, // 5MB
-      cleanupPrevious: true,
-      generateUniqueFilename: true,
       userId: userId,
       userRole: 'employer',
       metadata: {
@@ -96,15 +110,15 @@ export async function uploadCompanyLogo(formData: FormData): Promise<{
     };
 
     // Validate file on server
-    const validation = validateFile(file, logoConfig);
+    const validation = S3Service.validate(file, logoConfig);
     if (!validation.valid) {
       logError(`File validation failed: ${validation.error}`);
       return createErrorResponse("File validation failed", validation.error);
     }
 
-    // Upload file
+    // Upload new file first (before deleting old ones for safety)
     logAction("☁️", "Uploading to S3...");
-    const uploadResult = await uploadFile(file, logoConfig);
+    const uploadResult = await S3Service.upload(file, logoConfig);
     
     if (!uploadResult.success) {
       logError(`Upload failed: ${uploadResult.error}`);
@@ -113,9 +127,26 @@ export async function uploadCompanyLogo(formData: FormData): Promise<{
 
     logSuccess(`Company logo uploaded successfully: ${uploadResult.fileUrl}`);
 
+    // Only delete previous company logos AFTER successful upload
+    // (Only one company logo should exist at a time)
+    try {
+      const prefix = `${logoConfig.folderPrefix}/${userId}/`;
+      const allFiles = await S3Service.list(prefix);
+      
+      // Delete all files except the one we just uploaded
+      const filesToDelete = allFiles.filter(key => key !== uploadResult.s3Key);
+      if (filesToDelete.length > 0) {
+        await S3Service.deleteMultiple(filesToDelete);
+        logAction("🗑️", `Deleted ${filesToDelete.length} previous company logo(s)`);
+      }
+    } catch (error) {
+      console.warn("Error deleting previous company logos:", error);
+      // Upload was successful, so we still return success even if cleanup fails
+    }
+
+    // Only return fileUrl - key is not needed in DB since we use folder-based cleanup
     return createSuccessResponse("Company logo uploaded successfully", {
       fileUrl: uploadResult.fileUrl,
-      s3Key: uploadResult.s3Key,
     });
   });
 }

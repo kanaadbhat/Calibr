@@ -3,6 +3,7 @@ import mongoose, { Document, Schema } from "mongoose";
 export interface EmployerProfile extends Document {
   employer: mongoose.Types.ObjectId;
   companyName: string;
+  profileImage?: string; // Employer's personal profile image
   companyLogo: string;
   tagline: string;
   description: string;
@@ -31,6 +32,10 @@ const employerProfileSchema: Schema<EmployerProfile> = new Schema(
       unique: true,
     },
     companyName: {
+      type: String,
+      default: "",
+    },
+    profileImage: {
       type: String,
       default: "",
     },

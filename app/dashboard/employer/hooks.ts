@@ -694,3 +694,82 @@ export function useUpdateAssessmentDetails() {
   };
 }
 
+/**
+ * Hook to fetch employer job opportunities for candidate evaluation
+ */
+export function useFetchEmployerJobOpportunities() {
+  const [jobs, setJobs] = useState<Array<{ _id: string; title: string; department: string; position: string; location: string; employmentType: string }>>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchJobOpportunities = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      // Import the action dynamically to avoid circular dependencies
+      const { fetchEmployerJobs } = await import('./actions/candidate-evaluation-actions');
+      const result = await fetchEmployerJobs();
+      
+      if (result.success) {
+        setJobs(result.data || []);
+      } else {
+        setError(result.message);
+        toast.error(result.message);
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to fetch job opportunities';
+      setError(message);
+      toast.error(message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchJobOpportunities();
+  }, [fetchJobOpportunities]);
+
+  return {
+    jobs,
+    loading,
+    error,
+    refetch: fetchJobOpportunities
+  };
+}
+
+export function useFetchShortlistedCandidates(jobId?: string) {
+  const [candidates, setCandidates] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchCandidates = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const { fetchShortlistedCandidates } = await import('./actions/candidate-evaluation-actions');
+      const response = await fetchShortlistedCandidates(jobId);
+      
+      if (response.success && response.data) {
+        setCandidates(response.data);
+      } else {
+        setError(response.error || 'Failed to fetch candidates');
+        toast.error(response.error || 'Failed to fetch candidates');
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'An error occurred';
+      setError(errorMessage);
+      toast.error(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  }, [jobId]);
+
+  useEffect(() => {
+    fetchCandidates();
+  }, [fetchCandidates]);
+
+  return { candidates, loading, error, refetch: fetchCandidates };
+}
+
+

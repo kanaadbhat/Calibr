@@ -1,1 +1,0 @@
-export { AptitudeExamClient } from './AptitudeExam';

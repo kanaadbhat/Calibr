@@ -12,7 +12,7 @@ const CandidateProfileSchema: Schema = new Schema(
   {
     candidate: {
       type: Schema.Types.ObjectId,
-      ref: "candidate",
+      ref: "candidates",
       required: true,
       index: true,
     },
@@ -41,6 +41,6 @@ const CandidateProfileSchema: Schema = new Schema(
   { timestamps: true }
 );
 
-const Profile = (mongoose.models.candidateprofiles as mongoose.Model<CandidateProfile>) || mongoose.model<CandidateProfile>('candidateprofiles', CandidateProfileSchema);
+const candidateProfile = (mongoose.models.candidateprofiles as mongoose.Model<CandidateProfile>) || mongoose.model<CandidateProfile>('candidateprofiles', CandidateProfileSchema);
 
-export default Profile;
+export default candidateProfile;

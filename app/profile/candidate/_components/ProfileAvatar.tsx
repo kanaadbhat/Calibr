@@ -104,7 +104,7 @@ export default function ProfileAvatar({ profileData, setProfileData}: ProfileAva
     // Create FormData for server action
     const formData = new FormData();
     formData.append('file', imageFile);
-
+    
     // Upload using hook
     const uploadResult = await uploadImage(formData);
     

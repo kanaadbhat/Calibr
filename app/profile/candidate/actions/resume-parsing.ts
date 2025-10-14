@@ -1,10 +1,11 @@
 "use server";
 
 import ResumeModel from "@/models/resume.model";
-import { validateResume, updateCandidateProfileWithResume, getNextVersionNumber, requireAuth } from "../lib/validation";
+import Profile from "@/models/candidateProfile.model";
+import { validateResume, updateCandidateProfileWithResume, requireAuth } from "../lib/validation";
 import { geminiClient } from "../lib/gemini-client";
 import { extractTextFromFile, getMimeTypeFromFileName } from "@/utils/file-processing";
-import { S3Operations } from "@/lib/s3Service";
+import { S3Service } from "@/lib/s3Service";
 import { 
   withDatabase, 
   createErrorResponse, 
@@ -29,7 +30,16 @@ export async function parseAndSaveResume(s3Url: string, fileName: string, fileSi
       
       const candidateId = await requireAuth();
 
-    // Step 1: Create resume with versioning
+    // Check resume limit: candidate can have at most 3 resumes
+    const profile = await Profile.findOne({ candidate: candidateId });
+    if (profile && profile.resumes && profile.resumes.length >= 3) {
+      return createErrorResponse(
+        "Resume limit reached",
+        "You can upload a maximum of 3 resumes. Please delete an existing resume before uploading a new one."
+      );
+    }
+
+    // Step 1: Create resume
     let resumeId = '';
     let isParsed = false;
     let parseError = null;
@@ -37,10 +47,7 @@ export async function parseAndSaveResume(s3Url: string, fileName: string, fileSi
     try {
       logAction('🔧', 'Creating resume record', { fileName });
       
-      // Get version info and handle existing resume
-      const { version } = await getNextVersionNumber(candidateId, fileName);
-      
-      // Create resume record
+      // Create resume record (no versioning)
       const resumeDoc = new ResumeModel({
         candidateId: candidateId,
         fileName: fileName,
@@ -51,13 +58,11 @@ export async function parseAndSaveResume(s3Url: string, fileName: string, fileSi
         mimeType: getMimeTypeFromFileName(fileName),
         uploadedAt: new Date(),
         isParsed: false,
-        isActive: true,
-        version: version,
       });
 
       const savedResume = await resumeDoc.save();
       resumeId = (savedResume._id as any).toString();
-      logSuccess(`Resume v${version} created with ID: ${resumeId}`);
+      logSuccess(`Resume created with ID: ${resumeId}`);
 
       // Parse the resume
       const parseResult = await parseResumeFromS3(resumeId);
@@ -129,7 +134,7 @@ export async function parseResumeFromS3(resumeId: string): Promise<{
     // Download file from S3
     let s3Response;
     try {
-      s3Response = await S3Operations.downloadObject(resume.s3Key);
+      s3Response = await S3Service.download(resume.s3Key);
     } catch (s3Error: any) {
       logError('Failed to download file from S3', s3Error);
       return createErrorResponse(
@@ -141,7 +146,7 @@ export async function parseResumeFromS3(resumeId: string): Promise<{
     // Convert S3 response to File object
     let file;
     try {
-      file = await S3Operations.convertS3ResponseToFile(s3Response, resume.fileName, resume.mimeType);
+      file = await S3Service.downloadAsFile(s3Response, resume.fileName, resume.mimeType);
     } catch (conversionError: any) {
       logError('Failed to convert S3 response', conversionError);
       return createErrorResponse(
@@ -166,7 +171,7 @@ export async function parseResumeFromS3(resumeId: string): Promise<{
       // Transform AI response to match Resume model schema
       parsedData = {
         tagline: aiResponse.tagline || "",
-        summary: aiResponse.summary || "",
+        summary: aiResponse.summary || "Professional with expertise in software development and technology.",
         workDetails: aiResponse.workDetails || [],
         education: aiResponse.education || [],
         skills: aiResponse.skills || "",

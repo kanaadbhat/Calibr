@@ -49,7 +49,7 @@ export async function fetchTestSession(aptitudeId: string): Promise<FetchTestSes
       };
     }
 
-    // Use session user ID instead of hardcoded candidate ID
+  
     const authenticatedCandidateId = session.user?._id;
     
     if (!authenticatedCandidateId) {
@@ -65,42 +65,82 @@ export async function fetchTestSession(aptitudeId: string): Promise<FetchTestSes
     const aptitude = await Aptitude.findById(aptitudeId);
     
     if (!aptitude) {
-      console.log(' Aptitude assessment not found');
+      // Aptitude assessment not found
       return { 
         success: false, 
         error: 'No aptitude assessment found for the provided ID' 
       };
     }
 
-    console.log(' Aptitude assessment found');
-    console.log(' Authorized candidates:', aptitude.candidateIds);
+    
 
     // Validate candidate exists
     const candidate = await Candidate.findById(authenticatedCandidateId);
     if (!candidate) {
-      console.log('❌ Candidate not found in database');
       return {
         success: false,
         error: 'Candidate not found. Please check your candidate ID.'
       };
     }
 
-    console.log(' Candidate found:', candidate.firstName, candidate.lastName);
-    console.log(' Candidate email:', candidate.email);
 
     // Check if candidate is authorized for this assessment
     const isAuthorized = aptitude.candidateIds.some(id => id.toString() === String(candidate._id));
-    console.log(' Authorization check:', isAuthorized);
+    // Checking candidate authorization
     
     if (!isAuthorized) {
-      console.log(' Candidate not authorized for this assessment');
+      // Candidate not authorized for this assessment
       return {
         success: false,
         error: 'You are not authorized to take this assessment.'
       };
     }
 
-    console.log('✅ Candidate authorized successfully!');
+  
+
+    // Check if candidate has already attempted this assessment
+    const existingResult = await TestResult.findOne({
+      candidateId: authenticatedCandidateId,
+      aptitudeId: aptitudeId
+    });
+
+    if (existingResult) {
+      // Block if exam is completed OR terminated due to warnings
+      if (existingResult.status === 'completed' || existingResult.status === 'terminated' || existingResult.terminatedDueToWarnings) {
+        return {
+          success: false,
+          error: 'already_attempted'
+        };
+      }
+      
+      if (existingResult.status === 'incomplete' && !existingResult.terminatedDueToWarnings) {
+        // Check if test time has expired
+        const elapsed = new Date().getTime() - existingResult.startTime.getTime();
+        const aptitude = await Aptitude.findById(aptitudeId);
+        
+        if (aptitude) {
+          const totalDurationMs = aptitude.duration * 60 * 1000;
+          const timeLeft = Math.max(0, totalDurationMs - elapsed);
+          
+          // If time expired, mark as completed and block access
+          if (timeLeft <= 0) {
+            await TestResult.findByIdAndUpdate(existingResult._id, {
+              status: 'completed',
+              submittedAt: new Date(),
+              terminationReason: 'Time expired'
+            });
+            
+            return {
+              success: false,
+              error: 'Test time has expired. You cannot continue this test.'
+            };
+          }
+        }
+        
+        // Time is still valid, allow continuation
+        // Continue with normal flow to return test data
+      }
+    }
 
     if (!isValidQuestionsData(questionsData)) {
       return { 
@@ -117,7 +157,7 @@ export async function fetchTestSession(aptitudeId: string): Promise<FetchTestSes
       .filter((q: AptitudeQuestion) => questionIds.includes(q.id))
       .map(processQuestion);
     
-    console.log(` Loaded ${matchingQuestions.length} questions for assessment ${aptitudeId}`);
+    // Questions loaded successfully
     
     const aptitudeData: AptitudeData = {
       _id: String(aptitude._id),
@@ -154,7 +194,7 @@ export async function fetchTestSession(aptitudeId: string): Promise<FetchTestSes
   }
 }
 
-// Submit test and calculate score
+
 export async function submitTest(
   aptitudeId: string, 
   candidateId: string, 
@@ -169,6 +209,7 @@ export async function submitTest(
   terminationReason?: string
 ): Promise<{success: boolean, data?: any, error?: string}> {
   try {
+    console.log('📝 Actions: submitTest called with warnings:', warnings);
     await connectToDatabase();
     
     // Get server session for authentication
@@ -189,10 +230,7 @@ export async function submitTest(
       };
     }
     
-    console.log(' Submitting test for candidate:', candidateId);
-    console.log(' Aptitude ID:', aptitudeId);
-    console.log(' Answers submitted:', Object.keys(answers).length);
-    console.log('Time taken:', timeTaken, 'seconds');
+    // Submitting test with candidate data
 
     // Get aptitude details
     const aptitude = await Aptitude.findById(aptitudeId);
@@ -247,40 +285,56 @@ export async function submitTest(
     const percentage = (score / totalQuestions) * 100;
     const passed = percentage >= aptitude.passingScore;
 
-    console.log(' Score Calculation:');
-    console.log(' Correct:', correctCount);
-    console.log(' Incorrect:', incorrectCount);
-    console.log(' Unattempted:', unattemptedCount);
-    console.log(' Percentage:', percentage.toFixed(2) + '%');
-    console.log(' Passed:', passed);
+    // Score calculation completed
 
     // Save test result (without storing correct answers - they're in questions data)
-    const testResult = new TestResult({
+    const warningsToSave = warnings || {
+      tabSwitch: { count: 0, maxAllowed: aptitude.warnings.tabSwitch, exceeded: false },
+      fullscreen: { count: 0, maxAllowed: aptitude.warnings.fullscreen, exceeded: false },
+      audio: { count: 0, maxAllowed: aptitude.warnings.audio, exceeded: false }
+    };
+    
+    console.log('💾 Actions: Saving warnings to database:', warningsToSave);
+    
+    // Find and UPDATE existing test result instead of creating new one
+    const existingTestResult = await TestResult.findOne({
       candidateId,
       aptitudeId,
-      answers, // Only user answers
-      score,
-      totalQuestions,
-      correctCount,
-      incorrectCount,
-      unattemptedCount,
-      percentage,
-      passed,
-      passingScore: aptitude.passingScore,
-      timeTaken,
-      submittedAt: new Date(),
-      status: terminatedDueToWarnings ? 'incomplete' : 'completed',
-      warnings: warnings || {
-        tabSwitch: { count: 0, maxAllowed: aptitude.warnings.tabSwitch, exceeded: false },
-        fullscreen: { count: 0, maxAllowed: aptitude.warnings.fullscreen, exceeded: false },
-        audio: { count: 0, maxAllowed: aptitude.warnings.audio, exceeded: false }
-      },
-      terminatedDueToWarnings: terminatedDueToWarnings || false,
-      terminationReason: terminationReason
+      status: 'incomplete'
     });
 
-    await testResult.save();
-    console.log('💾 Test result saved to database');
+    if (!existingTestResult) {
+      return { success: false, error: 'No active test session found. Please start the test first.' };
+    }
+
+   
+    const finalStatus = terminatedDueToWarnings ? 'terminated' : 'completed';
+
+    
+    await TestResult.findByIdAndUpdate(
+      existingTestResult._id,
+      {
+        answers, 
+        score,
+        totalQuestions,
+        correctCount,
+        incorrectCount,
+        unattemptedCount,
+        percentage,
+        passed,
+        passingScore: aptitude.passingScore,
+        timeTaken,
+        submittedAt: new Date(),
+        status: finalStatus,
+        warnings: warningsToSave,
+        terminatedDueToWarnings: terminatedDueToWarnings || false,
+        terminationReason: terminationReason
+      },
+      { new: true }
+    );
+
+    console.log(' Test result updated successfully');
+    // Test result updated in database
 
     return {
       success: true,
@@ -340,9 +394,7 @@ export async function autoSaveTest(
       };
     }
     
-    console.log('🔄 Auto-saving test due to warnings exceeded');
-    console.log(' Candidate:', candidateId);
-    console.log(' Termination reason:', terminationReason);
+    // Auto-saving test due to warnings exceeded
 
     // Get aptitude details
     const aptitude = await Aptitude.findById(aptitudeId);
@@ -397,35 +449,43 @@ export async function autoSaveTest(
     const percentage = (score / totalQuestions) * 100;
     const passed = percentage >= aptitude.passingScore;
 
-    console.log(' Auto-save score calculation:');
-    console.log(' Correct:', correctCount);
-    console.log(' Incorrect:', incorrectCount);
-    console.log(' Unattempted:', unattemptedCount);
-    console.log(' Percentage:', percentage.toFixed(2) + '%');
+    // Auto-save score calculation completed
 
-    // Save test result with incomplete status
-    const testResult = new TestResult({
+    // Find and UPDATE existing test result instead of creating new one
+    const existingTestResult = await TestResult.findOne({
       candidateId,
       aptitudeId,
-      answers,
-      score,
-      totalQuestions,
-      correctCount,
-      incorrectCount,
-      unattemptedCount,
-      percentage,
-      passed,
-      passingScore: aptitude.passingScore,
-      timeTaken,
-      submittedAt: new Date(),
-      status: 'incomplete',
-      warnings,
-      terminatedDueToWarnings: true,
-      terminationReason
+      status: 'incomplete'
     });
 
-    await testResult.save();
-    console.log(' Auto-saved test result to database');
+    if (!existingTestResult) {
+      return { success: false, error: 'No active test session found. Please start the test first.' };
+    }
+
+    // UPDATE existing record instead of creating new one
+    await TestResult.findByIdAndUpdate(
+      existingTestResult._id,
+      {
+        answers,
+        score,
+        totalQuestions,
+        correctCount,
+        incorrectCount,
+        unattemptedCount,
+        percentage,
+        passed,
+        passingScore: aptitude.passingScore,
+        timeTaken,
+        submittedAt: new Date(),
+        status: 'terminated', 
+        warnings,
+        terminatedDueToWarnings: true,
+        terminationReason
+      },
+      { new: true }
+    );
+
+    
 
     return {
       success: true,
@@ -445,7 +505,167 @@ export async function autoSaveTest(
     };
 
   } catch (error) {
-    console.error('❌ Error in autoSaveTest:', error);
+    console.error('Error in autoSaveTest:', error);
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Unknown error occurred' 
+    };
+  }
+}
+
+// Secure server-side test session management
+export async function startTestSession(aptitudeId: string): Promise<{success: boolean, data?: { startTime: string; timeLeft: number }, error?: string}> {
+  try {
+    await connectToDatabase();
+    
+    const session = await getServerSession(authOptions);
+    if (!session?.user?._id) {
+      return { success: false, error: 'Authentication required' };
+    }
+
+    const candidateId = session.user._id;
+
+    // Check if test already started (incomplete and not terminated due to warnings)
+    const existingResult = await TestResult.findOne({
+      candidateId,
+      aptitudeId,
+      status: 'incomplete',
+      terminatedDueToWarnings: { $ne: true }
+    });
+
+    if (existingResult) {
+      // Return existing start time and calculate remaining time from server
+      const startTime = existingResult.startTime;
+      const now = new Date();
+      const elapsed = now.getTime() - startTime.getTime();
+      const aptitude = await Aptitude.findById(aptitudeId);
+      
+      if (!aptitude) {
+        return { success: false, error: 'Aptitude not found' };
+      }
+
+      const totalDurationMs = aptitude.duration * 60 * 1000;
+      const timeLeft = Math.max(0, totalDurationMs - elapsed);
+
+      // If time has expired, mark test as completed and return error
+      if (timeLeft <= 0) {
+        // Auto-submit the test as expired
+        await TestResult.findByIdAndUpdate(existingResult._id, {
+          status: 'completed',
+          submittedAt: new Date(),
+          terminatedDueToWarnings: false,
+          terminationReason: 'Time expired'
+        });
+        
+        return { 
+          success: false, 
+          error: 'Test time has expired. You cannot continue this test.' 
+        };
+      }
+
+      // Time is still valid, continue with existing session
+      return {
+        success: true,
+        data: {
+          startTime: startTime.toISOString(),
+          timeLeft
+        }
+      };
+    }
+
+    // Create new test session with server timestamp
+    const startTime = new Date();
+    const aptitude = await Aptitude.findById(aptitudeId);
+    
+    if (!aptitude) {
+      return { success: false, error: 'Aptitude not found' };
+    }
+
+    // Create test result record with start time
+    await TestResult.create({
+      candidateId,
+      aptitudeId,
+      answers: {},
+      score: 0,
+      totalQuestions: aptitude.totalQuestions,
+      correctCount: 0,
+      incorrectCount: 0,
+      unattemptedCount: aptitude.totalQuestions,
+      percentage: 0,
+      passed: false,
+      passingScore: aptitude.passingScore,
+      timeTaken: 0,
+      startTime, // Server timestamp
+      status: 'incomplete',
+      warnings: {
+        tabSwitch: { count: 0, maxAllowed: aptitude.warnings.tabSwitch, exceeded: false },
+        fullscreen: { count: 0, maxAllowed: aptitude.warnings.fullscreen, exceeded: false },
+        audio: { count: 0, maxAllowed: aptitude.warnings.audio, exceeded: false }
+      },
+      terminatedDueToWarnings: false
+    });
+
+    const totalDurationMs = aptitude.duration * 60 * 1000;
+
+    return {
+      success: true,
+      data: {
+        startTime: startTime.toISOString(),
+        timeLeft: totalDurationMs
+      }
+    };
+
+  } catch (error) {
+    console.error(' Error starting test session:', error);
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Unknown error occurred' 
+    };
+  }
+}
+
+export async function getServerTimeLeft(aptitudeId: string): Promise<{success: boolean, data?: { timeLeft: number; isValid: boolean }, error?: string}> {
+  try {
+    await connectToDatabase();
+    
+    const session = await getServerSession(authOptions);
+    if (!session?.user?._id) {
+      return { success: false, error: 'Authentication required' };
+    }
+
+    const candidateId = session.user._id;
+
+    const testResult = await TestResult.findOne({
+      candidateId,
+      aptitudeId,
+      status: { $ne: 'completed' }
+    });
+
+    if (!testResult) {
+      return { success: false, error: 'Test session not found' };
+    }
+
+    const aptitude = await Aptitude.findById(aptitudeId);
+    if (!aptitude) {
+      return { success: false, error: 'Aptitude not found' };
+    }
+
+    // Calculate time left using server time
+    const now = new Date();
+    const elapsed = now.getTime() - testResult.startTime.getTime();
+    const totalDurationMs = aptitude.duration * 60 * 1000;
+    const timeLeft = Math.max(0, totalDurationMs - elapsed);
+
+    return {
+      success: true,
+      data: {
+        timeLeft,
+        isValid: timeLeft > 0
+      }
+    };
+
+  } catch (error) {
+    console.error('Error getting server time left:', error);
     return { 
       success: false, 
       error: error instanceof Error ? error.message : 'Unknown error occurred' 
