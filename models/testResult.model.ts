@@ -14,7 +14,8 @@ export interface TestResult extends Document {
   passingScore: number;
   timeTaken: number; 
   submittedAt: Date;
-  status: 'completed' | 'incomplete';
+  startTime: Date;
+  status: 'completed' | 'incomplete' | 'terminated';
   warnings: {
     tabSwitch: {
       count: number;
@@ -101,9 +102,13 @@ export const TestResultSchema: Schema = new Schema({
     type: Date,
     default: Date.now
   },
+  startTime: {
+    type: Date,
+    required: true
+  },
   status: {
     type: String,
-    enum: ['completed', 'incomplete'],
+    enum: ['completed', 'incomplete', 'terminated'],
     default: 'completed'
   },
   warnings: {
