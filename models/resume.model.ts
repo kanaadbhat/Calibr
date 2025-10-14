@@ -47,10 +47,6 @@ export interface Resume extends Document {
   isParsed: boolean;
   parseError?: string;
   lastUpdated: Date;
-  
-  // Versioning for same filename
-  version: number;
-  isActive: boolean; // Only one version per filename should be active
 }
 
 const ResumeSchema: Schema = new Schema(
@@ -164,17 +160,6 @@ const ResumeSchema: Schema = new Schema(
       type: Date,
       default: Date.now,
     },
-    
-    version: {
-      type: Number,
-      default: 1,
-      min: 1,
-    },
-    
-    isActive: {
-      type: Boolean,
-      default: true,
-    },
   },
   {
     timestamps: true,
@@ -183,7 +168,7 @@ const ResumeSchema: Schema = new Schema(
 
 // Compound index for efficient queries
 ResumeSchema.index({ candidateId: 1, fileName: 1 });
-ResumeSchema.index({ candidateId: 1, isActive: 1 });
+ResumeSchema.index({ candidateId: 1, uploadedAt: -1 });
 
 const Resume =
   (mongoose.models.Resume as mongoose.Model<Resume>) ||

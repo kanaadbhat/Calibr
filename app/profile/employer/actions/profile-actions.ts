@@ -39,9 +39,10 @@ export async function updateEmployerProfile(
         );
       }
 
-      // Update or create extended profile (including companyName and companyLogo)
+      // Update or create extended profile (including profileImage, companyName and companyLogo)
       const profileUpdateFields: any = {
         companyName: profileData.companyName || "",
+        profileImage: profileData.profileImage || "",
         companyLogo: profileData.companyLogo || "",
         tagline: profileData.tagline || "",
         description: profileData.description || "",

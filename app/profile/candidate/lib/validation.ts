@@ -8,8 +8,7 @@ export { validateSession, requireAuth } from "@/utils/auth-helpers";
 export async function validateResume(resumeId: string, candidateId: string): Promise<{ success: boolean; resume?: any; error?: string }> {
   const resume = await ResumeModel.findOne({
     _id: resumeId,
-    candidateId: candidateId,
-    isActive: true
+    candidateId: candidateId
   });
   
   if (!resume) {
@@ -44,30 +43,4 @@ export async function updateCandidateProfileWithResume(candidateId: string, resu
     });
     await candidateProfile.save();
   }
-}
-
-// Helper function for resume versioning
-export async function getNextVersionNumber(candidateId: string, originalFileName: string): Promise<{ version: number; existingResume?: any }> {
-  const existingResume = await ResumeModel.findOne({
-    candidateId: candidateId,
-    originalFileName: originalFileName,
-    isActive: true
-  });
-
-  let version = 1;
-  if (existingResume) {
-    // Deactivate previous version
-    existingResume.isActive = false;
-    await existingResume.save();
-    
-    // Get next version number
-    const latestVersion = await ResumeModel.findOne({
-      candidateId: candidateId,
-      originalFileName: originalFileName
-    }).sort({ version: -1 });
-    
-    version = (latestVersion?.version || 0) + 1;
-  }
-  
-  return { version, existingResume };
 }

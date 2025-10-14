@@ -41,6 +41,6 @@ const CandidateProfileSchema: Schema = new Schema(
   { timestamps: true }
 );
 
-const Profile = (mongoose.models.candidateprofiles as mongoose.Model<CandidateProfile>) || mongoose.model<CandidateProfile>('candidateprofiles', CandidateProfileSchema);
+const candidateProfile = (mongoose.models.candidateprofiles as mongoose.Model<CandidateProfile>) || mongoose.model<CandidateProfile>('candidateprofiles', CandidateProfileSchema);
 
-export default Profile;
+export default candidateProfile;

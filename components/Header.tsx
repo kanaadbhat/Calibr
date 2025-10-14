@@ -20,6 +20,7 @@ const Header: React.FC = () => {
   const pathname = usePathname();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [profileImage, setProfileImage] = useState<string | null>(null);
   const { data: session, status } = useSession();
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -59,6 +60,55 @@ const Header: React.FC = () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
+
+  // Fetch profile image from database
+  useEffect(() => {
+    const fetchProfileImage = async () => {
+      if (!session?.user) {
+        console.log("❌ No session user");
+        return;
+      }
+
+      const userRole = (session as any)?.user?.role || (session as any)?.role;
+      const userId = (session.user as any)?.id || (session.user as any)?._id;
+
+      if (!userId || !userRole) {
+        return;
+      }
+
+      try {
+        let endpoint = '';
+        if (userRole === 'candidate') {
+          endpoint = '/api/profile/candidate';
+        } else if (userRole === 'employer') {
+          endpoint = '/api/profile/employer';
+        }
+
+
+        if (endpoint) {
+          const response = await fetch(endpoint);
+          
+          if (response.ok) {
+            const data = await response.json();
+            
+            if (data.success && data.data?.profileImage) {
+              setProfileImage(data.data.profileImage);
+            } else {
+              console.log("⚠️ No profile image in response");
+            }
+          } else {
+            console.error("❌ Response not OK:", await response.text());
+          }
+        }
+      } catch (error) {
+        console.error('💥 Error fetching profile image:', error);
+      }
+    };
+
+    if (status === 'authenticated') {
+      fetchProfileImage();
+    }
+  }, [session, status]);
 
   // Get user role from session
   const userRole = (session as any)?.user?.role || (session as any)?.role;
@@ -105,13 +155,13 @@ const Header: React.FC = () => {
                   <button
                     onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                     className="flex items-center space-x-2 p-2 rounded-lg hover:bg-white/5 transition-colors">
-                    {session.user?.image ? (
+                    {profileImage || session.user?.image ? (
                       <Image
-                        src={session.user.image}
+                        src={profileImage || session.user.image || ''}
                         alt="User Avatar"
                         width={32}
                         height={32}
-                        className="rounded-full"
+                        className="rounded-full object-cover"
                       />
                     ) : (
                       <div className="w-8 h-8 rounded-full bg-gradient-to-r from-indigo-500 to-rose-500 flex items-center justify-center">
@@ -221,13 +271,13 @@ const Header: React.FC = () => {
                   <button
                     onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                     className="flex items-center space-x-2 p-2 rounded-lg hover:bg-white/5 transition-colors">
-                    {session.user?.image ? (
+                    {profileImage || session.user?.image ? (
                       <Image
-                        src={session.user.image}
+                        src={profileImage || session.user.image || ''}
                         alt="User Avatar"
                         width={32}
                         height={32}
-                        className="rounded-full"
+                        className="rounded-full object-cover"
                       />
                     ) : (
                       <div className="w-8 h-8 rounded-full bg-gradient-to-r from-indigo-500 to-rose-500 flex items-center justify-center">
