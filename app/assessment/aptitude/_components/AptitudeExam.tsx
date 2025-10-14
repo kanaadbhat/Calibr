@@ -1,35 +1,23 @@
 'use client';
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Clock, Flag, ChevronLeft, ChevronRight, Send } from 'lucide-react';
+import { Flag, ChevronLeft, ChevronRight, Send } from 'lucide-react';
 import { useTestQuestions } from '../hooks';
 import { submitTest, autoSaveTest } from '../actions';
 import { useSession } from 'next-auth/react';
+import { useCountdown } from '@/lib/CountdownWrapper';
+import { useWarningContext } from '@/lib/WarningContext';
 import type { 
   ProcessedQuestion, 
   Section, 
   QuestionStatus, 
   QuestionStats,
-  SectionName,
-  WarningState 
+  SectionName
 } from '../types';
-
-// ===== UTILITY FUNCTIONS(isko utils.ts me dalns h ) =====
-const formatTime = (seconds: number): string => {
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  const secs = seconds % 60;
-  
-  if (hours > 0) {
-    return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  }
-  return `${minutes}:${secs.toString().padStart(2, '0')}`;
-};
-
 const distributeQuestions = (questions: ProcessedQuestion[]): Section[] => {
   const totalQuestions = questions.length;
   const questionsPerSection = Math.ceil(totalQuestions / 4);
@@ -40,6 +28,7 @@ const distributeQuestions = (questions: ProcessedQuestion[]): Section[] => {
     "Technical",
     "Verbal Ability"
   ];
+  
   
   const sections: Section[] = [];
   
@@ -100,52 +89,110 @@ const calculateStats = (
   
   return { 
     total, 
-    attempted, 
+    attempted,
     marked, 
     unattempted: total - attempted 
   };
 };
 
-// ===== MAIN COMPONENT =====
-export function AptitudeExamClient() {
-  const { data: session } = useSession();
-  
-  // State management
-  const [timeLeft, setTimeLeft] = useState(60 * 30); // 30 minutes default
-  const [answers, setAnswers] = useState<Record<string, number>>({});
-  const [markedForReview, setMarkedForReview] = useState<Set<string>>(new Set());
-  const [hasStarted, setHasStarted] = useState(false);
-  const [ended, setEnded] = useState(false);
-  const [mounted, setMounted] = useState(false);
-  const [activeSection, setActiveSection] = useState<SectionName>('A');
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [submitting, setSubmitting] = useState(false);
-  const [startTime, setStartTime] = useState<number>(0);
-  const [warnings, setWarnings] = useState<WarningState>({
-    tabSwitch: { count: 0, maxAllowed: 3, exceeded: false },
-    fullscreen: { count: 0, maxAllowed: 3, exceeded: false },
-    audio: { count: 0, maxAllowed: 1, exceeded: false }
-  });
-  const [showWarningDialog, setShowWarningDialog] = useState(false);
-  const [warningMessage, setWarningMessage] = useState('');
+interface AptitudeExamClientProps {
+  aptitudeId: string;
+}
 
+export default function AptitudeExamClient({ aptitudeId }: AptitudeExamClientProps) {
+  const { data: session } = useSession();
+  const warningContext = useWarningContext();
+  const [activeSection, setActiveSection] = useState('A');
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  // Load saved answers and marked questions from localStorage on component mount
+  const [answers, setAnswers] = useState<Record<string, number>>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem(`aptitude_${aptitudeId}_answers`);
+      return saved ? JSON.parse(saved) : {};
+    }
+    return {};
+  });
   
-  const aptitudeId = '68be69bba3ed8246f3a0fc3c';
-  // Use session user ID instead of hardcoded candidate ID
+  const [markedForReview, setMarkedForReview] = useState<Set<string>>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem(`aptitude_${aptitudeId}_marked`);
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+    }
+    return new Set();
+  });
+  
+ 
+  const [submitting, setSubmitting] = useState(false);
+  const [ended, setEnded] = useState(false);
+  const { formattedTime, timeLeft, startTime, clearStartTime, isServerTimeValid, isLoading } = useCountdown();
   const candidateId = session?.user?._id;
   
-  const { questions, aptitudeData, loading, error } = useTestQuestions(aptitudeId);
-
-  
-  useEffect(() => {
-    if (aptitudeData) {
-      setWarnings({
-        tabSwitch: { count: 0, maxAllowed: aptitudeData.warnings.tabSwitch, exceeded: false },
-        fullscreen: { count: 0, maxAllowed: aptitudeData.warnings.fullscreen, exceeded: false },
-        audio: { count: 0, maxAllowed: aptitudeData.warnings.audio, exceeded: false }
-      });
+  // Auto-submit when time is up
+  React.useEffect(() => {
+    if (timeLeft === 0 && !ended && !submitting) {
+      handleSubmitTest();
     }
-  }, [aptitudeData]);
+  }, [timeLeft, ended, submitting]);
+
+  // Handle server-side time expiration
+  React.useEffect(() => {
+    const handleServerTimeExpired = () => {
+      if (!ended && !submitting) {
+        console.log('⏰ Server time expired, auto-submitting test...');
+        handleSubmitTest();
+      }
+    };
+
+    window.addEventListener('testTimeExpired', handleServerTimeExpired);
+    
+    return () => {
+      window.removeEventListener('testTimeExpired', handleServerTimeExpired);
+    };
+  }, [ended, submitting]);
+
+  // Auto-submit when warning limits are exceeded
+  React.useEffect(() => {
+    const handleAutoSubmit = async () => {
+      if (warningContext.hasExceededLimits() && !ended && !submitting && candidateId) {
+        console.log('⚠️ Warning limits exceeded, auto-submitting test...');
+        
+        try {
+          const exceededWarnings = warningContext.getExceededWarnings();
+          const terminationReason = `Test terminated due to: ${exceededWarnings.join(', ')}`;
+          const warningState = warningContext.getWarningState();
+          const timeTakenValue = Math.floor((Date.now() - new Date(startTime).getTime()) / 1000);
+          
+          const result = await autoSaveTest(
+            aptitudeId,
+            candidateId,
+            answers,
+            timeTakenValue,
+            warningState,
+            terminationReason
+          );
+          
+          if (result.success) {
+            console.log('✅ Test auto-submitted successfully due to warning limit exceeded');
+            setEnded(true);
+            clearStartTime();
+            // Clear saved answers from localStorage
+            if (typeof window !== 'undefined') {
+              localStorage.removeItem(`aptitude_${aptitudeId}_answers`);
+              localStorage.removeItem(`aptitude_${aptitudeId}_marked`);
+            }
+          } else {
+            console.error('❌ Failed to auto-submit test:', result.error);
+          }
+        } catch (error) {
+          console.error('❌ Error during auto-submit:', error);
+        }
+      }
+    };
+
+    handleAutoSubmit();
+  }, [warningContext, ended, submitting, candidateId, aptitudeId, answers, startTime, clearStartTime]);
+  
+  const { questions, loading, error } = useTestQuestions(aptitudeId);
 
   const sections: Section[] = distributeQuestions(questions);
   const currentSection = sections.find(s => s.name === activeSection);
@@ -156,69 +203,31 @@ export function AptitudeExamClient() {
  
   const stats = calculateStats(sections, answers, markedForReview);
 
-  // Warning handler function
-  const handleWarning = useCallback((warningType: 'tabSwitch' | 'fullscreen' | 'audio', reason: string) => {
-    if (!candidateId) return;
-    
-    setWarnings(prev => {
-      const newWarnings = { ...prev };
-      const warning = newWarnings[warningType];
-      
-      warning.count += 1;
-      
-      if (warning.count > warning.maxAllowed) {
-        warning.exceeded = true;
-        // Auto-save and terminate test
-        const timeTaken = Math.floor((Date.now() - startTime) / 1000);
-        autoSaveTest(aptitudeId, candidateId, answers, timeTaken, newWarnings, reason)
-          .then(result => {
-            if (result.success) {
-              console.log(' Test auto-saved due to warnings exceeded');
-              setEnded(true);
-            } else {
-              console.error(' Auto-save failed:', result.error);
-            }
-          })
-          .catch(error => {
-            console.error(' Auto-save error:', error);
-          });
-      } else {
-        
-        setWarningMessage(`${reason} - Warning ${warning.count}/${warning.maxAllowed}`);
-        setShowWarningDialog(true);
-        setTimeout(() => setShowWarningDialog(false), 3000);
-      }
-      
-      return newWarnings;
-    });
-  }, [startTime, aptitudeId, candidateId, answers]);
-  
-  const endExam = useCallback((reason: string) => {
-    if (ended) return;
-    console.log('📝 Exam ended:', reason);
-    setEnded(true);
-    if (document.fullscreenElement) {
-      document.exitFullscreen().catch(() => {});
-    }
-  }, [ended]);
 
   const handleAnswerChange = (value: string) => {
-    setAnswers(prev => ({
-      ...prev,
+    const newAnswers = {
+      ...answers,
       [questionKey]: parseInt(value)
-    }));
+    };
+    setAnswers(newAnswers);
+    // Save to localStorage
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(`aptitude_${aptitudeId}_answers`, JSON.stringify(newAnswers));
+    }
   };
 
   const handleMarkForReview = () => {
-    setMarkedForReview(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(questionKey)) {
-        newSet.delete(questionKey);
-      } else {
-        newSet.add(questionKey);
-      }
-      return newSet;
-    });
+    const newSet = new Set(markedForReview);
+    if (newSet.has(questionKey)) {
+      newSet.delete(questionKey);
+    } else {
+      newSet.add(questionKey);
+    }
+    setMarkedForReview(newSet);
+    // Save to localStorage
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(`aptitude_${aptitudeId}_marked`, JSON.stringify(Array.from(newSet)));
+    }
   };
 
   const handleNext = () => {
@@ -246,69 +255,58 @@ export function AptitudeExamClient() {
     if (submitting || !candidateId) return;
     
     setSubmitting(true);
-    console.log('🚀 Submitting test...');
+    
+    // Clear saved answers from localStorage on submit
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(`aptitude_${aptitudeId}_answers`);
+      localStorage.removeItem(`aptitude_${aptitudeId}_marked`);
+    }
     
     try {
-      const timeTaken = Math.floor((Date.now() - startTime) / 1000);
-      console.log('⏱️ Time taken:', timeTaken, 'seconds');
+      // Verify server time before submitting (optional validation)
+      if (isServerTimeValid === false) {
+        console.warn('⚠️ Server time validation failed, but proceeding with submit');
+      }
       
-      const result = await submitTest(aptitudeId, candidateId, answers, timeTaken, warnings, false);
+      // Get current warning state from context
+      const warningState = warningContext.getWarningState();
+      console.log('🚀 AptitudeExam: About to submit test with warning state:', warningState);
+      const timeTaken = Math.floor((Date.now() - new Date(startTime).getTime()) / 1000);
+      
+      const result = await submitTest(
+        aptitudeId, 
+        candidateId, 
+        answers, 
+        timeTaken, 
+        warningState, 
+        warningContext.hasExceededLimits(),
+        warningContext.hasExceededLimits() ? warningContext.getExceededWarnings().join(', ') : undefined
+      );
+      
       if (result.success) {
-        console.log(' Test submitted successfully!');
+        clearStartTime(); // Clear start time from localStorage
         setEnded(true);
       } else {
-        console.error(' Test submission failed:', result.error);
         alert('Failed to submit test: ' + result.error);
       }
     } catch (error) {
-      console.error(' Error submitting test:', error);
       alert('Error submitting test. Please try again.');
+      console.error('Error submitting test:', error);
     } finally {
       setSubmitting(false);
     }
   };
 
+  // Show loading while server initializes timing
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-[#0A0A18] via-[#0D0D20] to-[#0A0A18] flex items-center justify-center text-white/70">
+        Initializing secure exam session...
+      </div>
+    );
+  }
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (!mounted || loading || ended) return;
-    setHasStarted(true);
-    setStartTime(Date.now());
-    const timer = setInterval(() => {
-      setTimeLeft(prev => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          endExam('Time is up!');
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [mounted, loading, ended, endExam]);
-
-  
-  useEffect(() => {
-    if (!hasStarted || ended) return;
-
-    const onVisibility = () => {
-      if (document.visibilityState !== 'visible') {
-        handleWarning('tabSwitch', 'Tab switch detected');
-      }
-    };
-
-    document.addEventListener('visibilitychange', onVisibility);
-
-    return () => {
-      document.removeEventListener('visibilitychange', onVisibility);
-    };
-  }, [hasStarted, ended, handleWarning]);
-
- 
-  if (!mounted || loading || !hasQuestions) {
+  if (loading || !hasQuestions) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#0A0A18] via-[#0D0D20] to-[#0A0A18] flex items-center justify-center text-white/70">
         {loading ? 'Loading questions...' : 'No questions available'}
@@ -319,7 +317,7 @@ export function AptitudeExamClient() {
  
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#0A0A18] via-[#0D0D20] to-[#0A0A18] flex items-center justify-center text-red-400">
+      <div className="min-h-screen bg-gradient-to-br from-[#0AA18] via-[#0D0D20] to-[#0A0A18] flex items-center justify-center text-red-400">
         Error: {error}
       </div>
     );
@@ -335,49 +333,7 @@ export function AptitudeExamClient() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#0A0A18] via-[#0D0D20] to-[#0A0A18]">
-      {/* Warning Dialog */}
-      {showWarningDialog && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80">
-          <Card className="w-full max-w-md bg-red-500/10 border border-red-500/30 backdrop-blur-xl">
-            <CardHeader>
-              <CardTitle className="text-red-400 text-center">⚠️ Warning</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-white/90 text-center mb-4">{warningMessage}</p>
-              <Button
-                className="w-full bg-red-600 hover:bg-red-700 text-white"
-                onClick={() => setShowWarningDialog(false)}
-              >
-                Acknowledge
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      
-      {ended && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80">
-          <Card className="w-full max-w-md bg-white/5 border border-white/10 backdrop-blur-xl">
-            <CardHeader>
-              <CardTitle className="text-white text-center">Test ended</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Button
-                className="w-full bg-red-600 hover:bg-red-700 text-white"
-                onClick={() => {
-                  if (document.fullscreenElement) {
-                    document.exitFullscreen().catch(() => {});
-                  }
-                  window.location.href = '/';
-                }}
-              >
-                Close
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+     
 
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 bg-[#0A0A18]/90 backdrop-blur-xl border-b border-white/10 z-50">
@@ -397,10 +353,12 @@ export function AptitudeExamClient() {
             
             <div className="flex items-center space-x-6">
               <div className="flex items-center space-x-2 text-white/70">
-                <Clock className="h-4 w-4" />
-                <span className="font-mono text-lg">
-                  {formatTime(timeLeft)}
-                </span>
+                <div className="flex items-center space-x-2">
+                  <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                  <span className="font-mono text-lg font-bold text-white/90">
+                    {formattedTime}
+                  </span>
+                </div>
               </div>
               
               <div className="hidden md:flex items-center space-x-4 text-sm">
@@ -416,12 +374,6 @@ export function AptitudeExamClient() {
                   <div className="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]"></div>
                   <span className="text-white/70">{stats.unattempted} Remaining</span>
                 </div>
-                {warnings.tabSwitch.count > 0 && (
-                  <div className="flex items-center space-x-2">
-                    <div className="w-2 h-2 rounded-full bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.6)]"></div>
-                    <span className="text-orange-300">Tab Switch: {warnings.tabSwitch.count}/{warnings.tabSwitch.maxAllowed}</span>
-                  </div>
-                )}
               </div>
             </div>
           </div>
@@ -551,18 +503,18 @@ export function AptitudeExamClient() {
             <Card className="bg-white/5 backdrop-blur-xl border border-white/10">
               <CardContent className="p-6 text-center">
                 <div className="flex items-center justify-center mb-2">
-                  <Clock className="h-5 w-5 text-red-400 mr-2" />
-                  <span className="text-sm font-medium text-white/70">Time Remaining</span>
+                  <div className="w-5 h-5 rounded-full bg-blue-500 shadow-[0_0_12px_RGBA(0,0,255,0.6)]" />
+                  <span className="text-sm font-medium text-white/70 ml-2">Test in Progress</span>
                 </div>
-                <div className="text-3xl font-mono font-bold bg-gradient-to-r from-red-400 to-red-600 bg-clip-text text-transparent">
-                  {formatTime(timeLeft)}
+                <div className="text-3xl font-mono font-bold bg-gradient-to-r from-indigo-400 to-rose-400 bg-clip-text text-transparent">
+                  Active
                 </div>
               </CardContent>
             </Card>
 
             {/* Instructions */}
             <Card className="bg-white/5 backdrop-blur-xl border border-white/10">
-              <CardHeader className="pb-4">
+              <CardHeader>
                 <CardTitle className="text-lg font-semibold text-white">Instructions</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">

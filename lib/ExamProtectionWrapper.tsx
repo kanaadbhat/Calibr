@@ -2,40 +2,48 @@
 
 import React, { useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import { useWarningContext } from './WarningContext'
 
 interface ExamProtectionWrapperProps {
   children: React.ReactNode
-  tabSwitchLimit?: number        
-  fullscreenExitLimit?: number  
   countdownSeconds?: number      
 }
 
 export default function ExamProtectionWrapper({
   children,
-  tabSwitchLimit = 4,
-  fullscreenExitLimit = 2,
   countdownSeconds = 10,
 }: ExamProtectionWrapperProps) {
   const router = useRouter()
-  const [hasStarted, setHasStarted] = useState(false)
+  const warningContext = useWarningContext()
   const [isFullscreen, setIsFullscreen] = useState(false)
-  const [tabSwitchCount, setTabSwitchCount] = useState(0)
-  const [fullscreenExitCount, setFullscreenExitCount] = useState(0)
   const [warning, setWarning] = useState<string | null>(null)
   const [redirectTimer, setRedirectTimer] = useState(countdownSeconds)
 
   const countdownRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const tabLockRef = useRef<boolean>(false) // 👈 Prevents double increments
+  const tabLockRef = useRef<boolean>(false)
 
-  // Start fullscreen
-  const startExam = async () => {
-    const elem = document.documentElement
-    if (elem.requestFullscreen) await elem.requestFullscreen()
-    setIsFullscreen(true)
-    setHasStarted(true)
-  }
+  // 🧩 Auto start fullscreen immediately when component mounts
+  useEffect(() => {
+    const enterFullscreen = async () => {
+      // Check if already in fullscreen mode
+      if (document.fullscreenElement) {
+        setIsFullscreen(true)
+        return
+      }
 
-  // Start redirect countdown
+      const elem = document.documentElement
+      try {
+        if (elem.requestFullscreen) await elem.requestFullscreen()
+        setIsFullscreen(true)
+      } catch (err) {
+        console.warn('Fullscreen not allowed:', err)
+        setWarning('⚠ Please enable fullscreen to continue the test.')
+      }
+    }
+    enterFullscreen()
+  }, [])
+
+  // Start redirect countdown when fullscreen exits
   const startRedirectCountdown = useCallback(() => {
     if (countdownRef.current) return 
 
@@ -59,26 +67,23 @@ export default function ExamProtectionWrapper({
     setRedirectTimer(countdownSeconds)
   }, [countdownSeconds])
 
-  // 🚀 Robust tab switch increment logic
+  // Detect tab switch
   const incrementTabSwitch = useCallback(() => {
-    if (tabLockRef.current) return // Ignore duplicates
+    if (tabLockRef.current) return
     tabLockRef.current = true
 
-    setTabSwitchCount(prev => prev + 1)
+    warningContext.incrementTabSwitch()
     setWarning('⚠ You switched away from the test window!')
 
-    // Unlock only after focus returns
     const unlockOnFocus = () => {
       tabLockRef.current = false
       window.removeEventListener('focus', unlockOnFocus)
     }
     window.addEventListener('focus', unlockOnFocus)
-  }, [])
+  }, [warningContext])
 
-  // Detect tab/app switch & fullscreen changes
+  // Handle visibility & fullscreen changes
   useEffect(() => {
-    if (!hasStarted) return
-
     const handleBlur = () => incrementTabSwitch()
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'hidden') incrementTabSwitch()
@@ -86,9 +91,9 @@ export default function ExamProtectionWrapper({
 
     const handleFullscreenChange = () => {
       if (!document.fullscreenElement) {
-        setFullscreenExitCount(prev => prev + 1)
+        warningContext.incrementFullscreenExit()
         setIsFullscreen(false)
-        setWarning(`You exited fullscreen! Return within ${countdownSeconds} seconds.`)
+        setWarning(`⚠ You exited fullscreen! Return within ${countdownSeconds}s.`)
         startRedirectCountdown()
       } else {
         setIsFullscreen(true)
@@ -106,48 +111,49 @@ export default function ExamProtectionWrapper({
       document.removeEventListener('visibilitychange', handleVisibilityChange)
       document.removeEventListener('fullscreenchange', handleFullscreenChange)
     }
-  }, [hasStarted, incrementTabSwitch, startRedirectCountdown, stopRedirectCountdown, countdownSeconds])
+  }, [incrementTabSwitch, startRedirectCountdown, stopRedirectCountdown, countdownSeconds, warningContext])
 
-  // Redirect if limits exceeded
+  // Redirect if limit exceeded
   useEffect(() => {
-    if (tabSwitchCount > tabSwitchLimit) {
-      router.push('/disqualified?reason=multiple_tab_switches')
+    if (warningContext.hasExceededLimits()) {
+      const exceededWarnings = warningContext.getExceededWarnings()
+      if (exceededWarnings.includes('tab_switch')) {
+        router.push('/disqualified?reason=multiple_tab_switches')
+      } else if (exceededWarnings.includes('fullscreen_exit')) {
+        router.push('/disqualified?reason=multiple_fullscreen_exits')
+      }
     }
-    if (fullscreenExitCount > fullscreenExitLimit) {
-      router.push('/disqualified?reason=multiple_fullscreen_exits')
-    }
-  }, [tabSwitchCount, fullscreenExitCount, tabSwitchLimit, fullscreenExitLimit, router])
+  }, [warningContext, router])
 
   return (
     <div className="relative min-h-screen flex flex-col items-center justify-center text-white bg-[#0a0a18]">
-      {!hasStarted ? (
-        <button
-          onClick={startExam}
-          className="px-6 py-3 bg-purple-600 hover:bg-purple-700 rounded-lg text-lg font-semibold shadow-lg"
-        >
-          Start Test (Fullscreen)
-        </button>
-      ) : (
-        <>
-          {warning && (
-            <div className="fixed top-4 left-1/2 -translate-x-1/2 bg-yellow-400 text-black px-6 py-2 rounded-lg shadow-lg z-50">
-              {warning}
-              {!isFullscreen && (
-                <div className="mt-2 text-sm flex flex-col items-center">
-                  {redirectTimer > 0 && <p>Redirecting in {redirectTimer}s...</p>}
-                  <button
-                    onClick={startExam}
-                    className="mt-2 bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded-md text-sm"
-                  >
-                    Return to Fullscreen
-                  </button>
-                </div>
-              )}
+      {warning && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 bg-yellow-400 text-black px-6 py-2 rounded-lg shadow-lg z-50 text-center">
+          {warning}
+          {!isFullscreen && (
+            <div className="mt-2 text-sm flex flex-col items-center">
+              {redirectTimer > 0 && <p>Redirecting in {redirectTimer}s...</p>}
+              <button
+                onClick={async () => {
+                  const elem = document.documentElement
+                  try {
+                    await elem.requestFullscreen()
+                    setWarning(null)
+                  } catch {
+                    setWarning('⚠ Please allow fullscreen to continue.')
+                  }
+                }}
+                className="mt-2 bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded-md text-sm"
+              >
+                Return to Fullscreen
+              </button>
             </div>
           )}
-          <div className="w-full h-full">{children}</div>
-        </>
+        </div>
       )}
+
+      {/* 🧠 The actual exam content */}
+      <div className="w-full h-full">{children}</div>
     </div>
   )
 }
