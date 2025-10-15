@@ -64,6 +64,8 @@ function splitIntoChunks(input: string, maxLen = 500): string[] {
 // ============================================================
 // === POST: Single synthesis (one full response) ============
 // ============================================================
+
+//use this to get entire audio when in pre loading stage for interview
 export async function POST(req: Request) {
   try {
     const { text } = await req.json();
